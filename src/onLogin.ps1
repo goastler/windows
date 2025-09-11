@@ -386,6 +386,7 @@ function Install-WindowsUpdates {
         
         $Downloader = $UpdateSession.CreateUpdateDownloader()
         $Downloader.Updates = $SingleUpdateCollection
+        $Downloader.Priority = 3
         
         # Begin asynchronous download with callback
         $dummyCallback = [System.AsyncCallback]{}
@@ -394,14 +395,12 @@ function Install-WindowsUpdates {
         $DownloadJob = $Downloader.BeginDownload($dummyCallback, $dummyState1, $dummyState2)
         
         # Wait for download to complete with progress monitoring
-        $progress = 0
-        while ($progress -lt 100) {
+        while (-not $DownloadJob.IsCompleted) {
             Start-Sleep -Seconds 1
             
             # Monitor download progress
             try {
-                $progress = $DownloadJob.GetProgress().get_PercentComplete()
-                Write-Progress -Activity "Downloading Windows Update: $($Update.Title)" -Status "Downloading..." -PercentComplete $progress
+                Write-Progress -Activity "Downloading Windows Update: $($Update.Title)" -Status "Downloading..." -PercentComplete $DownloadJob.GetProgress().PercentComplete
             } catch {
                 Write-Log "Error monitoring download progress: $($_.Exception.Message)"
             }
@@ -412,7 +411,7 @@ function Install-WindowsUpdates {
         
         Write-Progress -Activity "Downloading Windows Update: $($Update.Title)" -Completed
         
-        if ($DownloadResult.get_ResultCode() -eq 2) {
+        if ($Update.IsDownloaded) {
             Write-Log-Highlight "Update downloaded successfully: $($Update.Title)" -HighlightText $Update.Title -HighlightColor "Green"
             
             # Install single update with progress tracking
@@ -427,14 +426,12 @@ function Install-WindowsUpdates {
             $InstallJob = $Installer.BeginInstall($dummyCallback, $dummyState1, $dummyState2)
             
             # Wait for installation to complete with progress monitoring
-            $progress = 0
-            while ($progress -lt 100) {
+            while (-not $InstallJob.IsCompleted) {
                 Start-Sleep -Seconds 1
                 
                 # Monitor installation progress
                 try {
-                    $progress = $InstallJob.GetProgress().get_PercentComplete()
-                    Write-Progress -Activity "Installing Windows Update: $($Update.Title)" -Status "Installing..." -PercentComplete $progress
+                    Write-Progress -Activity "Installing Windows Update: $($Update.Title)" -Status "Installing..." -PercentComplete $InstallJob.GetProgress().PercentComplete
                 } catch {
                     Write-Log "Error monitoring installation progress: $($_.Exception.Message)"
                 }
@@ -445,17 +442,17 @@ function Install-WindowsUpdates {
             
             Write-Progress -Activity "Installing Windows Update: $($Update.Title)" -Completed
             
-            if ($InstallResult.get_ResultCode() -eq 2) {
+            if ($Update.IsInstalled) {
                 Write-Log-Highlight "Update installed successfully: $($Update.Title)" -HighlightText $Update.Title -HighlightColor "Green"
-                if ($InstallResult.get_RebootRequired()) {
+                if ($Update.RebootBehavior -ne 0) {
                     $rebootRequired = $true
                     Write-Log-Highlight "Reboot required after: $($Update.Title)" -HighlightText $Update.Title -HighlightColor "Red"
                 }
             } else {
-                throw "Failed to install update: $($Update.Title). Result code: $($InstallResult.get_ResultCode())"
+                throw "Failed to install update: $($Update.Title)"
             }
         } else {
-            throw "Failed to download update: $($Update.Title). Result code: $($DownloadResult.get_ResultCode())"
+            throw "Failed to download update: $($Update.Title)"
         }
     }
     
