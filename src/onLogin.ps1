@@ -59,19 +59,25 @@ function Invoke-CommandWithExitCode {
     $stdoutOutput = @()
     $stderrOutput = @()
     
-    # Stream output in real-time using character-by-character reading
+    # Use a hybrid approach: async reading with real-time display
     $stdoutReader = $process.StandardOutput
     $stderrReader = $process.StandardError
     
-    # Create string builders for buffering partial lines
+    # Start async reading tasks
+    $stdoutTask = $stdoutReader.ReadToEndAsync()
+    $stderrTask = $stderrReader.ReadToEndAsync()
+    
+    # Create string builders for line buffering
     $stdoutBuffer = New-Object System.Text.StringBuilder
     $stderrBuffer = New-Object System.Text.StringBuilder
     
-    # Read output in real-time while process is running
-    $count = 0
-    while (-not $process.HasExited -and $count -lt 5) {
-        # Read available stdout characters
-        while ($stdoutReader.Peek() -ge 0) {
+    # Monitor and display output in real-time
+    $stdoutCompleted = $false
+    $stderrCompleted = $false
+    
+    while (-not $process.HasExited -or -not $stdoutCompleted -or -not $stderrCompleted) {
+        # Check stdout for new data
+        if ($stdoutReader.Peek() -ge 0) {
             $char = $stdoutReader.Read()
             if ($char -eq 10 -or $char -eq 13) {  # Line feed or carriage return
                 if ($stdoutBuffer.Length -gt 0) {
@@ -85,10 +91,12 @@ function Invoke-CommandWithExitCode {
             } else {
                 $stdoutBuffer.Append([char]$char) | Out-Null
             }
+        } elseif ($stdoutTask.IsCompleted) {
+            $stdoutCompleted = $true
         }
         
-        # Read available stderr characters
-        while ($stderrReader.Peek() -ge 0) {
+        # Check stderr for new data
+        if ($stderrReader.Peek() -ge 0) {
             $char = $stderrReader.Read()
             if ($char -eq 10 -or $char -eq 13) {  # Line feed or carriage return
                 if ($stderrBuffer.Length -gt 0) {
@@ -102,17 +110,15 @@ function Invoke-CommandWithExitCode {
             } else {
                 $stderrBuffer.Append([char]$char) | Out-Null
             }
+        } elseif ($stderrTask.IsCompleted) {
+            $stderrCompleted = $true
         }
         
         # Small delay to prevent excessive CPU usage
-        Start-Sleep -Milliseconds 50
-
-        if ($process.HasExited) {
-            $count++
-        }
+        Start-Sleep -Milliseconds 10
     }
     
-    # Process any remaining output in buffers after process exits
+    # Process any remaining buffered output
     if ($stdoutBuffer.Length -gt 0) {
         $line = $stdoutBuffer.ToString().Trim()
         if ($line) {
