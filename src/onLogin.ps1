@@ -245,14 +245,61 @@ function Configure-WindowsUpdates {
 }
 
 function Install-WindowsUpdates {
+    Write-Log "Preparing Windows Update check..."
+    
+    # Clear Windows Update cache to resolve stuck states
+    Write-Log "Clearing Windows Update cache..."
+    Stop-Service -Name "wuauserv" -Force -ErrorAction SilentlyContinue
+    Start-Sleep -Seconds 3
+    if (Test-Path "$env:SystemRoot\SoftwareDistribution\DataStore") {
+        Remove-Item -Path "$env:SystemRoot\SoftwareDistribution\DataStore\*" -Recurse -Force -ErrorAction SilentlyContinue
+    }
+    Start-Service -Name "wuauserv" -ErrorAction SilentlyContinue
+    Start-Sleep -Seconds 5
+    Write-Log "Windows Update cache cleared and service restarted"
+
     Write-Log "Checking for available Windows updates..."
 
     # Create Windows Update session
     $UpdateSession = New-Object -ComObject Microsoft.Update.Session
     $UpdateSearcher = $UpdateSession.CreateUpdateSearcher()
 
-    # Search for all updates including optional
-    $SearchResult = $UpdateSearcher.Search("IsInstalled=0 and Type='Software' or IsInstalled=0 and Type='Driver'")
+    # Search for updates with timeout to prevent hanging
+    Write-Log "Searching for updates (timeout: 10 minutes)..."
+    $searchJob = Start-Job -ScriptBlock {
+        param($searcher, $criteria)
+        try {
+            $result = $searcher.Search($criteria)
+            return @{
+                Success = $true
+                Updates = $result.Updates
+            }
+        } catch {
+            return @{
+                Success = $false
+                Error = $_.Exception.Message
+            }
+        }
+    } -ArgumentList $UpdateSearcher, "IsInstalled=0 and Type='Software' or IsInstalled=0 and Type='Driver'"
+    
+    # Wait for search with 10 minute timeout
+    $searchCompleted = Wait-Job -Job $searchJob -Timeout 600
+    if ($searchCompleted) {
+        $searchResult = Receive-Job -Job $searchJob
+        Remove-Job -Job $searchJob
+        
+        if (-not $searchResult.Success) {
+            Write-Log "Search failed: $($searchResult.Error)"
+            Write-Log "Skipping Windows Update installation"
+            return
+        }
+        
+        $SearchResult = @{ Updates = $searchResult.Updates }
+    } else {
+        Stop-Job -Job $searchJob
+        Remove-Job -Job $searchJob
+        throw "Windows Update search timed out after 10 minutes"
+    }
 
     if ($SearchResult.Updates.Count -eq 0) {
         Write-Log "No Windows updates available. System is up to date."
@@ -541,38 +588,38 @@ try {
     # USER CANCELLATION DELAY
     # =============================================================================
 
-    # Write-Host "`n=== On Login Setup Starting ===" -ForegroundColor Yellow
-    # Wait-ForUserCancellation -Seconds 10
-    # Write-Host "Starting now..." -ForegroundColor Green
-
-    # # =============================================================================
-    # # WINDOWS UPDATE CONFIGURATION AND INSTALLATION
-    # # =============================================================================
-
-    # Configure-WindowsUpdates
-    # Install-WindowsUpdates
-
-    # # =============================================================================
-    # # CHOCOLATEY INSTALLATION AND PACKAGE SETUP
-    # # =============================================================================
-
-    # Install-ChocolateyAndPackages
-
-    # # =============================================================================
-    # # BGINFO SETUP
-    # # =============================================================================
-
-    # Setup-BgInfo
-
-    # # =============================================================================
-    # # OFFICE INSTALLATION
-    # # =============================================================================
-
-    # Install-Office
+    Write-Host "`n=== On Login Setup Starting ===" -ForegroundColor Yellow
+    Wait-ForUserCancellation -Seconds 10
+    Write-Host "Starting now..." -ForegroundColor Green
 
     # =============================================================================
-    # MICROSOFT ACTIVATION SCRIPTS
+    # WINDOWS UPDATE CONFIGURATION AND INSTALLATION
     # =============================================================================
+
+    Configure-WindowsUpdates
+    Install-WindowsUpdates
+
+    # =============================================================================
+    # CHOCOLATEY INSTALLATION AND PACKAGE SETUP
+    # =============================================================================
+
+    Install-ChocolateyAndPackages
+
+    # =============================================================================
+    # BGINFO SETUP
+    # =============================================================================
+
+    Setup-BgInfo
+
+    # =============================================================================
+    # OFFICE INSTALLATION
+    # =============================================================================
+
+    Install-Office
+
+    =============================================================================
+    MICROSOFT ACTIVATION SCRIPTS
+    =============================================================================
 
     Install-MicrosoftActivationScripts
 
@@ -606,7 +653,7 @@ try {
 }
 
 Write-Host "`n=== REBOOT REQUIRED ===" -ForegroundColor Yellow
-Write-Host "The system will reboot in 30 seconds..." -ForegroundColor Yellow
-Wait-ForUserCancellation -Seconds 30
+Write-Host "The system will reboot in 10 seconds..." -ForegroundColor Yellow
+Wait-ForUserCancellation -Seconds 10
 Write-Host "Rebooting now..." -ForegroundColor Red
 Restart-Computer -Force
