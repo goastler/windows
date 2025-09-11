@@ -431,7 +431,7 @@ function Setup-BgInfo {
         $trigger = New-ScheduledTaskTrigger -AtLogOn
         
         # Create the principal (run as current user with highest privileges)
-        $principal = New-ScheduledTaskPrincipal -UserId $env:USERNAME -LogonType InteractiveToken -RunLevel Highest
+        $principal = New-ScheduledTaskPrincipal -UserId $env:USERNAME -LogonType Interactive -RunLevel Highest
         
         # Create the settings
         $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable -RunOnlyIfNetworkAvailable:$false
@@ -514,7 +514,7 @@ function Create-OnLoginScheduledTask {
      $trigger = New-ScheduledTaskTrigger -AtLogOn
      
      # Create the principal (run as current user with highest privileges)
-     $principal = New-ScheduledTaskPrincipal -UserId $env:USERNAME -LogonType InteractiveToken -RunLevel Highest
+     $principal = New-ScheduledTaskPrincipal -UserId $env:USERNAME -LogonType Interactive -RunLevel Highest
      
      # Create the settings
      $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable -RunOnlyIfNetworkAvailable:$false
