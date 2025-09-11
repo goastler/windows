@@ -203,6 +203,78 @@ try {
     }
 
     # =============================================================================
+    # OFFICE INSTALLATION
+    # =============================================================================
+
+    Write-Log "Checking if Office is already installed..."
+
+    # Check if Office is already installed by looking for Office applications
+    $officeInstalled = $false
+    $officeApps = @("winword.exe", "excel.exe", "powerpnt.exe", "outlook.exe")
+    
+    foreach ($app in $officeApps) {
+        $appPath = Get-Command $app -ErrorAction SilentlyContinue
+        if ($appPath) {
+            $officeInstalled = $true
+            Write-Log "Office is already installed (found $app at $($appPath.Source))"
+            break
+        }
+    }
+
+    if ($officeInstalled) {
+        Write-Log "Office is already installed. Skipping Office installation process."
+    } else {
+        Write-Log "Office not found. Starting Office installation process..."
+
+        # Create temporary directory for Office installation
+        $officeTempDir = "$env:TEMP\OfficeInstall"
+        Write-Log "Creating temporary directory: $officeTempDir"
+        if (Test-Path $officeTempDir) {
+            Remove-Item $officeTempDir -Recurse -Force
+        }
+        New-Item -ItemType Directory -Path $officeTempDir -Force | Out-Null
+        Set-Location $officeTempDir
+        Write-Log "Changed to directory: $officeTempDir"
+
+        # Download Office deployment tool
+        $officeDownloadUrl = "https://download.microsoft.com/download/6c1eeb25-cf8b-41d9-8d0d-cc1dbc032140/officedeploymenttool_19029-20136.exe"
+        $officeInstaller = "officedeploymenttool.exe"
+        
+        Write-Log "Downloading Office deployment tool from: $officeDownloadUrl"
+        Invoke-WebRequest -Uri $officeDownloadUrl -OutFile $officeInstaller -UseBasicParsing
+        Write-Log "Office deployment tool downloaded successfully"
+
+        # Run the Office deployment tool to extract files
+        Write-Log "Extracting Office deployment tool files..."
+        & ".\$officeInstaller" /quiet /extract:$officeTempDir
+        Write-Log "Office deployment tool extracted successfully"
+
+        # Download office.xml from GitHub repository
+        $officeXmlUrl = "https://raw.githubusercontent.com/goastler/windows/refs/heads/main/src/office.xml"
+        $officeXmlDest = "$officeTempDir\office.xml"
+        
+        Write-Log "Downloading office.xml from GitHub repository..."
+        Invoke-WebRequest -Uri $officeXmlUrl -OutFile $officeXmlDest -UseBasicParsing
+        Write-Log "office.xml downloaded successfully"
+
+        # Run Office setup with the configuration file
+        Write-Log "Starting Office installation with configuration file..."
+        $setupProcess = Start-Process -FilePath ".\setup.exe" -ArgumentList "/configure", "office.xml" -Wait -PassThru -NoNewWindow
+        if ($setupProcess.ExitCode -ne 0) {
+            throw "Office installation completed with exit code: $($setupProcess.ExitCode)"
+        }
+        Write-Log "Office installation completed successfully"
+
+        # Clean up temporary directory
+        Write-Log "Cleaning up temporary Office installation directory..."
+        Set-Location $env:TEMP
+        Remove-Item $officeTempDir -Recurse -Force
+        Write-Log "Temporary directory cleaned up successfully"
+
+        Write-Log "Office installation process completed!"
+    }
+
+    # =============================================================================
     # FINAL CLEANUP - REMOVE SCHEDULED TASK
     # =============================================================================
 

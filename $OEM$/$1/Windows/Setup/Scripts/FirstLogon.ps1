@@ -16,7 +16,7 @@ if (!(Test-Path $scriptDir)) {
 # Download onLogin.ps1 from GitHub repository
 Write-Host "Downloading onLogin.ps1 from GitHub repository..."
 try {
-    $url = "https://raw.githubusercontent.com/goastler/windows/main/src/onLogin.ps1"
+    $url = "https://raw.githubusercontent.com/goastler/windows/refs/heads/main/src/onLogin.ps1"
     Invoke-WebRequest -Uri $url -OutFile $scriptPath -UseBasicParsing
     Write-Host "Successfully downloaded onLogin.ps1 to $scriptPath"
 } catch {
