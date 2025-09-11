@@ -348,7 +348,7 @@ function Install-WindowsUpdates {
         throw "Windows Update search timed out after $timeoutSeconds seconds"
     }
 
-    Write-Log "Search completed successfully"
+    Write-Host ""
         
     # End the search and get the result
     $searchResult = $UpdateSearcher.EndSearch($searchJob)
@@ -441,6 +441,18 @@ function Install-WindowsUpdates {
             $InstallResult = $Installer.EndInstall($InstallJob)
             
             Write-Progress -Activity "Installing Windows Update: $($Update.Title)" -Completed
+
+            # Print update properties
+            Write-Host "Update Properties:" -ForegroundColor Cyan
+            Write-Host "  Title: $($Update.Title)"
+            Write-Host "  Description: $($Update.Description)"
+            Write-Host "  KBArticleIDs: $($Update.KBArticleIDs -join ', ')"
+            Write-Host "  SupportURL: $($Update.SupportURL)"
+            Write-Host "  IsDownloaded: $($Update.IsDownloaded)"
+            Write-Host "  IsInstalled: $($Update.IsInstalled)"
+            Write-Host "  RebootBehavior: $($Update.RebootBehavior)"
+            Write-Host "  MsrcSeverity: $($Update.MsrcSeverity)"
+            Write-Host "  Categories: $((($Update.Categories | ForEach-Object { $_.Name }) -join ', '))"
             
             if ($Update.IsInstalled) {
                 Write-Log-Highlight "Update installed successfully: $($Update.Title)" -HighlightText $Update.Title -HighlightColor "Green"
@@ -463,7 +475,8 @@ function Install-WindowsUpdates {
         Write-Host "The computer will restart in 30 seconds..." -ForegroundColor Yellow
         Wait-ForUserCancellation -Seconds 30 -Message "Press any key to cancel the reboot"
         Write-Log "Reboot required. Restarting computer..."
-        Restart-Computer -Force
+        # Restart-Computer -Force
+        Pause
     } else {
         Write-Log "No reboot required. All updates processed successfully."
     }
@@ -753,4 +766,5 @@ Write-Host "`n=== REBOOT REQUIRED ===" -ForegroundColor Yellow
 Write-Host "The system will reboot in 10 seconds..." -ForegroundColor Yellow
 Wait-ForUserCancellation -Seconds 10
 Write-Host "Rebooting now..." -ForegroundColor Red
-Restart-Computer -Force
+# Restart-Computer -Force
+Pause
