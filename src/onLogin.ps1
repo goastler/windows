@@ -430,23 +430,21 @@ function Install-WindowsUpdates {
         
         # Download single update with progress tracking
         Write-Log-Highlight "Downloading update: $($Update.Title)" -HighlightText $Update.Title -HighlightColor "Yellow"
-        # Use MinDownloadSize as the baseline size (cap progress at 100% as more data may be downloaded)
-        $updateSize = if ($Update.MinDownloadSize -gt 0) { [math]::Round($Update.MinDownloadSize / 1MB, 2) } else { 0 }
-        Write-Log "Update size: $updateSize MB"
         
         $Downloader = $UpdateSession.CreateUpdateDownloader()
         $Downloader.Updates = $SingleUpdateCollection
         
-        # Begin asynchronous download
-        $DownloadResult = $Downloader.BeginDownload()
+        # Begin asynchronous download with callback
+        $DownloadResult = $Downloader.BeginDownload($null, $null, $null)
         
         # Wait for download to complete with progress monitoring
-        while ($DownloadResult.IsCompleted -eq $false) {
+        $progress = 0
+        while ($progress -lt 100) {
             Start-Sleep -Seconds 1
             
             # Monitor download progress
             try {
-                $progress = $Downloader.Progress
+                $progress = $Downloader.GetProgress().get_PercentComplete()
                 Write-Progress -Activity "Downloading Windows Update: $($Update.Title)" -Status "Downloading..." -PercentComplete $progress
             } catch {
                 Write-Log "Error monitoring download progress: $($_.Exception.Message)"
@@ -458,7 +456,7 @@ function Install-WindowsUpdates {
         
         Write-Progress -Activity "Downloading Windows Update: $($Update.Title)" -Completed
         
-        if ($DownloadResult.ResultCode -eq 2) {
+        if ($DownloadResult.get_ResultCode() -eq 2) {
             Write-Log-Highlight "Update downloaded successfully: $($Update.Title)" -HighlightText $Update.Title -HighlightColor "Green"
             
             # Install single update with progress tracking
@@ -466,16 +464,17 @@ function Install-WindowsUpdates {
             $Installer = $UpdateSession.CreateUpdateInstaller()
             $Installer.Updates = $SingleUpdateCollection
             
-            # Begin asynchronous installation
-            $InstallResult = $Installer.BeginInstall()
+            # Begin asynchronous installation with callback
+            $InstallResult = $Installer.BeginInstall($null, $null, $null)
             
             # Wait for installation to complete with progress monitoring
-            while ($InstallResult.IsCompleted -eq $false) {
+            $progress = 0
+            while ($progress -lt 100) {
                 Start-Sleep -Seconds 1
                 
                 # Monitor installation progress
                 try {
-                    $progress = $Installer.Progress
+                    $progress = $Installer.GetProgress().get_PercentComplete()
                     Write-Progress -Activity "Installing Windows Update: $($Update.Title)" -Status "Installing..." -PercentComplete $progress
                 } catch {
                     Write-Log "Error monitoring installation progress: $($_.Exception.Message)"
@@ -487,17 +486,17 @@ function Install-WindowsUpdates {
             
             Write-Progress -Activity "Installing Windows Update: $($Update.Title)" -Completed
             
-            if ($InstallResult.ResultCode -eq 2) {
+            if ($InstallResult.get_ResultCode() -eq 2) {
                 Write-Log-Highlight "Update installed successfully: $($Update.Title)" -HighlightText $Update.Title -HighlightColor "Green"
-                if ($InstallResult.RebootRequired) {
+                if ($InstallResult.get_RebootRequired()) {
                     $rebootRequired = $true
                     Write-Log-Highlight "Reboot required after: $($Update.Title)" -HighlightText $Update.Title -HighlightColor "Red"
                 }
             } else {
-                throw "Failed to install update: $($Update.Title). Result code: $($InstallResult.ResultCode)"
+                throw "Failed to install update: $($Update.Title). Result code: $($InstallResult.get_ResultCode())"
             }
         } else {
-            throw "Failed to download update: $($Update.Title). Result code: $($DownloadResult.ResultCode)"
+            throw "Failed to download update: $($Update.Title). Result code: $($DownloadResult.get_ResultCode())"
         }
     }
     
