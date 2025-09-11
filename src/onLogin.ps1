@@ -133,27 +133,13 @@ function Invoke-WebRequestWithCleanup {
 function Wait-ForUserCancellation {
     param(
         [int]$Seconds = 30,
-        [string]$Message = "Press any key to cancel..."
+        [string]$Message = "Press Ctrl+C to cancel..."
     )
     
-    $timeout = $Seconds
-    $stopwatch = [Diagnostics.Stopwatch]::StartNew()
-
     Write-Host "$Message" -ForegroundColor Yellow
-
-    while ($stopwatch.Elapsed.TotalSeconds -lt $timeout) {
-        if ([Console]::KeyAvailable) {
-            $key = [Console]::ReadKey($true)  # $true prevents echo to screen
-            Write-Host "`nYou pressed: $($key.Key)" -ForegroundColor Red
-            Write-Host "User cancelled. Exiting script..." -ForegroundColor Red
-            exit 1
-        }
-        Start-Sleep -Milliseconds 100
-    }
-
-    if (-not [Console]::KeyAvailable -and $stopwatch.Elapsed.TotalSeconds -ge $timeout) {
-        Write-Host "No key was pressed within $timeout seconds." -ForegroundColor Green
-    }
+    Write-Host "Waiting $Seconds seconds..." -ForegroundColor Yellow
+    Start-Sleep -Seconds $Seconds
+    Write-Host "Continuing..." -ForegroundColor Green
 }
 
 function Install-ChocolateyAndPackages {
@@ -267,9 +253,17 @@ function Install-WindowsUpdates {
     # Search for updates with timeout to prevent hanging
     Write-Log "Searching for updates (timeout: 10 minutes)..."
     $searchJob = Start-Job -ScriptBlock {
-        param($searcher, $criteria)
+        param($criteria)
         try {
-            $result = $searcher.Search($criteria)
+            # Create COM objects within the job context
+            $UpdateSession = New-Object -ComObject Microsoft.Update.Session
+            $UpdateSearcher = $UpdateSession.CreateUpdateSearcher()
+            
+            # Force online scan by setting Online property to true
+            $UpdateSearcher.Online = $true
+            
+            # Perform the search with online scan
+            $result = $UpdateSearcher.Search($criteria)
             return @{
                 Success = $true
                 Updates = $result.Updates
@@ -280,7 +274,7 @@ function Install-WindowsUpdates {
                 Error = $_.Exception.Message
             }
         }
-    } -ArgumentList $UpdateSearcher, "IsInstalled=0 and Type='Software' or IsInstalled=0 and Type='Driver'"
+    } -ArgumentList "IsInstalled=0 and Type='Software' or IsInstalled=0 and Type='Driver'"
     
     # Wait for search with 10 minute timeout
     $searchCompleted = Wait-Job -Job $searchJob -Timeout 600
