@@ -430,7 +430,7 @@ function Setup-BgInfo {
 
     # Run BgInfo immediately to apply the configuration
     Write-Log "Running BgInfo to apply configuration..."
-    $result = Invoke-CommandWithExitCode -Command "& '$bgInfoExe' /nolicprompt /timer:0 /silent /accepteula" -Description "run BgInfo to apply configuration"
+    $result = Invoke-CommandWithExitCode -Command "& '$bgInfoExe' /nolicprompt /timer:0 /all" -Description "run BgInfo to apply configuration"
 
     Write-Log "BgInfo setup completed!"
 }
