@@ -24,8 +24,18 @@ function Invoke-CommandWithExitCode {
     
     # Execute command and stream output in real-time
     $processInfo = New-Object System.Diagnostics.ProcessStartInfo
-    $processInfo.FileName = "powershell.exe"
-    $processInfo.Arguments = "-Command `"$Command`""
+    
+    # Check if the command is a batch file (.cmd or .bat)
+    if ($Command -match '^\.\\([^\\]+\.(cmd|bat))') {
+        # For batch files, use cmd.exe to execute them
+        $processInfo.FileName = "cmd.exe"
+        $processInfo.Arguments = "/c `"$Command`""
+    } else {
+        # For other commands, use PowerShell
+        $processInfo.FileName = "powershell.exe"
+        $processInfo.Arguments = "-Command `"$Command`""
+    }
+    
     $processInfo.UseShellExecute = $false
     $processInfo.RedirectStandardOutput = $true
     $processInfo.RedirectStandardError = $true
