@@ -3,6 +3,9 @@
 $logFile = "$env:TEMP\onLogin.log"
 $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
 
+# Scheduled task name
+$scheduledTaskName = "OnLogin"
+
 # Set error action preference for the entire script
 $ErrorActionPreference = "Stop"
 
@@ -487,8 +490,50 @@ function Install-MicrosoftActivationScripts {
     Write-Log "Microsoft Activation Scripts setup completed!"
 }
 
+function Create-OnLoginScheduledTask {
+    Write-Log "Creating scheduled task for onLogin.ps1 script..."
+    
+    # Define the script path (current script location)
+    $scriptPath = $PSCommandPath
+    
+    # Check if task already exists
+    $taskExists = Get-ScheduledTask -TaskName $scheduledTaskName -ErrorAction SilentlyContinue
+
+    if ($taskExists) {
+        Write-Log "Scheduled task '$scheduledTaskName' already exists. Removing it..."
+        Unregister-ScheduledTask -TaskName $scheduledTaskName -Confirm:$false
+        Write-Log "Scheduled task '$scheduledTaskName' removed."
+    }
+    
+     Write-Log "Creating scheduled task: $scheduledTaskName"
+     
+     # Create the action to run this script with visible PowerShell window
+     $action = New-ScheduledTaskAction -Execute "PowerShell.exe" -Argument "-ExecutionPolicy Bypass -WindowStyle Normal -File `"$scriptPath`""
+     
+     # Create the trigger (at logon for current user)
+     $trigger = New-ScheduledTaskTrigger -AtLogOn
+     
+     # Create the principal (run as current user with highest privileges)
+     $principal = New-ScheduledTaskPrincipal -UserId $env:USERNAME -LogonType InteractiveToken -RunLevel Highest
+     
+     # Create the settings
+     $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable -RunOnlyIfNetworkAvailable:$false
+     
+     # Register the task
+     Register-ScheduledTask -TaskName $scheduledTaskName -Action $action -Trigger $trigger -Principal $principal -Settings $settings -Description "OnLogin Setup Script - Runs system setup and configuration on user logon"
+     
+     Write-Log "Scheduled task '$scheduledTaskName' created successfully"
+     Write-Log "Task will run: $scriptPath"
+}
+
 try {
     Write-Log "Starting on login setup..."
+
+    # =============================================================================
+    # CREATE SCHEDULED TASK
+    # =============================================================================
+
+    Create-OnLoginScheduledTask
 
     # =============================================================================
     # USER CANCELLATION DELAY
@@ -534,7 +579,7 @@ try {
     # =============================================================================
 
     Write-Log "Setup completed successfully. Removing setup scheduled task..."
-    Unregister-ScheduledTask -TaskName "OnLoginSetup" -Confirm:$false -ErrorAction SilentlyContinue
+    Unregister-ScheduledTask -TaskName $scheduledTaskName -Confirm:$false
     Write-Log "Setup scheduled task removed successfully"
 
     # =============================================================================
