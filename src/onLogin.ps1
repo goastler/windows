@@ -167,10 +167,9 @@ try {
 
     Write-Log "Installing common packages..."
 
-    # Install packages
-    foreach ($package in $packages) {
-        $result = Invoke-CommandWithExitCode -Command "choco install $package -y --ignore-checksums" -Description "install package '$package'"
-    }
+    # Install all packages in one command
+    $packageList = $packages -join " "
+    $result = Invoke-CommandWithExitCode -Command "choco install $packageList -y --ignore-checksums" -Description "install all packages: $packageList"
 
     # Update all packages
     $result = Invoke-CommandWithExitCode -Command "choco upgrade all -y --ignore-checksums" -Description "upgrade all packages"
