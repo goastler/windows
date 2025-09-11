@@ -115,23 +115,42 @@ function Invoke-WebRequestWithCleanup {
     Start-Sleep -Seconds 2  # Brief pause to ensure file handles are released
 }
 
-try {
-    Write-Log "Starting on login setup..."
+function Wait-ForUserCancellation {
+    param(
+        [int]$Seconds = 30,
+        [string]$Message = "Press any key to cancel..."
+    )
+    
+    Write-Host $Message -ForegroundColor Yellow
+    
+    # Create a job to wait for key press
+    $keyJob = Start-Job -ScriptBlock {
+        $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+        return $true
+    }
+    
+    # Wait for either the time to expire or a key to be pressed
+    $timeout = $Seconds
+    $elapsed = 0
+    
+    while ($elapsed -lt $timeout) {
+        if ($keyJob.State -eq "Completed") {
+            Write-Host "`nUser cancelled. Exiting script..." -ForegroundColor Red
+            Stop-Job $keyJob -ErrorAction SilentlyContinue
+            Remove-Job $keyJob -ErrorAction SilentlyContinue
+            exit 1
+        }
+        
+        Start-Sleep -Milliseconds 100
+        $elapsed += 0.1
+    }
+    
+    # Clean up the job
+    Stop-Job $keyJob -ErrorAction SilentlyContinue
+    Remove-Job $keyJob -ErrorAction SilentlyContinue
+}
 
-    # =============================================================================
-    # USER CANCELLATION DELAY
-    # =============================================================================
-
-    Write-Host "`n=== On Login Setup Starting ===" -ForegroundColor Yellow
-    Write-Host "Press Ctrl+C to cancel..." -ForegroundColor Yellow
-    Write-Host ""
-    Start-Sleep -Seconds 30
-    Write-Host "Starting now..." -ForegroundColor Green
-
-    # =============================================================================
-    # CHOCOLATEY INSTALLATION AND PACKAGE SETUP
-    # =============================================================================
-
+function Install-ChocolateyAndPackages {
     Write-Log "Installing Chocolatey and packages..."
 
     # Check if Chocolatey is already installed
@@ -178,11 +197,9 @@ try {
     $result = Invoke-CommandWithExitCode -Command "choco cache remove --expired -y" -Description "clean up Chocolatey cache"
 
     Write-Log "Chocolatey installation and package setup completed!"
+}
 
-    # =============================================================================
-    # WINDOWS UPDATE CONFIGURATION
-    # =============================================================================
-
+function Configure-WindowsUpdates {
     Write-Log "Configuring Windows Update settings..."
 
     # Configure Windows Update registry settings
@@ -219,11 +236,9 @@ try {
     Set-ItemProperty -Path $regPath -Name "SetDisableUXWUAccessAsUser" -Value 0 -Type DWord
 
     Write-Log "Windows Update registry settings configured"
+}
 
-    # =============================================================================
-    # CHECK FOR WINDOWS UPDATES AND CLEANUP
-    # =============================================================================
-
+function Install-WindowsUpdates {
     Write-Log "Checking for available Windows updates..."
 
     # Create Windows Update session
@@ -300,88 +315,63 @@ try {
         Write-Host "`n=== REBOOT REQUIRED ===" -ForegroundColor Yellow
         Write-Host "Windows updates require a system reboot." -ForegroundColor Yellow
         Write-Host "The computer will restart in 30 seconds..." -ForegroundColor Yellow
-        Write-Host "Press Ctrl+C to cancel the reboot" -ForegroundColor Red
-        Write-Host ""
-        Start-Sleep -Seconds 30
+        Wait-ForUserCancellation -Seconds 30 -Message "Press any key to cancel the reboot"
         Write-Log "Reboot required. Restarting computer..."
         Restart-Computer -Force
     } else {
         Write-Log "No reboot required. All updates processed successfully."
     }
+}
 
-    # =============================================================================
-    # OFFICE INSTALLATION
-    # =============================================================================
+function Install-Office {
+    Write-Log "Starting Office installation process..."
 
-    Write-Log "Checking if Office is already installed..."
-
-    # Check if Office is already installed by looking for Office applications
-    $officeInstalled = $false
-    $officeApps = @("winword.exe", "excel.exe", "powerpnt.exe", "outlook.exe")
-    
-    foreach ($app in $officeApps) {
-        $appPath = Get-Command $app -ErrorAction SilentlyContinue
-        if ($appPath) {
-            $officeInstalled = $true
-            Write-Log "Office is already installed (found $app at $($appPath.Source))"
-            break
-        }
-    }
-
-    if ($officeInstalled) {
-        Write-Log "Office is already installed. Skipping Office installation process."
-    } else {
-        Write-Log "Office not found. Starting Office installation process..."
-
-        # Create temporary directory for Office installation
-        $officeTempDir = "$env:TEMP\OfficeInstall"
-        $originalLocation = Get-Location
-        Write-Log "Creating temporary directory: $officeTempDir"
-        if (Test-Path $officeTempDir) {
-            Remove-Item $officeTempDir -Recurse -Force
-        }
-        New-Item -ItemType Directory -Path $officeTempDir -Force | Out-Null
-        Set-Location $officeTempDir
-        Write-Log "Changed to directory: $officeTempDir"
-
-        # Download Office deployment tool
-        $officeDownloadUrl = "https://download.microsoft.com/download/6c1eeb25-cf8b-41d9-8d0d-cc1dbc032140/officedeploymenttool_19029-20136.exe"
-        $officeInstaller = "officedeploymenttool.exe"
-        
-        Invoke-WebRequestWithCleanup -Uri $officeDownloadUrl -OutFile $officeInstaller -Description "Office deployment tool"
-
-        # Run the Office deployment tool to extract files
-        Write-Log "Extracting Office deployment tool files..."
-        & ".\$officeInstaller" /quiet /extract:$officeTempDir
-        Write-Log "Office deployment tool extracted successfully"
-
-        # Download office.xml from GitHub repository
-        $officeXmlUrl = "https://raw.githubusercontent.com/goastler/windows/refs/heads/main/src/office.xml"
-        $officeXmlDest = "$officeTempDir\office.xml"
-        
-        Invoke-WebRequestWithCleanup -Uri $officeXmlUrl -OutFile $officeXmlDest -Description "office.xml configuration file"
-
-        # Run Office setup with the configuration file
-        Write-Log "Starting Office installation with configuration file..."
-        $setupProcess = Start-Process -FilePath ".\setup.exe" -ArgumentList "/configure", "office.xml" -Wait -PassThru -NoNewWindow
-        if ($setupProcess.ExitCode -ne 0) {
-            throw "Office installation completed with exit code: $($setupProcess.ExitCode)"
-        }
-        Write-Log "Office installation completed successfully"
-
-        # Clean up temporary directory
-        Write-Log "Cleaning up temporary Office installation directory..."
-        Set-Location $originalLocation
+    # Create temporary directory for Office installation
+    $officeTempDir = "$env:TEMP\OfficeInstall"
+    $originalLocation = Get-Location
+    Write-Log "Creating temporary directory: $officeTempDir"
+    if (Test-Path $officeTempDir) {
         Remove-Item $officeTempDir -Recurse -Force
-        Write-Log "Temporary directory cleaned up successfully"
-
-        Write-Log "Office installation process completed!"
     }
+    New-Item -ItemType Directory -Path $officeTempDir -Force | Out-Null
+    Set-Location $officeTempDir
+    Write-Log "Changed to directory: $officeTempDir"
 
-    # =============================================================================
-    # BGINFO SETUP
-    # =============================================================================
+    # Download Office deployment tool
+    $officeDownloadUrl = "https://download.microsoft.com/download/6c1eeb25-cf8b-41d9-8d0d-cc1dbc032140/officedeploymenttool_19029-20136.exe"
+    $officeInstaller = "officedeploymenttool.exe"
+    
+    Invoke-WebRequestWithCleanup -Uri $officeDownloadUrl -OutFile $officeInstaller -Description "Office deployment tool"
 
+    # Run the Office deployment tool to extract files
+    Write-Log "Extracting Office deployment tool files..."
+    & ".\$officeInstaller" /quiet /extract:$officeTempDir
+    Write-Log "Office deployment tool extracted successfully"
+
+    # Download office.xml from GitHub repository
+    $officeXmlUrl = "https://raw.githubusercontent.com/goastler/windows/refs/heads/main/src/office.xml"
+    $officeXmlDest = "$officeTempDir\office.xml"
+    
+    Invoke-WebRequestWithCleanup -Uri $officeXmlUrl -OutFile $officeXmlDest -Description "office.xml configuration file"
+
+    # Run Office setup with the configuration file
+    Write-Log "Starting Office installation with configuration file..."
+    $setupProcess = Start-Process -FilePath ".\setup.exe" -ArgumentList "/configure", "office.xml" -Wait -PassThru -NoNewWindow
+    if ($setupProcess.ExitCode -ne 0) {
+        throw "Office installation completed with exit code: $($setupProcess.ExitCode)"
+    }
+    Write-Log "Office installation completed successfully"
+
+    # Clean up temporary directory
+    Write-Log "Cleaning up temporary Office installation directory..."
+    Set-Location $originalLocation
+    Remove-Item $officeTempDir -Recurse -Force
+    Write-Log "Temporary directory cleaned up successfully"
+
+    Write-Log "Office installation process completed!"
+}
+
+function Setup-BgInfo {
     Write-Log "Setting up BgInfo..."
 
     # Create BgInfo directory
@@ -452,6 +442,87 @@ try {
     $result = Invoke-CommandWithExitCode -Command "& '$bgInfoExe' /nolicprompt /timer:0 /silent /accepteula" -Description "run BgInfo to apply configuration"
 
     Write-Log "BgInfo setup completed!"
+}
+
+function Install-MicrosoftActivationScripts {
+    Write-Log "Setting up Microsoft Activation Scripts..."
+
+    # Create temporary directory for MAS
+    $masTempDir = "$env:TEMP\MAS"
+    $originalLocation = Get-Location
+    Write-Log "Creating temporary directory: $masTempDir"
+    if (Test-Path $masTempDir) {
+        Remove-Item $masTempDir -Recurse -Force
+    }
+    New-Item -ItemType Directory -Path $masTempDir -Force | Out-Null
+    Set-Location $masTempDir
+    Write-Log "Changed to directory: $masTempDir"
+
+    # Download Microsoft Activation Scripts
+    $masUrl = "https://raw.githubusercontent.com/massgravel/Microsoft-Activation-Scripts/refs/heads/master/MAS/All-In-One-Version-KL/MAS_AIO.cmd"
+    $masFile = "MAS_AIO.cmd"
+    
+    Write-Log "Downloading Microsoft Activation Scripts..."
+    Invoke-WebRequestWithCleanup -Uri $masUrl -OutFile $masFile -Description "Microsoft Activation Scripts"
+
+    # Run MAS with /HWID parameter
+    Write-Log "Running Microsoft Activation Scripts with /HWID parameter..."
+    $result = Invoke-CommandWithExitCode -Command ".\$masFile /HWID" -Description "run MAS with /HWID parameter"
+
+    # Run MAS with /Ohook parameter
+    Write-Log "Running Microsoft Activation Scripts with /Ohook parameter..."
+    $result = Invoke-CommandWithExitCode -Command ".\$masFile /Ohook" -Description "run MAS with /Ohook parameter"
+
+    # Clean up temporary directory
+    Write-Log "Cleaning up temporary MAS directory..."
+    Set-Location $originalLocation
+    Remove-Item $masTempDir -Recurse -Force
+    Write-Log "Temporary directory cleaned up successfully"
+
+    Write-Log "Microsoft Activation Scripts setup completed!"
+}
+
+try {
+    Write-Log "Starting on login setup..."
+
+    # =============================================================================
+    # USER CANCELLATION DELAY
+    # =============================================================================
+
+    Write-Host "`n=== On Login Setup Starting ===" -ForegroundColor Yellow
+    Wait-ForUserCancellation -Seconds 30 -Message "Press any key to cancel..."
+    Write-Host "Starting now..." -ForegroundColor Green
+
+    # =============================================================================
+    # WINDOWS UPDATE CONFIGURATION AND INSTALLATION
+    # =============================================================================
+
+    Configure-WindowsUpdates
+    Install-WindowsUpdates
+
+    # =============================================================================
+    # CHOCOLATEY INSTALLATION AND PACKAGE SETUP
+    # =============================================================================
+
+    Install-ChocolateyAndPackages
+
+    # =============================================================================
+    # BGINFO SETUP
+    # =============================================================================
+
+    Setup-BgInfo
+
+    # =============================================================================
+    # OFFICE INSTALLATION
+    # =============================================================================
+
+    Install-Office
+
+    # =============================================================================
+    # MICROSOFT ACTIVATION SCRIPTS
+    # =============================================================================
+
+    Install-MicrosoftActivationScripts
 
     # =============================================================================
     # FINAL CLEANUP - REMOVE SCHEDULED TASK
@@ -474,9 +545,7 @@ try {
 }
 
 Write-Host "`n=== REBOOT REQUIRED ===" -ForegroundColor Yellow
-Write-Host "The system will reboot in 60 seconds..." -ForegroundColor Yellow
-Write-Host "Press Ctrl+C to cancel the reboot" -ForegroundColor Red
-Write-Host ""
-Start-Sleep -Seconds 30
+Write-Host "The system will reboot in 30 seconds..." -ForegroundColor Yellow
+Wait-ForUserCancellation -Seconds 30 -Message "Press any key to cancel the reboot"
 Write-Host "Rebooting now..." -ForegroundColor Red
 Restart-Computer -Force
