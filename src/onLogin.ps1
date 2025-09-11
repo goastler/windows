@@ -365,6 +365,9 @@ function Install-Office {
 function Setup-BgInfo {
     Write-Log "Setting up BgInfo..."
 
+    # BgInfo command line arguments
+    $bgInfoArgs = "/NOLICPROMPT /TIMER:0 /ALL"
+
     # Create BgInfo directory
     $bgInfoDir = "C:\Tools\BgInfo"
     if (!(Test-Path $bgInfoDir)) {
@@ -409,7 +412,7 @@ function Setup-BgInfo {
         Write-Log "Creating BgInfo startup task..."
         
         # Create the action
-        $action = New-ScheduledTaskAction -Execute $bgInfoExe -Argument "/nolicprompt /timer:0 /all"
+        $action = New-ScheduledTaskAction -Execute $bgInfoExe -Argument $bgInfoArgs
         
         # Create the trigger (at startup)
         $trigger = New-ScheduledTaskTrigger -AtStartup
@@ -430,7 +433,7 @@ function Setup-BgInfo {
 
     # Run BgInfo immediately to apply the configuration
     Write-Log "Running BgInfo to apply configuration..."
-    $result = Invoke-CommandWithExitCode -Command "& '$bgInfoExe' /nolicprompt /timer:0 /all" -Description "run BgInfo to apply configuration"
+    $result = Invoke-CommandWithExitCode -Command "& '$bgInfoExe' $bgInfoArgs" -Description "run BgInfo to apply configuration"
 
     Write-Log "BgInfo setup completed!"
 }
