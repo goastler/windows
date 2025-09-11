@@ -313,7 +313,6 @@ function Install-WindowsUpdates {
                         Title = $update.Title
                         Identity = $update.Identity.UpdateID
                         Description = $update.Description
-                        Size = $update.MaxDownloadSize
                         IsDownloaded = $update.IsDownloaded
                         IsInstalled = $update.IsInstalled
                     }
@@ -399,7 +398,8 @@ function Install-WindowsUpdates {
         
         # Download single update with progress tracking
         Write-Log "Downloading update: $($Update.Title)"
-        $updateSize = if ($Update.MaxDownloadSize -gt 0) { [math]::Round($Update.MaxDownloadSize / 1MB, 2) } else { 0 }
+        # Use MinDownloadSize as the baseline size (cap progress at 100% as more data may be downloaded)
+        $updateSize = if ($Update.MinDownloadSize -gt 0) { [math]::Round($Update.MinDownloadSize / 1MB, 2) } else { 0 }
         Write-Log "Update size: $updateSize MB"
         
         $Downloader = $UpdateSession.CreateUpdateDownloader()
@@ -408,24 +408,18 @@ function Install-WindowsUpdates {
         # Monitor download progress using Write-Progress
         $downloadJob = Start-Job -ScriptBlock {
             param($downloader, $updateTitle, $updateSize)
-            $lastProgress = 0
-            
+
             while ($true) {
-                Start-Sleep -Seconds 1
                 try {
+                    Start-Sleep -Seconds 1
                     $progress = $downloader.Progress
-                    if ($progress -ne $lastProgress) {
-                        $downloadedMB = if ($updateSize -gt 0) { [math]::Round(($progress / 100) * $updateSize, 2) } else { 0 }
-                        $statusText = if ($updateSize -gt 0) { "$downloadedMB MB of $updateSize MB" } else { "$progress%" }
-                        
-                        Write-Progress -Activity "Downloading Windows Update: $updateTitle" -Status "Downloading..." -CurrentOperation $statusText -PercentComplete $progress
-                        $lastProgress = $progress
-                    }
+                    Write-Progress -Activity "Downloading Windows Update: $updateTitle" -Status "Downloading..." -PercentComplete $progress
                     
                     if ($progress -eq 100) {
                         break
                     }
                 } catch {
+                    Write-Log "Error monitoring download progress: $($_.Exception.Message)"
                     break
                 }
             }
@@ -447,21 +441,18 @@ function Install-WindowsUpdates {
             # Monitor installation progress using Write-Progress
             $installJob = Start-Job -ScriptBlock {
                 param($installer, $updateTitle)
-                $lastProgress = 0
                 
                 while ($true) {
-                    Start-Sleep -Seconds 1
                     try {
+                        Start-Sleep -Seconds 1
                         $progress = $installer.Progress
-                        if ($progress -ne $lastProgress) {
-                            Write-Progress -Activity "Installing Windows Update: $updateTitle" -Status "Installing..." -CurrentOperation "$progress%" -PercentComplete $progress
-                            $lastProgress = $progress
-                        }
+                        Write-Progress -Activity "Installing Windows Update: $updateTitle" -Status "Installing..." -PercentComplete $progress
                         
                         if ($progress -eq 100) {
                             break
                         }
                     } catch {
+                        Write-Log "Error monitoring installation progress: $($_.Exception.Message)"
                         break
                     }
                 }
