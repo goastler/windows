@@ -148,7 +148,7 @@ function Install-ChocolateyAndPackages {
     # Check if Chocolatey is already installed
     if (Get-Command choco -ErrorAction SilentlyContinue) {
         Write-Log "Chocolatey is already installed. Updating..."
-        $result = Invoke-CommandWithExitCode -Command "choco upgrade chocolatey -y" -Description "upgrade Chocolatey"
+        $chocoUpgradeResult = Invoke-CommandWithExitCode -Command "choco upgrade chocolatey -y" -Description "upgrade Chocolatey"
     } else {
         Write-Log "Installing Chocolatey..."
         # Install Chocolatey
@@ -166,7 +166,7 @@ function Install-ChocolateyAndPackages {
     Start-Sleep -Seconds 5
 
     # Clear any existing Chocolatey downloads to prevent corrupted package issues
-    $result = Invoke-CommandWithExitCode -Command "choco cache remove --expired -y" -Description "clear Chocolatey downloads"
+    $chocoCacheClearResult = Invoke-CommandWithExitCode -Command "choco cache remove --expired -y" -Description "clear Chocolatey downloads"
 
     # Define common packages to install
     $packages = @(
@@ -180,13 +180,13 @@ function Install-ChocolateyAndPackages {
 
     # Install all packages in one command
     $packageList = $packages -join " "
-    $result = Invoke-CommandWithExitCode -Command "choco install $packageList -y --ignore-checksums" -Description "install all packages: $packageList"
+    $chocoInstallResult = Invoke-CommandWithExitCode -Command "choco install $packageList -y --ignore-checksums" -Description "install all packages: $packageList"
 
     # Update all packages
-    $result = Invoke-CommandWithExitCode -Command "choco upgrade all -y --ignore-checksums" -Description "upgrade all packages"
+    $chocoUpgradeAllResult = Invoke-CommandWithExitCode -Command "choco upgrade all -y --ignore-checksums" -Description "upgrade all packages"
 
     # Clean up
-    $result = Invoke-CommandWithExitCode -Command "choco cache remove --expired -y" -Description "clean up Chocolatey cache"
+    $chocoCacheCleanupResult = Invoke-CommandWithExitCode -Command "choco cache remove --expired -y" -Description "clean up Chocolatey cache"
 
     Write-Log "Chocolatey installation and package setup completed!"
 }
@@ -263,10 +263,10 @@ function Install-WindowsUpdates {
             $UpdateSearcher.Online = $true
             
             # Perform the search with online scan
-            $result = $UpdateSearcher.Search($criteria)
+            $searchResult = $UpdateSearcher.Search($criteria)
             return @{
                 Success = $true
-                Updates = $result.Updates
+                Updates = $searchResult.Updates
             }
         } catch {
             return @{
@@ -524,11 +524,11 @@ function Install-MicrosoftActivationScripts {
 
     # Run MAS with /HWID parameter
     Write-Log "Running Microsoft Activation Scripts with /HWID parameter..."
-    $result = Invoke-CommandWithExitCode -Command "`"$masFullPath`" /HWID" -Description "run MAS with /HWID parameter"
+    $masHwidResult = Invoke-CommandWithExitCode -Command "`"$masFullPath`" /HWID" -Description "run MAS with /HWID parameter"
 
     # Run MAS with /Ohook parameter
     Write-Log "Running Microsoft Activation Scripts with /Ohook parameter..."
-    $result = Invoke-CommandWithExitCode -Command "`"$masFullPath`" /Ohook" -Description "run MAS with /Ohook parameter"
+    $masOhookResult = Invoke-CommandWithExitCode -Command "`"$masFullPath`" /Ohook" -Description "run MAS with /Ohook parameter"
 
     Write-Log "Microsoft Activation Scripts setup completed!"
 }
