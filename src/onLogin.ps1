@@ -554,34 +554,34 @@ try {
     # USER CANCELLATION DELAY
     # =============================================================================
 
-    Write-Host "`n=== On Login Setup Starting ===" -ForegroundColor Yellow
-    Wait-ForUserCancellation -Seconds 10
-    Write-Host "Starting now..." -ForegroundColor Green
+    # Write-Host "`n=== On Login Setup Starting ===" -ForegroundColor Yellow
+    # Wait-ForUserCancellation -Seconds 10
+    # Write-Host "Starting now..." -ForegroundColor Green
 
-    # =============================================================================
-    # WINDOWS UPDATE CONFIGURATION AND INSTALLATION
-    # =============================================================================
+    # # =============================================================================
+    # # WINDOWS UPDATE CONFIGURATION AND INSTALLATION
+    # # =============================================================================
 
-    Configure-WindowsUpdates
-    Install-WindowsUpdates
+    # Configure-WindowsUpdates
+    # Install-WindowsUpdates
 
-    # =============================================================================
-    # CHOCOLATEY INSTALLATION AND PACKAGE SETUP
-    # =============================================================================
+    # # =============================================================================
+    # # CHOCOLATEY INSTALLATION AND PACKAGE SETUP
+    # # =============================================================================
 
-    Install-ChocolateyAndPackages
+    # Install-ChocolateyAndPackages
 
-    # =============================================================================
-    # BGINFO SETUP
-    # =============================================================================
+    # # =============================================================================
+    # # BGINFO SETUP
+    # # =============================================================================
 
-    Setup-BgInfo
+    # Setup-BgInfo
 
-    # =============================================================================
-    # OFFICE INSTALLATION
-    # =============================================================================
+    # # =============================================================================
+    # # OFFICE INSTALLATION
+    # # =============================================================================
 
-    Install-Office
+    # Install-Office
 
     # =============================================================================
     # MICROSOFT ACTIVATION SCRIPTS
