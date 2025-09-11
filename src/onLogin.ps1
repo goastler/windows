@@ -1,0 +1,227 @@
+
+# Create log file
+$logFile = "$env:TEMP\onLogin.log"
+$timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+
+# Set error action preference for the entire script
+$ErrorActionPreference = "Stop"
+
+function Write-Log {
+    param($Message)
+    $logMessage = "[$timestamp] $Message"
+    Write-Host $logMessage
+    Add-Content -Path $logFile -Value $logMessage
+}
+
+
+
+try {
+    Write-Log "Starting on login setup..."
+
+    # =============================================================================
+    # USER CANCELLATION DELAY
+    # =============================================================================
+
+    Write-Host "`n=== On Login Setup Starting ===" -ForegroundColor Yellow
+    Write-Host ""
+    Start-Sleep -Seconds 30
+    Write-Host "Starting now..." -ForegroundColor Green
+
+    # =============================================================================
+    # CHOCOLATEY INSTALLATION AND PACKAGE SETUP
+    # =============================================================================
+
+    Write-Log "Installing Chocolatey and packages..."
+
+    # Check if Chocolatey is already installed
+    if (Get-Command choco -ErrorAction SilentlyContinue) {
+        Write-Log "Chocolatey is already installed. Updating..."
+        choco upgrade chocolatey -y
+    } else {
+        Write-Log "Installing Chocolatey..."
+        # Install Chocolatey
+        Set-ExecutionPolicy Bypass -Scope Process -Force
+        [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072
+        iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
+        
+        # Refresh environment variables
+        $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
+        
+        Write-Log "Chocolatey installed successfully"
+    }
+
+    # Wait a moment for Chocolatey to be fully available
+    Start-Sleep -Seconds 5
+
+    # Define common packages to install
+    $packages = @(
+        # Web Browsers
+        "googlechrome",
+        "firefox",
+        "microsoft-edge"
+    )
+
+    Write-Log "Installing common packages..."
+
+    # Install packages
+    foreach ($package in $packages) {
+        Write-Log "Installing $package..."
+        choco install $package -y
+        Write-Log "$package installed successfully"
+    }
+
+    # Update all packages
+    Write-Log "Updating all installed packages..."
+    choco upgrade all -y
+    Write-Log "Package updates completed"
+
+    # Clean up
+    Write-Log "Cleaning up Chocolatey cache..."
+    choco cache remove --expired -y
+
+    Write-Log "Chocolatey installation and package setup completed!"
+
+    # =============================================================================
+    # WINDOWS UPDATE CONFIGURATION
+    # =============================================================================
+
+    Write-Log "Configuring Windows Update settings..."
+
+    # Configure Windows Update registry settings
+    $regPath = "HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU"
+    if (!(Test-Path $regPath)) {
+        New-Item -Path $regPath -Force | Out-Null
+    }
+
+    # Set automatic update configuration
+    Set-ItemProperty -Path $regPath -Name "AUOptions" -Value 4 -Type DWord  # Auto download and install
+    Set-ItemProperty -Path $regPath -Name "NoAutoRebootWithLoggedOnUsers" -Value 0 -Type DWord  # Allow auto-reboot
+    Set-ItemProperty -Path $regPath -Name "NoAutoUpdate" -Value 0 -Type DWord  # Enable auto updates
+    Set-ItemProperty -Path $regPath -Name "ScheduledInstallDay" -Value 0 -Type DWord  # Every day
+    Set-ItemProperty -Path $regPath -Name "ScheduledInstallTime" -Value 3 -Type DWord  # 3 AM
+
+    # Configure Windows Update to include optional updates
+    $regPath = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsUpdate\Auto Update"
+    if (!(Test-Path $regPath)) {
+        New-Item -Path $regPath -Force | Out-Null
+    }
+    Set-ItemProperty -Path $regPath -Name "IncludeRecommendedUpdates" -Value 1 -Type DWord
+
+    # Configure Windows Update for Business (if applicable)
+    $regPath = "HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate"
+    if (!(Test-Path $regPath)) {
+        New-Item -Path $regPath -Force | Out-Null
+    }
+    Set-ItemProperty -Path $regPath -Name "DeferUpgrade" -Value 0 -Type DWord
+    Set-ItemProperty -Path $regPath -Name "DeferUpgradePeriod" -Value 0 -Type DWord
+    Set-ItemProperty -Path $regPath -Name "ExcludeWUDriversInQualityUpdate" -Value 0 -Type DWord
+    Set-ItemProperty -Path $regPath -Name "DisableWindowsUpdateAccess" -Value 0 -Type DWord
+    Set-ItemProperty -Path $regPath -Name "DisableWindowsUpdateAccessAsUser" -Value 0 -Type DWord
+    Set-ItemProperty -Path $regPath -Name "SetDisableUXWUAccess" -Value 0 -Type DWord
+    Set-ItemProperty -Path $regPath -Name "SetDisableUXWUAccessAsUser" -Value 0 -Type DWord
+
+    Write-Log "Windows Update registry settings configured"
+
+    # =============================================================================
+    # CHECK FOR WINDOWS UPDATES AND CLEANUP
+    # =============================================================================
+
+    Write-Log "Checking for available Windows updates..."
+
+    # Create Windows Update session
+    $UpdateSession = New-Object -ComObject Microsoft.Update.Session
+    $UpdateSearcher = $UpdateSession.CreateUpdateSearcher()
+
+    # Search for all updates including optional
+    $SearchResult = $UpdateSearcher.Search("IsInstalled=0 and Type='Software' or IsInstalled=0 and Type='Driver'")
+
+    if ($SearchResult.Updates.Count -eq 0) {
+        Write-Log "No Windows updates available. System is up to date."
+    } else {
+        Write-Log "Found $($SearchResult.Updates.Count) Windows updates available. Installing updates..."
+    }
+
+    # List available updates
+    foreach ($Update in $SearchResult.Updates) {
+        Write-Log "Available update: $($Update.Title)"
+    }
+    
+    # Shuffle the order of updates
+    $UpdatesArray = @($SearchResult.Updates)
+    $ShuffledUpdates = $UpdatesArray | Get-Random -Count $UpdatesArray.Count
+    
+    # Install the updates one by one
+    $rebootRequired = $false
+    
+    foreach ($Update in $ShuffledUpdates) {
+        Write-Log "Processing update: $($Update.Title)"
+        
+        # Create update collection for single update
+        $SingleUpdateCollection = New-Object -ComObject Microsoft.Update.UpdateColl
+        $SingleUpdateCollection.Add($Update) | Out-Null
+        
+        # Download single update
+        Write-Log "Downloading update: $($Update.Title)"
+        $Downloader = $UpdateSession.CreateUpdateDownloader()
+        $Downloader.Updates = $SingleUpdateCollection
+        $DownloadResult = $Downloader.Download()
+        
+        if ($DownloadResult.ResultCode -eq 2) {
+            Write-Log "Update downloaded successfully: $($Update.Title)"
+            
+            # Install single update
+            Write-Log "Installing update: $($Update.Title)"
+            $Installer = $UpdateSession.CreateUpdateInstaller()
+            $Installer.Updates = $SingleUpdateCollection
+            $InstallResult = $Installer.Install()
+            
+            if ($InstallResult.ResultCode -eq 2) {
+                Write-Log "Update installed successfully: $($Update.Title)"
+                if ($InstallResult.RebootRequired) {
+                    $rebootRequired = $true
+                    Write-Log "Reboot required after: $($Update.Title)"
+                }
+            } else {
+                $errorMsg = "Failed to install update: $($Update.Title). Result code: $($InstallResult.ResultCode)"
+                Write-Log $errorMsg
+                Write-Log "Continuing with next update..."
+            }
+        } else {
+            $errorMsg = "Failed to download update: $($Update.Title). Result code: $($DownloadResult.ResultCode)"
+            Write-Log $errorMsg
+            Write-Log "Continuing with next update..."
+        }
+    }
+    
+    Write-Log "All updates processed"
+    if ($rebootRequired) {
+        Write-Log "Reboot required. Restarting computer in 30 seconds..."
+        Start-Sleep -Seconds 30
+        Restart-Computer -Force
+    } else {
+        Write-Log "No reboot required. All updates processed successfully."
+    }
+
+    # =============================================================================
+    # FINAL CLEANUP - REMOVE SCHEDULED TASK
+    # =============================================================================
+
+    Write-Log "Setup completed successfully. Removing setup scheduled task..."
+    Unregister-ScheduledTask -TaskName "OnLoginSetup" -Confirm:$false -ErrorAction SilentlyContinue
+    Write-Log "Setup scheduled task removed successfully"
+
+    # =============================================================================
+    # COMPLETION
+    # =============================================================================
+
+    Write-Log "On login setup completed. Log saved to: $logFile"
+
+} catch {
+    Write-Host "`n=== ERROR ===" -ForegroundColor Red
+    Write-Host "An error occurred during setup: $($_.Exception.Message)" -ForegroundColor Red
+    Write-Host "Error details: $($_.Exception)" -ForegroundColor Red
+    Write-Host "`nThe system will reboot in 60 seconds..." -ForegroundColor Yellow
+    Start-Sleep -Seconds 60
+    Write-Host "Rebooting now..." -ForegroundColor Red
+    Restart-Computer -Force
+}
