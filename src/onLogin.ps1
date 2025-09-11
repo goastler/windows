@@ -23,6 +23,7 @@ try {
     # =============================================================================
 
     Write-Host "`n=== On Login Setup Starting ===" -ForegroundColor Yellow
+    Write-Host "Press Ctrl+C to cancel..." -ForegroundColor Yellow
     Write-Host ""
     Start-Sleep -Seconds 30
     Write-Host "Starting now..." -ForegroundColor Green
@@ -146,9 +147,13 @@ try {
         Write-Log "Available update: $($Update.Title)"
     }
     
-    # Shuffle the order of updates
+    # Shuffle the order of updates (only if updates are available)
     $UpdatesArray = @($SearchResult.Updates)
-    $ShuffledUpdates = $UpdatesArray | Get-Random -Count $UpdatesArray.Count
+    if ($UpdatesArray.Count -gt 0) {
+        $ShuffledUpdates = $UpdatesArray | Get-Random -Count $UpdatesArray.Count
+    } else {
+        $ShuffledUpdates = @()
+    }
     
     # Install the updates one by one
     $rebootRequired = $false
@@ -273,6 +278,8 @@ try {
 
         Write-Log "Office installation process completed!"
     }
+
+
 
     # =============================================================================
     # FINAL CLEANUP - REMOVE SCHEDULED TASK
