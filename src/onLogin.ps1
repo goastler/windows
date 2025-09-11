@@ -28,70 +28,109 @@ function Invoke-CommandWithExitCode {
     
     Write-Log "Executing: $Command"
     
-    # Execute command and stream output in real-time
-    $processInfo = New-Object System.Diagnostics.ProcessStartInfo
-    
     # Check if the command is a batch file (.cmd or .bat) or contains a .cmd/.bat file
     if ($Command -match '\.(cmd|bat)') {
-        # For batch files, use cmd.exe to execute them
+        # For batch files, use the original method (wait for completion)
+        $processInfo = New-Object System.Diagnostics.ProcessStartInfo
         $processInfo.FileName = "cmd.exe"
         $processInfo.Arguments = "/c `"$Command`""
+        $processInfo.UseShellExecute = $false
+        $processInfo.RedirectStandardOutput = $true
+        $processInfo.RedirectStandardError = $true
+        $processInfo.CreateNoWindow = $true
+        $processInfo.StandardOutputEncoding = [System.Text.Encoding]::UTF8
+        $processInfo.StandardErrorEncoding = [System.Text.Encoding]::UTF8
+        
+        $process = New-Object System.Diagnostics.Process
+        $process.StartInfo = $processInfo
+        
+        # Start the process
+        $process.Start() | Out-Null
+        
+        # Stream output in real-time and collect separately
+        $stdoutOutput = @()
+        $stderrOutput = @()
+        
+        # Use asynchronous reading to avoid blocking
+        $stdoutTask = $process.StandardOutput.ReadToEndAsync()
+        $stderrTask = $process.StandardError.ReadToEndAsync()
+        
+        # Wait for process to complete
+        $process.WaitForExit()
+        
+        # Get the output after process has completed
+        $stdoutText = if ($stdoutTask -and $stdoutTask.Result) { $stdoutTask.Result } else { "" }
+        $stderrText = if ($stderrTask -and $stderrTask.Result) { $stderrTask.Result } else { "" }
+        
+        # Split output into lines and display
+        if ($stdoutText) {
+            $stdoutLines = $stdoutText -split "`r?`n"
+            foreach ($line in $stdoutLines) {
+                if ($line.Trim()) {
+                    Write-Host $line -ForegroundColor Green
+                    $stdoutOutput += $line
+                }
+            }
+        }
+        
+        if ($stderrText) {
+            $stderrLines = $stderrText -split "`r?`n"
+            foreach ($line in $stderrLines) {
+                if ($line.Trim()) {
+                    Write-Host $line -ForegroundColor Red
+                    $stderrOutput += $line
+                }
+            }
+        }
+        
+        $exitCode = $process.ExitCode
     } else {
-        # For other commands, use PowerShell
+        # For non-batch commands, stream output in real-time
+        $processInfo = New-Object System.Diagnostics.ProcessStartInfo
         $processInfo.FileName = "powershell.exe"
         $processInfo.Arguments = "-Command `"$Command`""
-    }
-    
-    $processInfo.UseShellExecute = $false
-    $processInfo.RedirectStandardOutput = $true
-    $processInfo.RedirectStandardError = $true
-    $processInfo.CreateNoWindow = $true
-    $processInfo.StandardOutputEncoding = [System.Text.Encoding]::UTF8
-    $processInfo.StandardErrorEncoding = [System.Text.Encoding]::UTF8
-    
-    $process = New-Object System.Diagnostics.Process
-    $process.StartInfo = $processInfo
-    
-    # Start the process
-    $process.Start() | Out-Null
-    
-    # Stream output in real-time and collect separately
-    $stdoutOutput = @()
-    $stderrOutput = @()
-    
-    # Use asynchronous reading to avoid blocking
-    $stdoutTask = $process.StandardOutput.ReadToEndAsync()
-    $stderrTask = $process.StandardError.ReadToEndAsync()
-    
-    # Wait for process to complete
-    $process.WaitForExit()
-    
-    # Get the output after process has completed
-    $stdoutText = if ($stdoutTask -and $stdoutTask.Result) { $stdoutTask.Result } else { "" }
-    $stderrText = if ($stderrTask -and $stderrTask.Result) { $stderrTask.Result } else { "" }
-    
-    # Split output into lines and display
-    if ($stdoutText) {
-        $stdoutLines = $stdoutText -split "`r?`n"
-        foreach ($line in $stdoutLines) {
-            if ($line.Trim()) {
-                Write-Host $line -ForegroundColor Green
-                $stdoutOutput += $line
+        $processInfo.UseShellExecute = $false
+        $processInfo.RedirectStandardOutput = $true
+        $processInfo.RedirectStandardError = $true
+        $processInfo.CreateNoWindow = $true
+        $processInfo.StandardOutputEncoding = [System.Text.Encoding]::UTF8
+        $processInfo.StandardErrorEncoding = [System.Text.Encoding]::UTF8
+        
+        $process = New-Object System.Diagnostics.Process
+        $process.StartInfo = $processInfo
+        
+        # Start the process
+        $process.Start() | Out-Null
+        
+        # Stream output in real-time
+        $stdoutOutput = @()
+        $stderrOutput = @()
+        
+        # Read both stdout and stderr in a single loop
+        while (-not $process.StandardOutput.EndOfStream -or -not $process.StandardError.EndOfStream) {
+            # Read stdout if available
+            if (-not $process.StandardOutput.EndOfStream) {
+                $line = $process.StandardOutput.ReadLine()
+                if ($line) {
+                    Write-Host $line -ForegroundColor Green
+                    $stdoutOutput += $line
+                }
+            }
+            
+            # Read stderr if available
+            if (-not $process.StandardError.EndOfStream) {
+                $line = $process.StandardError.ReadLine()
+                if ($line) {
+                    Write-Host $line -ForegroundColor Red
+                    $stderrOutput += $line
+                }
             }
         }
+        
+        # Wait for process to complete
+        $process.WaitForExit()
+        $exitCode = $process.ExitCode
     }
-    
-    if ($stderrText) {
-        $stderrLines = $stderrText -split "`r?`n"
-        foreach ($line in $stderrLines) {
-            if ($line.Trim()) {
-                Write-Host $line -ForegroundColor Red
-                $stderrOutput += $line
-            }
-        }
-    }
-    
-    $exitCode = $process.ExitCode
     
     if ($exitCode -ne $ExpectedExitCode) {
         $errorMsg = if ($Description) { 
@@ -358,20 +397,80 @@ function Install-WindowsUpdates {
         $SingleUpdateCollection = New-Object -ComObject Microsoft.Update.UpdateColl
         $SingleUpdateCollection.Add($Update) | Out-Null
         
-        # Download single update
+        # Download single update with progress tracking
         Write-Log "Downloading update: $($Update.Title)"
+        $updateSize = if ($Update.MaxDownloadSize -gt 0) { [math]::Round($Update.MaxDownloadSize / 1MB, 2) } else { 0 }
+        Write-Log "Update size: $updateSize MB"
+        
         $Downloader = $UpdateSession.CreateUpdateDownloader()
         $Downloader.Updates = $SingleUpdateCollection
+        
+        # Monitor download progress using Write-Progress
+        $downloadJob = Start-Job -ScriptBlock {
+            param($downloader, $updateTitle, $updateSize)
+            $lastProgress = 0
+            
+            while ($true) {
+                Start-Sleep -Seconds 1
+                try {
+                    $progress = $downloader.Progress
+                    if ($progress -ne $lastProgress) {
+                        $downloadedMB = if ($updateSize -gt 0) { [math]::Round(($progress / 100) * $updateSize, 2) } else { 0 }
+                        $statusText = if ($updateSize -gt 0) { "$downloadedMB MB of $updateSize MB" } else { "$progress%" }
+                        
+                        Write-Progress -Activity "Downloading Windows Update: $updateTitle" -Status "Downloading..." -CurrentOperation $statusText -PercentComplete $progress
+                        $lastProgress = $progress
+                    }
+                    
+                    if ($progress -eq 100) {
+                        break
+                    }
+                } catch {
+                    break
+                }
+            }
+        } -ArgumentList $Downloader, $Update.Title, $updateSize
+        
         $DownloadResult = $Downloader.Download()
+        Stop-Job -Job $downloadJob -ErrorAction SilentlyContinue
+        Remove-Job -Job $downloadJob -ErrorAction SilentlyContinue
+        Write-Progress -Activity "Downloading Windows Update: $($Update.Title)" -Completed
         
         if ($DownloadResult.ResultCode -eq 2) {
             Write-Log "Update downloaded successfully: $($Update.Title)"
             
-            # Install single update
+            # Install single update with progress tracking
             Write-Log "Installing update: $($Update.Title)"
             $Installer = $UpdateSession.CreateUpdateInstaller()
             $Installer.Updates = $SingleUpdateCollection
+            
+            # Monitor installation progress using Write-Progress
+            $installJob = Start-Job -ScriptBlock {
+                param($installer, $updateTitle)
+                $lastProgress = 0
+                
+                while ($true) {
+                    Start-Sleep -Seconds 1
+                    try {
+                        $progress = $installer.Progress
+                        if ($progress -ne $lastProgress) {
+                            Write-Progress -Activity "Installing Windows Update: $updateTitle" -Status "Installing..." -CurrentOperation "$progress%" -PercentComplete $progress
+                            $lastProgress = $progress
+                        }
+                        
+                        if ($progress -eq 100) {
+                            break
+                        }
+                    } catch {
+                        break
+                    }
+                }
+            } -ArgumentList $Installer, $Update.Title
+            
             $InstallResult = $Installer.Install()
+            Stop-Job -Job $installJob -ErrorAction SilentlyContinue
+            Remove-Job -Job $installJob -ErrorAction SilentlyContinue
+            Write-Progress -Activity "Installing Windows Update: $($Update.Title)" -Completed
             
             if ($InstallResult.ResultCode -eq 2) {
                 Write-Log "Update installed successfully: $($Update.Title)"
@@ -633,7 +732,7 @@ try {
     # BGINFO SETUP
     # =============================================================================
 
-    Setup-BgInfo
+    # Setup-BgInfo
 
     # =============================================================================
     # OFFICE INSTALLATION
@@ -660,6 +759,10 @@ try {
     # =============================================================================
 
     Write-Log "On login setup completed. Log saved to: $logFile"
+
+    Pause
+
+    exit 0
 
 } catch {
     Write-Host "`n=== ERROR ===" -ForegroundColor Red

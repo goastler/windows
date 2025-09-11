@@ -23,35 +23,10 @@ try {
     Write-Error "Failed to download onLogin.ps1: $($_.Exception.Message)"
 }
 
-# Create scheduled task to run onLogin.ps1 on user logon
-Write-Host "Creating scheduled task for onLogin.ps1..."
+# Run the downloaded onLogin.ps1 script in a new window
+Write-Host "Running onLogin.ps1 script in a new window..."
 try {
-    # Remove existing task if it exists
-    $taskName = "OnLoginScript"
-    if (Get-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue) {
-        Unregister-ScheduledTask -TaskName $taskName -Confirm:$false
-    }
-
-    # Create new scheduled task
-    $action = New-ScheduledTaskAction -Execute "PowerShell.exe" -Argument "-ExecutionPolicy Bypass -File `"$scriptPath`""
-    $trigger = New-ScheduledTaskTrigger -AtLogOn
-    $principal = New-ScheduledTaskPrincipal -UserId "S-1-5-18" -LogonType ServiceAccount -RunLevel Highest
-    $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable
-
-    Register-ScheduledTask -TaskName $taskName -Action $action -Trigger $trigger -Principal $principal -Settings $settings -Description "Runs onLogin.ps1 script on user logon"
-    Write-Host "Successfully created scheduled task '$taskName'"
+    Start-Process -FilePath "powershell.exe" -ArgumentList "-ExecutionPolicy Bypass -File `"$scriptPath`"" -WindowStyle Normal
 } catch {
-    Write-Error "Failed to create scheduled task: $($_.Exception.Message)"
+    Write-Error "Failed to run onLogin.ps1: $($_.Exception.Message)"
 }
-
-# Trigger the scheduled task
-Write-Host "Triggering scheduled task 'OnLoginScript'..."
-try {
-    Start-ScheduledTask -TaskName "OnLoginScript"
-    Write-Host "Successfully triggered scheduled task 'OnLoginScript'"
-} catch {
-    Write-Error "Failed to trigger scheduled task: $($_.Exception.Message)"
-}
-
-Write-Host "FirstLogon.ps1 completed. Press any key to continue..."
-$null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
