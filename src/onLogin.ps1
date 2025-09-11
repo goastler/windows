@@ -37,7 +37,10 @@ try {
     # Check if Chocolatey is already installed
     if (Get-Command choco -ErrorAction SilentlyContinue) {
         Write-Log "Chocolatey is already installed. Updating..."
-        choco upgrade chocolatey -y
+        $chocoUpgradeResult = choco upgrade chocolatey -y
+        if ($LASTEXITCODE -ne 0) {
+            throw "Failed to upgrade Chocolatey. Exit code: $LASTEXITCODE"
+        }
     } else {
         Write-Log "Installing Chocolatey..."
         # Install Chocolatey
@@ -54,6 +57,14 @@ try {
     # Wait a moment for Chocolatey to be fully available
     Start-Sleep -Seconds 5
 
+    # Clear any existing Chocolatey downloads to prevent corrupted package issues
+    Write-Log "Clearing existing Chocolatey downloads..."
+    $clearDownloadsResult = choco cache remove --expired -y
+    if ($LASTEXITCODE -ne 0) {
+        throw "Failed to clear Chocolatey downloads. Exit code: $LASTEXITCODE"
+    }
+    Write-Log "Chocolatey downloads cleared successfully"
+
     # Define common packages to install
     $packages = @(
         # Web Browsers
@@ -67,18 +78,27 @@ try {
     # Install packages
     foreach ($package in $packages) {
         Write-Log "Installing $package..."
-        choco install $package -y
+        $installResult = choco install $package -y
+        if ($LASTEXITCODE -ne 0) {
+            throw "Failed to install package '$package'. Exit code: $LASTEXITCODE"
+        }
         Write-Log "$package installed successfully"
     }
 
     # Update all packages
     Write-Log "Updating all installed packages..."
-    choco upgrade all -y
+    $upgradeResult = choco upgrade all -y
+    if ($LASTEXITCODE -ne 0) {
+        throw "Failed to upgrade packages. Exit code: $LASTEXITCODE"
+    }
     Write-Log "Package updates completed"
 
     # Clean up
     Write-Log "Cleaning up Chocolatey cache..."
-    choco cache remove --expired -y
+    $cacheResult = choco cache remove --expired -y
+    if ($LASTEXITCODE -ne 0) {
+        throw "Failed to clean up Chocolatey cache. Exit code: $LASTEXITCODE"
+    }
 
     Write-Log "Chocolatey installation and package setup completed!"
 
@@ -200,8 +220,13 @@ try {
     
     Write-Log "All updates processed"
     if ($rebootRequired) {
-        Write-Log "Reboot required. Restarting computer in 30 seconds..."
+        Write-Host "`n=== REBOOT REQUIRED ===" -ForegroundColor Yellow
+        Write-Host "Windows updates require a system reboot." -ForegroundColor Yellow
+        Write-Host "The computer will restart in 30 seconds..." -ForegroundColor Yellow
+        Write-Host "Press Ctrl+C to cancel the reboot" -ForegroundColor Red
+        Write-Host ""
         Start-Sleep -Seconds 30
+        Write-Log "Reboot required. Restarting computer..."
         Restart-Computer -Force
     } else {
         Write-Log "No reboot required. All updates processed successfully."
@@ -299,8 +324,11 @@ try {
     Write-Host "`n=== ERROR ===" -ForegroundColor Red
     Write-Host "An error occurred during setup: $($_.Exception.Message)" -ForegroundColor Red
     Write-Host "Error details: $($_.Exception)" -ForegroundColor Red
-    Write-Host "`nThe system will reboot in 60 seconds..." -ForegroundColor Yellow
-    Start-Sleep -Seconds 60
+    Write-Host "`n=== REBOOT REQUIRED ===" -ForegroundColor Yellow
+    Write-Host "Due to the error, the system will reboot in 60 seconds..." -ForegroundColor Yellow
+    Write-Host "Press Ctrl+C to cancel the reboot" -ForegroundColor Red
+    Write-Host ""
+    Start-Sleep -Seconds 30
     Write-Host "Rebooting now..." -ForegroundColor Red
     Restart-Computer -Force
 }
