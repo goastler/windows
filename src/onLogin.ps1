@@ -323,106 +323,61 @@ function Install-WindowsUpdates {
 
     # Search for updates with timeout to prevent hanging
     Write-Log "Searching for updates (timeout: 10 minutes)..."
-    $searchJob = Start-Job -ScriptBlock {
-        param($criteria)
-        try {
-            # Create COM objects within the job context
-            $UpdateSession = New-Object -ComObject Microsoft.Update.Session
-            $UpdateSearcher = $UpdateSession.CreateUpdateSearcher()
-            
-            # Force online scan by setting Online property to true
-            $UpdateSearcher.Online = $true
-            
-            # Perform the search with online scan
-            $searchResult = $UpdateSearcher.Search($criteria)
-            
-            # Extract only the data we need to avoid COM marshalling issues
-            $updateData = @()
-            if ($searchResult.Updates) {
-                for ($i = 0; $i -lt $searchResult.Updates.Count; $i++) {
-                    $update = $searchResult.Updates.Item($i)
-                    $updateData += @{
-                        Title = $update.Title
-                        Identity = $update.Identity.UpdateID
-                        Description = $update.Description
-                        IsDownloaded = $update.IsDownloaded
-                        IsInstalled = $update.IsInstalled
-                    }
-                }
-            }
-            
-            return @{
-                Success = $true
-                UpdateData = $updateData
-            }
-        } catch {
-            return @{
-                Success = $false
-                Error = $_.Exception.Message
-            }
-        }
-    } -ArgumentList "IsInstalled=0 and Type='Software' or IsInstalled=0 and Type='Driver'"
     
-    # Wait for search with 10 minute timeout
-    $searchCompleted = Wait-Job -Job $searchJob -Timeout 600
-    if ($searchCompleted) {
-        $searchResult = Receive-Job -Job $searchJob
-        Remove-Job -Job $searchJob
-        
-        if (-not $searchResult.Success) {
-            Write-Log "Search failed: $($searchResult.Error)"
-            Write-Log "Skipping Windows Update installation"
-            return
-        }
-        
-        # Store the update data for later use
-        $UpdateData = if ($searchResult.UpdateData) { $searchResult.UpdateData } else { @() }
-    } else {
-        Stop-Job -Job $searchJob
-        Remove-Job -Job $searchJob
-        throw "Windows Update search timed out after 10 minutes"
+    # Force online scan by setting Online property to true
+    $UpdateSearcher.Online = $true
+    
+    # Begin asynchronous search
+    $searchCriteria = "IsInstalled=0 and Type='Software' or IsInstalled=0 and Type='Driver'"
+    $dummyCallback = [System.AsyncCallback]{}
+    $dummyState1 = New-Object System.Object
+    $dummyState2 = New-Object System.Object
+    $searchJob = $UpdateSearcher.BeginSearch($searchCriteria, $dummyCallback, $dummyState1, $dummyState2)
+    
+    # Monitor search completion with timeout
+    $timeoutSeconds = 600  # 10 minutes
+    $elapsedSeconds = 0
+    $searchCompleted = $false
+    
+    Write-Host "Searching for updates..." -ForegroundColor Yellow
+    while (-not $searchCompleted -and $elapsedSeconds -lt $timeoutSeconds) {
+        Start-Sleep -Seconds 2
+        $elapsedSeconds+=2
+        Write-Host "." -NoNewline -ForegroundColor Yellow
+    }
+    
+    if (-not $searchCompleted) {
+        throw "Windows Update search timed out after $timeoutSeconds seconds"
     }
 
-    # Now we can safely access UpdateData since it's guaranteed to be an array
-    $updatesCount = $UpdateData.Count
+    Write-Log "Search completed successfully"
+        
+    # End the search and get the result
+    $searchResult = $UpdateSearcher.EndSearch($searchJob)
     
-    if ($updatesCount -eq 0) {
+    if ($searchResult.Updates.Count -eq 0) {
         Write-Log "No Windows updates available. System is up to date."
+        return
     } else {
-        Write-Log "Found $updatesCount Windows updates..."
+        Write-Log "Found $($searchResult.Updates.Count) Windows updates..."
     }
 
     # List available updates
-    foreach ($updateInfo in $UpdateData) {
-        if ($updateInfo.Title) {
-            Write-Log-Highlight "Available update: $($updateInfo.Title)" -HighlightText $updateInfo.Title -HighlightColor "Cyan"
-        }
+    foreach ($updateInfo in $searchResult.Updates) {
+        Write-Log-Highlight "Available update: $($updateInfo.Title)" -HighlightText $updateInfo.Title -HighlightColor "Cyan"
     }
     
     # Shuffle the order of updates (only if updates are available)
-    $UpdatesArray = @($UpdateData)
+    $UpdatesArray = @($searchResult.Updates)
     if ($UpdatesArray.Count -gt 0) {
         $ShuffledUpdates = $UpdatesArray | Get-Random -Count $UpdatesArray.Count
-    } else {
-        $ShuffledUpdates = @()
     }
     
     # Install the updates one by one
     $rebootRequired = $false
     
-    foreach ($updateInfo in $ShuffledUpdates) {
-        Write-Log-Highlight "Processing update: $($updateInfo.Title)" -HighlightText $updateInfo.Title -HighlightColor "Green"
-        
-        # Re-search for this specific update to get the COM object
-        $updateId = $updateInfo.Identity
-        $searchCriteria = "UpdateID='$updateId'"
-        $searchResult = $UpdateSearcher.Search($searchCriteria)
-        
-        if ($searchResult.Updates.Count -eq 0) {
-            throw "Update not found: $($updateInfo.Title)"
-        }
-        
-        $Update = $searchResult.Updates.Item(0)
+    foreach ($Update in $ShuffledUpdates) {
+        Write-Log-Highlight "Processing update: $($Update.Title)" -HighlightText $Update.Title -HighlightColor "Green"
         
         # Create update collection for single update
         $SingleUpdateCollection = New-Object -ComObject Microsoft.Update.UpdateColl
