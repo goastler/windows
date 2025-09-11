@@ -67,8 +67,8 @@ function Invoke-CommandWithExitCode {
     $process.WaitForExit()
     
     # Get the output after process has completed
-    $stdoutText = $stdoutTask.Result
-    $stderrText = $stderrTask.Result
+    $stdoutText = if ($stdoutTask -and $stdoutTask.Result) { $stdoutTask.Result } else { "" }
+    $stderrText = if ($stderrTask -and $stderrTask.Result) { $stderrTask.Result } else { "" }
     
     # Split output into lines and display
     if ($stdoutText) {
@@ -266,7 +266,7 @@ function Install-WindowsUpdates {
             $searchResult = $UpdateSearcher.Search($criteria)
             return @{
                 Success = $true
-                Updates = $searchResult.Updates
+                Updates = if ($searchResult.Updates) { $searchResult.Updates } else { @() }
             }
         } catch {
             return @{
@@ -288,22 +288,28 @@ function Install-WindowsUpdates {
             return
         }
         
-        $SearchResult = @{ Updates = $searchResult.Updates }
+        # Default to empty array if no updates found
+        $SearchResult = @{ Updates = if ($searchResult.Updates) { $searchResult.Updates } else { @() } }
     } else {
         Stop-Job -Job $searchJob
         Remove-Job -Job $searchJob
         throw "Windows Update search timed out after 10 minutes"
     }
 
-    if ($SearchResult.Updates.Count -eq 0) {
+    # Now we can safely access Updates since it's guaranteed to be an array
+    $updatesCount = $SearchResult.Updates.Count
+    
+    if ($updatesCount -eq 0) {
         Write-Log "No Windows updates available. System is up to date."
     } else {
-        Write-Log "Found $($SearchResult.Updates.Count) Windows updates available. Installing updates..."
+        Write-Log "Found $updatesCount Windows updates available. Installing updates..."
     }
 
     # List available updates
     foreach ($Update in $SearchResult.Updates) {
-        Write-Log "Available update: $($Update.Title)"
+        if ($Update.Title) {
+            Write-Log "Available update: $($Update.Title)"
+        }
     }
     
     # Shuffle the order of updates (only if updates are available)
@@ -318,41 +324,56 @@ function Install-WindowsUpdates {
     $rebootRequired = $false
     
     foreach ($Update in $ShuffledUpdates) {
+        
         Write-Log "Processing update: $($Update.Title)"
         
         # Create update collection for single update
         $SingleUpdateCollection = New-Object -ComObject Microsoft.Update.UpdateColl
-        $SingleUpdateCollection.Add($Update) | Out-Null
+        if ($SingleUpdateCollection) {
+            $SingleUpdateCollection.Add($Update) | Out-Null
+        }
         
         # Download single update
         Write-Log "Downloading update: $($Update.Title)"
         $Downloader = $UpdateSession.CreateUpdateDownloader()
-        $Downloader.Updates = $SingleUpdateCollection
-        $DownloadResult = $Downloader.Download()
-        
-        if ($DownloadResult.ResultCode -eq 2) {
-            Write-Log "Update downloaded successfully: $($Update.Title)"
+        if ($Downloader -and $SingleUpdateCollection) {
+            $Downloader.Updates = $SingleUpdateCollection
+            $DownloadResult = $Downloader.Download()
             
-            # Install single update
-            Write-Log "Installing update: $($Update.Title)"
-            $Installer = $UpdateSession.CreateUpdateInstaller()
-            $Installer.Updates = $SingleUpdateCollection
-            $InstallResult = $Installer.Install()
-            
-            if ($InstallResult.ResultCode -eq 2) {
-                Write-Log "Update installed successfully: $($Update.Title)"
-                if ($InstallResult.RebootRequired) {
-                    $rebootRequired = $true
-                    Write-Log "Reboot required after: $($Update.Title)"
+            if ($DownloadResult -and $DownloadResult.ResultCode -eq 2) {
+                Write-Log "Update downloaded successfully: $($Update.Title)"
+                
+                # Install single update
+                Write-Log "Installing update: $($Update.Title)"
+                $Installer = $UpdateSession.CreateUpdateInstaller()
+                if ($Installer -and $SingleUpdateCollection) {
+                    $Installer.Updates = $SingleUpdateCollection
+                    $InstallResult = $Installer.Install()
+                    
+                    if ($InstallResult -and $InstallResult.ResultCode -eq 2) {
+                        Write-Log "Update installed successfully: $($Update.Title)"
+                        if ($InstallResult.RebootRequired) {
+                            $rebootRequired = $true
+                            Write-Log "Reboot required after: $($Update.Title)"
+                        }
+                    } else {
+                        $resultCode = if ($InstallResult) { $InstallResult.ResultCode } else { "Unknown" }
+                        $errorMsg = "Failed to install update: $($Update.Title). Result code: $resultCode"
+                        Write-Log $errorMsg
+                        Write-Log "Continuing with next update..."
+                    }
+                } else {
+                    Write-Log "Failed to create installer for update: $($Update.Title)"
+                    Write-Log "Continuing with next update..."
                 }
             } else {
-                $errorMsg = "Failed to install update: $($Update.Title). Result code: $($InstallResult.ResultCode)"
+                $resultCode = if ($DownloadResult) { $DownloadResult.ResultCode } else { "Unknown" }
+                $errorMsg = "Failed to download update: $($Update.Title). Result code: $resultCode"
                 Write-Log $errorMsg
                 Write-Log "Continuing with next update..."
             }
         } else {
-            $errorMsg = "Failed to download update: $($Update.Title). Result code: $($DownloadResult.ResultCode)"
-            Write-Log $errorMsg
+            Write-Log "Failed to create downloader for update: $($Update.Title)"
             Write-Log "Continuing with next update..."
         }
     }
