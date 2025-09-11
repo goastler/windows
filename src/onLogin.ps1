@@ -264,9 +264,26 @@ function Install-WindowsUpdates {
             
             # Perform the search with online scan
             $searchResult = $UpdateSearcher.Search($criteria)
+            
+            # Extract only the data we need to avoid COM marshalling issues
+            $updateData = @()
+            if ($searchResult.Updates) {
+                for ($i = 0; $i -lt $searchResult.Updates.Count; $i++) {
+                    $update = $searchResult.Updates.Item($i)
+                    $updateData += @{
+                        Title = $update.Title
+                        Identity = $update.Identity.UpdateID
+                        Description = $update.Description
+                        Size = $update.MaxDownloadSize
+                        IsDownloaded = $update.IsDownloaded
+                        IsInstalled = $update.IsInstalled
+                    }
+                }
+            }
+            
             return @{
                 Success = $true
-                Updates = if ($searchResult.Updates) { $searchResult.Updates } else { @() }
+                UpdateData = $updateData
             }
         } catch {
             return @{
@@ -288,16 +305,16 @@ function Install-WindowsUpdates {
             return
         }
         
-        # Default to empty array if no updates found
-        $SearchResult = @{ Updates = if ($searchResult.Updates) { $searchResult.Updates } else { @() } }
+        # Store the update data for later use
+        $UpdateData = if ($searchResult.UpdateData) { $searchResult.UpdateData } else { @() }
     } else {
         Stop-Job -Job $searchJob
         Remove-Job -Job $searchJob
         throw "Windows Update search timed out after 10 minutes"
     }
 
-    # Now we can safely access Updates since it's guaranteed to be an array
-    $updatesCount = $SearchResult.Updates.Count
+    # Now we can safely access UpdateData since it's guaranteed to be an array
+    $updatesCount = $UpdateData.Count
     
     if ($updatesCount -eq 0) {
         Write-Log "No Windows updates available. System is up to date."
@@ -306,14 +323,14 @@ function Install-WindowsUpdates {
     }
 
     # List available updates
-    foreach ($Update in $SearchResult.Updates) {
-        if ($Update.Title) {
-            Write-Log "Available update: $($Update.Title)"
+    foreach ($updateInfo in $UpdateData) {
+        if ($updateInfo.Title) {
+            Write-Log "Available update: $($updateInfo.Title)"
         }
     }
     
     # Shuffle the order of updates (only if updates are available)
-    $UpdatesArray = @($SearchResult.Updates)
+    $UpdatesArray = @($UpdateData)
     if ($UpdatesArray.Count -gt 0) {
         $ShuffledUpdates = $UpdatesArray | Get-Random -Count $UpdatesArray.Count
     } else {
@@ -323,58 +340,50 @@ function Install-WindowsUpdates {
     # Install the updates one by one
     $rebootRequired = $false
     
-    foreach ($Update in $ShuffledUpdates) {
+    foreach ($updateInfo in $ShuffledUpdates) {
+        Write-Log "Processing update: $($updateInfo.Title)"
         
-        Write-Log "Processing update: $($Update.Title)"
+        # Re-search for this specific update to get the COM object
+        $updateId = $updateInfo.Identity
+        $searchCriteria = "UpdateID='$updateId'"
+        $searchResult = $UpdateSearcher.Search($searchCriteria)
+        
+        if ($searchResult.Updates.Count -eq 0) {
+            throw "Update not found: $($updateInfo.Title)"
+        }
+        
+        $Update = $searchResult.Updates.Item(0)
         
         # Create update collection for single update
         $SingleUpdateCollection = New-Object -ComObject Microsoft.Update.UpdateColl
-        if ($SingleUpdateCollection) {
-            $SingleUpdateCollection.Add($Update) | Out-Null
-        }
+        $SingleUpdateCollection.Add($Update) | Out-Null
         
         # Download single update
         Write-Log "Downloading update: $($Update.Title)"
         $Downloader = $UpdateSession.CreateUpdateDownloader()
-        if ($Downloader -and $SingleUpdateCollection) {
-            $Downloader.Updates = $SingleUpdateCollection
-            $DownloadResult = $Downloader.Download()
+        $Downloader.Updates = $SingleUpdateCollection
+        $DownloadResult = $Downloader.Download()
+        
+        if ($DownloadResult.ResultCode -eq 2) {
+            Write-Log "Update downloaded successfully: $($Update.Title)"
             
-            if ($DownloadResult -and $DownloadResult.ResultCode -eq 2) {
-                Write-Log "Update downloaded successfully: $($Update.Title)"
-                
-                # Install single update
-                Write-Log "Installing update: $($Update.Title)"
-                $Installer = $UpdateSession.CreateUpdateInstaller()
-                if ($Installer -and $SingleUpdateCollection) {
-                    $Installer.Updates = $SingleUpdateCollection
-                    $InstallResult = $Installer.Install()
-                    
-                    if ($InstallResult -and $InstallResult.ResultCode -eq 2) {
-                        Write-Log "Update installed successfully: $($Update.Title)"
-                        if ($InstallResult.RebootRequired) {
-                            $rebootRequired = $true
-                            Write-Log "Reboot required after: $($Update.Title)"
-                        }
-                    } else {
-                        $resultCode = if ($InstallResult) { $InstallResult.ResultCode } else { "Unknown" }
-                        $errorMsg = "Failed to install update: $($Update.Title). Result code: $resultCode"
-                        Write-Log $errorMsg
-                        Write-Log "Continuing with next update..."
-                    }
-                } else {
-                    Write-Log "Failed to create installer for update: $($Update.Title)"
-                    Write-Log "Continuing with next update..."
+            # Install single update
+            Write-Log "Installing update: $($Update.Title)"
+            $Installer = $UpdateSession.CreateUpdateInstaller()
+            $Installer.Updates = $SingleUpdateCollection
+            $InstallResult = $Installer.Install()
+            
+            if ($InstallResult.ResultCode -eq 2) {
+                Write-Log "Update installed successfully: $($Update.Title)"
+                if ($InstallResult.RebootRequired) {
+                    $rebootRequired = $true
+                    Write-Log "Reboot required after: $($Update.Title)"
                 }
             } else {
-                $resultCode = if ($DownloadResult) { $DownloadResult.ResultCode } else { "Unknown" }
-                $errorMsg = "Failed to download update: $($Update.Title). Result code: $resultCode"
-                Write-Log $errorMsg
-                Write-Log "Continuing with next update..."
+                throw "Failed to install update: $($Update.Title). Result code: $($InstallResult.ResultCode)"
             }
         } else {
-            Write-Log "Failed to create downloader for update: $($Update.Title)"
-            Write-Log "Continuing with next update..."
+            throw "Failed to download update: $($Update.Title). Result code: $($DownloadResult.ResultCode)"
         }
     }
     
