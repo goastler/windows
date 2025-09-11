@@ -336,16 +336,15 @@ function Install-WindowsUpdates {
     # Monitor search completion with timeout
     $timeoutSeconds = 600  # 10 minutes
     $elapsedSeconds = 0
-    $searchCompleted = $false
     
-    Write-Host "Searching for updates..." -ForegroundColor Yellow
-    while (-not $searchCompleted -and $elapsedSeconds -lt $timeoutSeconds) {
+    Write-Host "Searching for updates..." -NoNewline -ForegroundColor Yellow
+    while (-not $searchJob.IsCompleted -and $elapsedSeconds -lt $timeoutSeconds) {
         Start-Sleep -Seconds 2
         $elapsedSeconds+=2
         Write-Host "." -NoNewline -ForegroundColor Yellow
     }
     
-    if (-not $searchCompleted) {
+    if (-not $searchJob.IsCompleted) {
         throw "Windows Update search timed out after $timeoutSeconds seconds"
     }
 
