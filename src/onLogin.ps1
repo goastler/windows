@@ -335,6 +335,7 @@ try {
 
         # Create temporary directory for Office installation
         $officeTempDir = "$env:TEMP\OfficeInstall"
+        $originalLocation = Get-Location
         Write-Log "Creating temporary directory: $officeTempDir"
         if (Test-Path $officeTempDir) {
             Remove-Item $officeTempDir -Recurse -Force
@@ -370,7 +371,7 @@ try {
 
         # Clean up temporary directory
         Write-Log "Cleaning up temporary Office installation directory..."
-        Set-Location $env:TEMP
+        Set-Location $originalLocation
         Remove-Item $officeTempDir -Recurse -Force
         Write-Log "Temporary directory cleaned up successfully"
 
