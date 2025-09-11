@@ -435,7 +435,7 @@ function Install-WindowsUpdates {
         $Downloader.Updates = $SingleUpdateCollection
         
         # Begin asynchronous download with callback
-        $DownloadResult = $Downloader.BeginDownload($null, $null, $null)
+        $DownloadJob = $Downloader.BeginDownload($null, $null, $null)
         
         # Wait for download to complete with progress monitoring
         $progress = 0
@@ -452,7 +452,7 @@ function Install-WindowsUpdates {
         }
         
         # End the download and get the result
-        $DownloadResult = $Downloader.EndDownload($DownloadResult)
+        $DownloadResult = $Downloader.EndDownload($DownloadJob)
         
         Write-Progress -Activity "Downloading Windows Update: $($Update.Title)" -Completed
         
@@ -465,7 +465,7 @@ function Install-WindowsUpdates {
             $Installer.Updates = $SingleUpdateCollection
             
             # Begin asynchronous installation with callback
-            $InstallResult = $Installer.BeginInstall($null, $null, $null)
+            $InstallJob = $Installer.BeginInstall($null, $null, $null)
             
             # Wait for installation to complete with progress monitoring
             $progress = 0
@@ -482,7 +482,7 @@ function Install-WindowsUpdates {
             }
             
             # End the installation and get the result
-            $InstallResult = $Installer.EndInstall($InstallResult)
+            $InstallResult = $Installer.EndInstall($InstallJob)
             
             Write-Progress -Activity "Installing Windows Update: $($Update.Title)" -Completed
             
