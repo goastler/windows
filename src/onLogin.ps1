@@ -366,7 +366,7 @@ function Setup-BgInfo {
     Write-Log "Setting up BgInfo..."
 
     # BgInfo command line arguments
-    $bgInfoArgs = "/NOLICPROMPT /TIMER:0 /ALL"
+    $bgInfoArgs = "/NOLICPROMPT /TIMER:0 /ALL /SILENT"
 
     # Create BgInfo directory
     $bgInfoDir = "C:\Tools\BgInfo"
@@ -414,11 +414,11 @@ function Setup-BgInfo {
         # Create the action
         $action = New-ScheduledTaskAction -Execute $bgInfoExe -Argument $bgInfoArgs
         
-        # Create the trigger (at startup)
-        $trigger = New-ScheduledTaskTrigger -AtStartup
+        # Create the trigger (at logon for current user)
+        $trigger = New-ScheduledTaskTrigger -AtLogOn
         
-        # Create the principal (run as SYSTEM)
-        $principal = New-ScheduledTaskPrincipal -UserId "SYSTEM" -LogonType ServiceAccount -RunLevel Highest
+        # Create the principal (run as current user with highest privileges)
+        $principal = New-ScheduledTaskPrincipal -UserId $env:USERNAME -LogonType InteractiveToken -RunLevel Highest
         
         # Create the settings
         $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable -RunOnlyIfNetworkAvailable:$false
@@ -431,9 +431,10 @@ function Setup-BgInfo {
         Write-Log "BgInfo startup task already exists"
     }
 
-    # Run BgInfo immediately to apply the configuration
-    Write-Log "Running BgInfo to apply configuration..."
-    $result = Invoke-CommandWithExitCode -Command "& '$bgInfoExe' $bgInfoArgs" -Description "run BgInfo to apply configuration"
+    # Trigger the BgInfo scheduled task to apply the configuration
+    Write-Log "Triggering BgInfo scheduled task to apply configuration..."
+    Start-ScheduledTask -TaskName $taskName
+    Write-Log "BgInfo scheduled task triggered successfully"
 
     Write-Log "BgInfo setup completed!"
 }
