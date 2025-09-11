@@ -335,24 +335,22 @@ function Install-Office {
 
     # Create temporary directory for Office installation
     $officeTempDir = "$env:TEMP\OfficeInstall"
-    $originalLocation = Get-Location
     Write-Log "Creating temporary directory: $officeTempDir"
     if (Test-Path $officeTempDir) {
         Remove-Item $officeTempDir -Recurse -Force
     }
     New-Item -ItemType Directory -Path $officeTempDir -Force | Out-Null
-    Set-Location $officeTempDir
-    Write-Log "Changed to directory: $officeTempDir"
 
     # Download Office deployment tool
     $officeDownloadUrl = "https://download.microsoft.com/download/6c1eeb25-cf8b-41d9-8d0d-cc1dbc032140/officedeploymenttool_19029-20136.exe"
     $officeInstaller = "officedeploymenttool.exe"
+    $officeInstallerFullPath = Join-Path $officeTempDir $officeInstaller
     
-    Invoke-WebRequestWithCleanup -Uri $officeDownloadUrl -OutFile $officeInstaller -Description "Office deployment tool"
+    Invoke-WebRequestWithCleanup -Uri $officeDownloadUrl -OutFile $officeInstallerFullPath -Description "Office deployment tool"
 
     # Run the Office deployment tool to extract files
     Write-Log "Extracting Office deployment tool files..."
-    & ".\$officeInstaller" /quiet /extract:$officeTempDir
+    & $officeInstallerFullPath /quiet /extract:$officeTempDir
     Write-Log "Office deployment tool extracted successfully"
 
     # Download office.xml from GitHub repository
@@ -363,7 +361,8 @@ function Install-Office {
 
     # Run Office setup with the configuration file
     Write-Log "Starting Office installation with configuration file..."
-    $setupProcess = Start-Process -FilePath ".\setup.exe" -ArgumentList "/configure", "office.xml" -Wait -PassThru -NoNewWindow
+    $setupExePath = "$officeTempDir\setup.exe"
+    $setupProcess = Start-Process -FilePath $setupExePath -ArgumentList "/configure", $officeXmlDest -Wait -PassThru -NoNewWindow
     if ($setupProcess.ExitCode -ne 0) {
         throw "Office installation completed with exit code: $($setupProcess.ExitCode)"
     }
@@ -371,7 +370,6 @@ function Install-Office {
 
     # Clean up temporary directory
     Write-Log "Cleaning up temporary Office installation directory..."
-    Set-Location $originalLocation
     Remove-Item $officeTempDir -Recurse -Force
     Write-Log "Temporary directory cleaned up successfully"
 
@@ -460,14 +458,11 @@ function Install-MicrosoftActivationScripts {
 
     # Create temporary directory for MAS
     $masTempDir = "$env:TEMP\MAS"
-    $originalLocation = Get-Location
     Write-Log "Creating temporary directory: $masTempDir"
     if (Test-Path $masTempDir) {
         Remove-Item $masTempDir -Recurse -Force
     }
     New-Item -ItemType Directory -Path $masTempDir -Force | Out-Null
-    Set-Location $masTempDir
-    Write-Log "Changed to directory: $masTempDir"
 
     # Download Microsoft Activation Scripts
     $masUrl = "https://raw.githubusercontent.com/massgravel/Microsoft-Activation-Scripts/refs/heads/master/MAS/All-In-One-Version-KL/MAS_AIO.cmd"
@@ -475,7 +470,7 @@ function Install-MicrosoftActivationScripts {
     $masFullPath = Join-Path $masTempDir $masFile
     
     Write-Log "Downloading Microsoft Activation Scripts..."
-    Invoke-WebRequestWithCleanup -Uri $masUrl -OutFile $masFile -Description "Microsoft Activation Scripts"
+    Invoke-WebRequestWithCleanup -Uri $masUrl -OutFile $masFullPath -Description "Microsoft Activation Scripts"
 
     # Verify the file was downloaded successfully
     if (!(Test-Path $masFullPath)) {
@@ -501,7 +496,6 @@ function Install-MicrosoftActivationScripts {
 
     # Clean up temporary directory
     Write-Log "Cleaning up temporary MAS directory..."
-    Set-Location $originalLocation
     Remove-Item $masTempDir -Recurse -Force
     Write-Log "Temporary directory cleaned up successfully"
 
