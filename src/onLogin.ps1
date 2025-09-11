@@ -45,7 +45,7 @@ function Invoke-CommandWithExitCode {
     $processInfo.UseShellExecute = $false
     $processInfo.RedirectStandardOutput = $true
     $processInfo.RedirectStandardError = $true
-    $processInfo.CreateNoWindow = $false  # Show the window for real-time output viewing
+    $processInfo.CreateNoWindow = $true
     $processInfo.StandardOutputEncoding = [System.Text.Encoding]::UTF8
     $processInfo.StandardErrorEncoding = [System.Text.Encoding]::UTF8
     
@@ -59,7 +59,7 @@ function Invoke-CommandWithExitCode {
     $stdoutOutput = @()
     $stderrOutput = @()
     
-    # Use async reading to capture output while process runs in visible window
+    # Use asynchronous reading to avoid blocking
     $stdoutTask = $process.StandardOutput.ReadToEndAsync()
     $stderrTask = $process.StandardError.ReadToEndAsync()
     
@@ -75,8 +75,8 @@ function Invoke-CommandWithExitCode {
         $stdoutLines = $stdoutText -split "`r?`n"
         foreach ($line in $stdoutLines) {
             if ($line.Trim()) {
-                Write-Host $line.Trim() -ForegroundColor Green
-                $stdoutOutput += $line.Trim()
+                Write-Host $line -ForegroundColor Green
+                $stdoutOutput += $line
             }
         }
     }
@@ -85,8 +85,8 @@ function Invoke-CommandWithExitCode {
         $stderrLines = $stderrText -split "`r?`n"
         foreach ($line in $stderrLines) {
             if ($line.Trim()) {
-                Write-Host $line.Trim() -ForegroundColor Red
-                $stderrOutput += $line.Trim()
+                Write-Host $line -ForegroundColor Red
+                $stderrOutput += $line
             }
         }
     }
