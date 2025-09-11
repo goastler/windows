@@ -471,11 +471,12 @@ try {
     Write-Host "`n=== ERROR ===" -ForegroundColor Red
     Write-Host "An error occurred during setup: $($_.Exception.Message)" -ForegroundColor Red
     Write-Host "Error details: $($_.Exception)" -ForegroundColor Red
-    Write-Host "`n=== REBOOT REQUIRED ===" -ForegroundColor Yellow
-    Write-Host "Due to the error, the system will reboot in 60 seconds..." -ForegroundColor Yellow
-    Write-Host "Press Ctrl+C to cancel the reboot" -ForegroundColor Red
-    Write-Host ""
-    Start-Sleep -Seconds 30
-    Write-Host "Rebooting now..." -ForegroundColor Red
-    Restart-Computer -Force
 }
+
+Write-Host "`n=== REBOOT REQUIRED ===" -ForegroundColor Yellow
+Write-Host "The system will reboot in 60 seconds..." -ForegroundColor Yellow
+Write-Host "Press Ctrl+C to cancel the reboot" -ForegroundColor Red
+Write-Host ""
+Start-Sleep -Seconds 30
+Write-Host "Rebooting now..." -ForegroundColor Red
+Restart-Computer -Force
