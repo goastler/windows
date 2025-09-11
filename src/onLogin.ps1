@@ -13,6 +13,29 @@ function Write-Log {
     Add-Content -Path $logFile -Value $logMessage
 }
 
+function Invoke-CommandWithExitCode {
+    param(
+        [string]$Command,
+        [string]$Description = "",
+        [int]$ExpectedExitCode = 0
+    )
+    
+    Write-Log "Executing: $Command"
+    
+    Invoke-Expression "& $Command" | Out-Null
+    
+    if ($LASTEXITCODE -ne $ExpectedExitCode) {
+        $errorMsg = if ($Description) { 
+            "Failed to $Description. Command: $Command. Exit code: $LASTEXITCODE (expected: $ExpectedExitCode)" 
+        } else { 
+            "Command failed: $Command. Exit code: $LASTEXITCODE (expected: $ExpectedExitCode)" 
+        }
+        throw $errorMsg
+    }
+    
+    Write-Log "Command completed successfully: $Command"
+}
+
 
 
 try {
@@ -37,10 +60,7 @@ try {
     # Check if Chocolatey is already installed
     if (Get-Command choco -ErrorAction SilentlyContinue) {
         Write-Log "Chocolatey is already installed. Updating..."
-        $chocoUpgradeResult = choco upgrade chocolatey -y
-        if ($LASTEXITCODE -ne 0) {
-            throw "Failed to upgrade Chocolatey. Exit code: $LASTEXITCODE"
-        }
+        Invoke-CommandWithExitCode -Command "choco upgrade chocolatey -y" -Description "upgrade Chocolatey"
     } else {
         Write-Log "Installing Chocolatey..."
         # Install Chocolatey
@@ -58,12 +78,7 @@ try {
     Start-Sleep -Seconds 5
 
     # Clear any existing Chocolatey downloads to prevent corrupted package issues
-    Write-Log "Clearing existing Chocolatey downloads..."
-    $clearDownloadsResult = choco cache remove --expired -y
-    if ($LASTEXITCODE -ne 0) {
-        throw "Failed to clear Chocolatey downloads. Exit code: $LASTEXITCODE"
-    }
-    Write-Log "Chocolatey downloads cleared successfully"
+    Invoke-CommandWithExitCode -Command "choco cache remove --expired -y" -Description "clear Chocolatey downloads"
 
     # Define common packages to install
     $packages = @(
@@ -77,28 +92,14 @@ try {
 
     # Install packages
     foreach ($package in $packages) {
-        Write-Log "Installing $package..."
-        $installResult = choco install $package -y
-        if ($LASTEXITCODE -ne 0) {
-            throw "Failed to install package '$package'. Exit code: $LASTEXITCODE"
-        }
-        Write-Log "$package installed successfully"
+        Invoke-CommandWithExitCode -Command "choco install $package -y" -Description "install package '$package'"
     }
 
     # Update all packages
-    Write-Log "Updating all installed packages..."
-    $upgradeResult = choco upgrade all -y
-    if ($LASTEXITCODE -ne 0) {
-        throw "Failed to upgrade packages. Exit code: $LASTEXITCODE"
-    }
-    Write-Log "Package updates completed"
+    Invoke-CommandWithExitCode -Command "choco upgrade all -y" -Description "upgrade all packages"
 
     # Clean up
-    Write-Log "Cleaning up Chocolatey cache..."
-    $cacheResult = choco cache remove --expired -y
-    if ($LASTEXITCODE -ne 0) {
-        throw "Failed to clean up Chocolatey cache. Exit code: $LASTEXITCODE"
-    }
+    Invoke-CommandWithExitCode -Command "choco cache remove --expired -y" -Description "clean up Chocolatey cache"
 
     Write-Log "Chocolatey installation and package setup completed!"
 
