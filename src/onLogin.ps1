@@ -92,11 +92,11 @@ try {
 
     # Install packages
     foreach ($package in $packages) {
-        Invoke-CommandWithExitCode -Command "choco install $package -y" -Description "install package '$package'"
+        Invoke-CommandWithExitCode -Command "choco install $package -y --ignore-checksums" -Description "install package '$package'"
     }
 
     # Update all packages
-    Invoke-CommandWithExitCode -Command "choco upgrade all -y" -Description "upgrade all packages"
+    Invoke-CommandWithExitCode -Command "choco upgrade all -y --ignore-checksums" -Description "upgrade all packages"
 
     # Clean up
     Invoke-CommandWithExitCode -Command "choco cache remove --expired -y" -Description "clean up Chocolatey cache"
