@@ -22,18 +22,79 @@ function Invoke-CommandWithExitCode {
     
     Write-Log "Executing: $Command"
     
-    Invoke-Expression "& $Command" | Out-Null
+    # Execute command and stream output in real-time
+    $processInfo = New-Object System.Diagnostics.ProcessStartInfo
+    $processInfo.FileName = "powershell.exe"
+    $processInfo.Arguments = "-Command `"$Command`""
+    $processInfo.UseShellExecute = $false
+    $processInfo.RedirectStandardOutput = $true
+    $processInfo.RedirectStandardError = $true
+    $processInfo.CreateNoWindow = $true
     
-    if ($LASTEXITCODE -ne $ExpectedExitCode) {
+    $process = New-Object System.Diagnostics.Process
+    $process.StartInfo = $processInfo
+    
+    # Start the process
+    $process.Start() | Out-Null
+    
+    # Stream output in real-time and collect separately
+    $stdoutOutput = @()
+    $stderrOutput = @()
+    while ($true) {
+        $hasOutput = $false
+        
+        # Read stdout
+        if (!$process.StandardOutput.EndOfStream) {
+            $line = $process.StandardOutput.ReadLine()
+            if ($line) {
+                Write-Host $line
+                $stdoutOutput += $line
+                $hasOutput = $true
+            }
+        }
+        
+        # Read stderr
+        if (!$process.StandardError.EndOfStream) {
+            $line = $process.StandardError.ReadLine()
+            if ($line) {
+                Write-Host $line -ForegroundColor Red
+                $stderrOutput += $line
+                $hasOutput = $true
+            }
+        }
+        
+        # If process has exited and no more output, break
+        if ($process.HasExited -and !$hasOutput) {
+            break
+        }
+        
+        # If no output this iteration, sleep briefly
+        if (!$hasOutput) {
+            Start-Sleep -Milliseconds 50
+        }
+    }
+    
+    # Wait for process to exit and get exit code
+    $process.WaitForExit()
+    $exitCode = $process.ExitCode
+    
+    if ($exitCode -ne $ExpectedExitCode) {
         $errorMsg = if ($Description) { 
-            "Failed to $Description. Command: $Command. Exit code: $LASTEXITCODE (expected: $ExpectedExitCode)" 
+            "Failed to $Description. Command: $Command. Exit code: $exitCode (expected: $ExpectedExitCode)" 
         } else { 
-            "Command failed: $Command. Exit code: $LASTEXITCODE (expected: $ExpectedExitCode)" 
+            "Command failed: $Command. Exit code: $exitCode (expected: $ExpectedExitCode)" 
         }
         throw $errorMsg
     }
     
     Write-Log "Command completed successfully: $Command"
+    
+    # Return stdout, stderr, and exit code
+    return @{
+        StdOut = $stdoutOutput
+        StdErr = $stderrOutput
+        ExitCode = $exitCode
+    }
 }
 
 
