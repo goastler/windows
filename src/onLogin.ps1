@@ -481,7 +481,7 @@ try {
     # =============================================================================
 
     Write-Host "`n=== On Login Setup Starting ===" -ForegroundColor Yellow
-    Wait-ForUserCancellation -Seconds 30 -Message "Press any key to cancel..."
+    Wait-ForUserCancellation -Seconds 10
     Write-Host "Starting now..." -ForegroundColor Green
 
     # =============================================================================
@@ -537,6 +537,6 @@ try {
 
 Write-Host "`n=== REBOOT REQUIRED ===" -ForegroundColor Yellow
 Write-Host "The system will reboot in 30 seconds..." -ForegroundColor Yellow
-Wait-ForUserCancellation -Seconds 30 -Message "Press any key to cancel the reboot"
+Wait-ForUserCancellation -Seconds 30
 Write-Host "Rebooting now..." -ForegroundColor Red
 Restart-Computer -Force
