@@ -331,8 +331,7 @@ function Install-WindowsUpdates {
     $searchCriteria = "IsInstalled=0 and Type='Software' or IsInstalled=0 and Type='Driver'"
     $dummyCallback = [System.AsyncCallback]{}
     $dummyState1 = New-Object System.Object
-    $dummyState2 = New-Object System.Object
-    $searchJob = $UpdateSearcher.BeginSearch($searchCriteria, $dummyCallback, $dummyState1, $dummyState2)
+    $searchJob = $UpdateSearcher.BeginSearch($searchCriteria, $dummyCallback, $dummyState1)
     
     # Monitor search completion with timeout
     $timeoutSeconds = 600  # 10 minutes
