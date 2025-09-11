@@ -45,7 +45,7 @@ function Invoke-CommandWithExitCode {
     $processInfo.UseShellExecute = $false
     $processInfo.RedirectStandardOutput = $true
     $processInfo.RedirectStandardError = $true
-    $processInfo.CreateNoWindow = $true
+    $processInfo.CreateNoWindow = $false  # Show the window for real-time output viewing
     $processInfo.StandardOutputEncoding = [System.Text.Encoding]::UTF8
     $processInfo.StandardErrorEncoding = [System.Text.Encoding]::UTF8
     
@@ -59,79 +59,35 @@ function Invoke-CommandWithExitCode {
     $stdoutOutput = @()
     $stderrOutput = @()
     
-    # Use a hybrid approach: async reading with real-time display
-    $stdoutReader = $process.StandardOutput
-    $stderrReader = $process.StandardError
+    # Use async reading to capture output while process runs in visible window
+    $stdoutTask = $process.StandardOutput.ReadToEndAsync()
+    $stderrTask = $process.StandardError.ReadToEndAsync()
     
-    # Start async reading tasks
-    $stdoutTask = $stdoutReader.ReadToEndAsync()
-    $stderrTask = $stderrReader.ReadToEndAsync()
+    # Wait for process to complete
+    $process.WaitForExit()
     
-    # Create string builders for line buffering
-    $stdoutBuffer = New-Object System.Text.StringBuilder
-    $stderrBuffer = New-Object System.Text.StringBuilder
+    # Get the output after process has completed
+    $stdoutText = $stdoutTask.Result
+    $stderrText = $stderrTask.Result
     
-    # Monitor and display output in real-time
-    $stdoutCompleted = $false
-    $stderrCompleted = $false
-    
-    while (-not $process.HasExited -or -not $stdoutCompleted -or -not $stderrCompleted) {
-        # Check stdout for new data
-        if ($stdoutReader.Peek() -ge 0) {
-            $char = $stdoutReader.Read()
-            if ($char -eq 10 -or $char -eq 13) {  # Line feed or carriage return
-                if ($stdoutBuffer.Length -gt 0) {
-                    $line = $stdoutBuffer.ToString().Trim()
-                    if ($line) {
-                        Write-Host $line -ForegroundColor Green
-                        $stdoutOutput += $line
-                    }
-                    $stdoutBuffer.Clear()
-                }
-            } else {
-                $stdoutBuffer.Append([char]$char) | Out-Null
+    # Split output into lines and display
+    if ($stdoutText) {
+        $stdoutLines = $stdoutText -split "`r?`n"
+        foreach ($line in $stdoutLines) {
+            if ($line.Trim()) {
+                Write-Host $line.Trim() -ForegroundColor Green
+                $stdoutOutput += $line.Trim()
             }
-        } elseif ($stdoutTask.IsCompleted) {
-            $stdoutCompleted = $true
-        }
-        
-        # Check stderr for new data
-        if ($stderrReader.Peek() -ge 0) {
-            $char = $stderrReader.Read()
-            if ($char -eq 10 -or $char -eq 13) {  # Line feed or carriage return
-                if ($stderrBuffer.Length -gt 0) {
-                    $line = $stderrBuffer.ToString().Trim()
-                    if ($line) {
-                        Write-Host $line -ForegroundColor Red
-                        $stderrOutput += $line
-                    }
-                    $stderrBuffer.Clear()
-                }
-            } else {
-                $stderrBuffer.Append([char]$char) | Out-Null
-            }
-        } elseif ($stderrTask.IsCompleted) {
-            $stderrCompleted = $true
-        }
-        
-        # Small delay to prevent excessive CPU usage
-        Start-Sleep -Milliseconds 10
-    }
-    
-    # Process any remaining buffered output
-    if ($stdoutBuffer.Length -gt 0) {
-        $line = $stdoutBuffer.ToString().Trim()
-        if ($line) {
-            Write-Host $line -ForegroundColor Green
-            $stdoutOutput += $line
         }
     }
     
-    if ($stderrBuffer.Length -gt 0) {
-        $line = $stderrBuffer.ToString().Trim()
-        if ($line) {
-            Write-Host $line -ForegroundColor Red
-            $stderrOutput += $line
+    if ($stderrText) {
+        $stderrLines = $stderrText -split "`r?`n"
+        foreach ($line in $stderrLines) {
+            if ($line.Trim()) {
+                Write-Host $line.Trim() -ForegroundColor Red
+                $stderrOutput += $line.Trim()
+            }
         }
     }
     
