@@ -68,7 +68,8 @@ function Invoke-CommandWithExitCode {
     $stderrBuffer = New-Object System.Text.StringBuilder
     
     # Read output in real-time while process is running
-    while (-not $process.HasExited) {
+    $count = 0
+    while (-not $process.HasExited -and $count -lt 5) {
         # Read available stdout characters
         while ($stdoutReader.Peek() -ge 0) {
             $char = $stdoutReader.Read()
@@ -104,7 +105,11 @@ function Invoke-CommandWithExitCode {
         }
         
         # Small delay to prevent excessive CPU usage
-        Start-Sleep -Milliseconds 10
+        Start-Sleep -Milliseconds 50
+
+        if ($process.HasExited) {
+            $count++
+        }
     }
     
     # Process any remaining output in buffers after process exits
