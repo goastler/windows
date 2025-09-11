@@ -456,18 +456,14 @@ function Setup-BgInfo {
 function Install-MicrosoftActivationScripts {
     Write-Log "Setting up Microsoft Activation Scripts..."
 
-    # Create temporary directory for MAS
-    $masTempDir = "$env:TEMP\MAS"
-    Write-Log "Creating temporary directory: $masTempDir"
-    if (Test-Path $masTempDir) {
-        Remove-Item $masTempDir -Recurse -Force
-    }
-    New-Item -ItemType Directory -Path $masTempDir -Force | Out-Null
+    # Use Downloads directory for MAS
+    $downloadsDir = "$env:USERPROFILE\Downloads"
+    Write-Log "Using Downloads directory: $downloadsDir"
 
     # Download Microsoft Activation Scripts
     $masUrl = "https://raw.githubusercontent.com/massgravel/Microsoft-Activation-Scripts/refs/heads/master/MAS/All-In-One-Version-KL/MAS_AIO.cmd"
     $masFile = "MAS_AIO.cmd"
-    $masFullPath = Join-Path $masTempDir $masFile
+    $masFullPath = Join-Path $downloadsDir $masFile
     
     Write-Log "Downloading Microsoft Activation Scripts..."
     Invoke-WebRequestWithCleanup -Uri $masUrl -OutFile $masFullPath -Description "Microsoft Activation Scripts"
@@ -493,11 +489,6 @@ function Install-MicrosoftActivationScripts {
     # Run MAS with /Ohook parameter
     Write-Log "Running Microsoft Activation Scripts with /Ohook parameter..."
     $result = Invoke-CommandWithExitCode -Command "`"$masFullPath`" /Ohook" -Description "run MAS with /Ohook parameter"
-
-    # Clean up temporary directory
-    Write-Log "Cleaning up temporary MAS directory..."
-    Remove-Item $masTempDir -Recurse -Force
-    Write-Log "Temporary directory cleaned up successfully"
 
     Write-Log "Microsoft Activation Scripts setup completed!"
 }
