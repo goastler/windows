@@ -382,7 +382,7 @@ function Setup-BgInfo {
     }
 
     # Download BgInfo
-    $bgInfoUrl = "https://download.sysinternals.com/files/BgInfo.zip"
+    $bgInfoUrl = "https://download.sysinternals.com/files/BGInfo.zip"
     $bgInfoZip = "$env:TEMP\BgInfo.zip"
     $bgInfoExe = "$bgInfoDir\BgInfo.exe"
     
