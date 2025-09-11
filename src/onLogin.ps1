@@ -377,7 +377,80 @@ try {
         Write-Log "Office installation process completed!"
     }
 
+    # =============================================================================
+    # BGINFO SETUP
+    # =============================================================================
 
+    Write-Log "Setting up BgInfo..."
+
+    # Create BgInfo directory
+    $bgInfoDir = "C:\Tools\BgInfo"
+    if (!(Test-Path $bgInfoDir)) {
+        New-Item -ItemType Directory -Path $bgInfoDir -Force | Out-Null
+        Write-Log "Created BgInfo directory: $bgInfoDir"
+    }
+
+    # Download BgInfo
+    $bgInfoUrl = "https://download.sysinternals.com/files/BgInfo.zip"
+    $bgInfoZip = "$env:TEMP\BgInfo.zip"
+    $bgInfoExe = "$bgInfoDir\BgInfo.exe"
+    
+    if (!(Test-Path $bgInfoExe)) {
+        Write-Log "Downloading BgInfo..."
+        Invoke-WebRequestWithCleanup -Uri $bgInfoUrl -OutFile $bgInfoZip -Description "BgInfo"
+        
+        # Extract BgInfo
+        Write-Log "Extracting BgInfo..."
+        Expand-Archive -Path $bgInfoZip -DestinationPath $bgInfoDir -Force
+        Write-Log "BgInfo extracted successfully"
+        
+        # Clean up zip file
+        Remove-Item $bgInfoZip -Force
+        Write-Log "BgInfo zip file cleaned up"
+    } else {
+        Write-Log "BgInfo is already installed at: $bgInfoExe"
+    }
+
+    # Download BgInfo configuration file from GitHub repository
+    $bgInfoConfigUrl = "https://raw.githubusercontent.com/goastler/windows/refs/heads/main/src/BgInfo.bgi"
+    $bgInfoConfigFile = "$bgInfoDir\BgInfo.bgi"
+    
+    Write-Log "Downloading BgInfo configuration file from GitHub..."
+    Invoke-WebRequestWithCleanup -Uri $bgInfoConfigUrl -OutFile $bgInfoConfigFile -Description "BgInfo configuration file"
+    Write-Log "BgInfo configuration file downloaded: $bgInfoConfigFile"
+
+    # Create BgInfo startup task
+    $taskName = "BgInfo"
+    $taskExists = Get-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue
+    
+    if (!$taskExists) {
+        Write-Log "Creating BgInfo startup task..."
+        
+        # Create the action
+        $action = New-ScheduledTaskAction -Execute $bgInfoExe -Argument "/nolicprompt /timer:0 /silent /accepteula"
+        
+        # Create the trigger (at startup)
+        $trigger = New-ScheduledTaskTrigger -AtStartup
+        
+        # Create the principal (run as SYSTEM)
+        $principal = New-ScheduledTaskPrincipal -UserId "SYSTEM" -LogonType ServiceAccount -RunLevel Highest
+        
+        # Create the settings
+        $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable -RunOnlyIfNetworkAvailable:$false
+        
+        # Register the task
+        Register-ScheduledTask -TaskName $taskName -Action $action -Trigger $trigger -Principal $principal -Settings $settings -Description "BgInfo - Display system information on desktop background"
+        
+        Write-Log "BgInfo startup task created successfully"
+    } else {
+        Write-Log "BgInfo startup task already exists"
+    }
+
+    # Run BgInfo immediately to apply the configuration
+    Write-Log "Running BgInfo to apply configuration..."
+    $result = Invoke-CommandWithExitCode -Command "& '$bgInfoExe' /nolicprompt /timer:0 /silent /accepteula" -Description "run BgInfo to apply configuration"
+
+    Write-Log "BgInfo setup completed!"
 
     # =============================================================================
     # FINAL CLEANUP - REMOVE SCHEDULED TASK

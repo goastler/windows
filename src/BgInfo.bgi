@@ -1,0 +1,59 @@
+
+[Computer]
+Computer Name=1
+User Name=1
+Domain=1
+Logon Server=1
+Logon Time=1
+
+[Operating System]
+OS Name=1
+OS Version=1
+OS Build=1
+OS Architecture=1
+Service Pack=1
+Install Date=1
+Last Boot Time=1
+Uptime=1
+
+[Hardware]
+CPU=1
+CPU Speed=1
+Total Physical Memory=1
+Available Physical Memory=1
+Total Virtual Memory=1
+Available Virtual Memory=1
+Page File Size=1
+
+[Network]
+IP Address=1
+MAC Address=1
+Network Adapter=1
+
+[Storage]
+Total Disk Space=1
+Free Disk Space=1
+Disk Usage=1
+
+[Display]
+Screen Resolution=1
+Color Depth=1
+Display Adapter=1
+
+[Font]
+Font Name=Arial
+Font Size=10
+Font Style=0
+
+[Position]
+Position=Top Left
+Offset X=10
+Offset Y=10
+
+[Background]
+Background Color=0,0,0
+Text Color=255,255,255
+Transparency=0
+
+[Update]
+Update Interval=60
