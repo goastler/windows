@@ -31,8 +31,8 @@ function Invoke-CommandWithExitCode {
     # Execute command and stream output in real-time
     $processInfo = New-Object System.Diagnostics.ProcessStartInfo
     
-    # Check if the command is a batch file (.cmd or .bat)
-    if ($Command -match '^\.\\([^\\]+\.(cmd|bat))') {
+    # Check if the command is a batch file (.cmd or .bat) or contains a .cmd/.bat file
+    if ($Command -match '\.(cmd|bat)') {
         # For batch files, use cmd.exe to execute them
         $processInfo.FileName = "cmd.exe"
         $processInfo.Arguments = "/c `"$Command`""
@@ -46,6 +46,8 @@ function Invoke-CommandWithExitCode {
     $processInfo.RedirectStandardOutput = $true
     $processInfo.RedirectStandardError = $true
     $processInfo.CreateNoWindow = $true
+    $processInfo.StandardOutputEncoding = [System.Text.Encoding]::UTF8
+    $processInfo.StandardErrorEncoding = [System.Text.Encoding]::UTF8
     
     $process = New-Object System.Diagnostics.Process
     $process.StartInfo = $processInfo
@@ -56,42 +58,39 @@ function Invoke-CommandWithExitCode {
     # Stream output in real-time and collect separately
     $stdoutOutput = @()
     $stderrOutput = @()
-    while ($true) {
-        $hasOutput = $false
-        
-        # Read stdout
-        if (!$process.StandardOutput.EndOfStream) {
-            $line = $process.StandardOutput.ReadLine()
-            if ($line) {
+    
+    # Use asynchronous reading to avoid blocking
+    $stdoutTask = $process.StandardOutput.ReadToEndAsync()
+    $stderrTask = $process.StandardError.ReadToEndAsync()
+    
+    # Wait for process to complete
+    $process.WaitForExit()
+    
+    # Get the output after process has completed
+    $stdoutText = $stdoutTask.Result
+    $stderrText = $stderrTask.Result
+    
+    # Split output into lines and display
+    if ($stdoutText) {
+        $stdoutLines = $stdoutText -split "`r?`n"
+        foreach ($line in $stdoutLines) {
+            if ($line.Trim()) {
                 Write-Host $line -ForegroundColor Green
                 $stdoutOutput += $line
-                $hasOutput = $true
             }
-        }
-        
-        # Read stderr
-        if (!$process.StandardError.EndOfStream) {
-            $line = $process.StandardError.ReadLine()
-            if ($line) {
-                Write-Host $line -ForegroundColor Red
-                $stderrOutput += $line
-                $hasOutput = $true
-            }
-        }
-        
-        # If process has exited and no more output, break
-        if ($process.HasExited -and !$hasOutput) {
-            break
-        }
-        
-        # If no output this iteration, sleep briefly
-        if (!$hasOutput) {
-            Start-Sleep -Milliseconds 50
         }
     }
     
-    # Wait for process to exit and get exit code
-    $process.WaitForExit()
+    if ($stderrText) {
+        $stderrLines = $stderrText -split "`r?`n"
+        foreach ($line in $stderrLines) {
+            if ($line.Trim()) {
+                Write-Host $line -ForegroundColor Red
+                $stderrOutput += $line
+            }
+        }
+    }
+    
     $exitCode = $process.ExitCode
     
     if ($exitCode -ne $ExpectedExitCode) {
