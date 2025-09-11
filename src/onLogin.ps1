@@ -1,7 +1,6 @@
 
 # Create log file
 $logFile = "$env:TEMP\onLogin.log"
-$timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
 
 # Scheduled task name
 $scheduledTaskName = "OnLogin"
@@ -13,9 +12,42 @@ $originalScriptLocation = Get-Location
 $ErrorActionPreference = "Stop"
 
 function Write-Log {
-    param($Message)
+    param(
+        [string]$Message,
+        [string]$Color = "White"
+    )
+    $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss.fff"
     $logMessage = "[$timestamp] $Message"
-    Write-Host $logMessage
+    Write-Host $logMessage -ForegroundColor $Color
+    Add-Content -Path $logFile -Value $logMessage
+}
+
+function Write-Log-Highlight {
+    param(
+        [string]$Message,
+        [string]$HighlightText,
+        [string]$Color = "White",
+        [string]$HighlightColor = "Yellow"
+    )
+    $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss.fff"
+    $logMessage = "[$timestamp] $Message"
+    
+    # Write to console with highlighting
+    $parts = $Message -split $HighlightText
+    if ($parts.Count -gt 1) {
+        Write-Host "[$timestamp] " -NoNewline -ForegroundColor $Color
+        for ($i = 0; $i -lt $parts.Count; $i++) {
+            Write-Host $parts[$i] -NoNewline -ForegroundColor $Color
+            if ($i -lt $parts.Count - 1) {
+                Write-Host $HighlightText -NoNewline -ForegroundColor $HighlightColor
+            }
+        }
+        Write-Host ""
+    } else {
+        Write-Host $logMessage -ForegroundColor $Color
+    }
+    
+    # Write plain text to log file
     Add-Content -Path $logFile -Value $logMessage
 }
 
@@ -357,13 +389,13 @@ function Install-WindowsUpdates {
     if ($updatesCount -eq 0) {
         Write-Log "No Windows updates available. System is up to date."
     } else {
-        Write-Log "Found $updatesCount Windows updates available. Installing updates..."
+        Write-Log "Found $updatesCount Windows updates..."
     }
 
     # List available updates
     foreach ($updateInfo in $UpdateData) {
         if ($updateInfo.Title) {
-            Write-Log "Available update: $($updateInfo.Title)"
+            Write-Log-Highlight "Available update: $($updateInfo.Title)" -HighlightText $updateInfo.Title -HighlightColor "Cyan"
         }
     }
     
@@ -379,7 +411,7 @@ function Install-WindowsUpdates {
     $rebootRequired = $false
     
     foreach ($updateInfo in $ShuffledUpdates) {
-        Write-Log "Processing update: $($updateInfo.Title)"
+        Write-Log-Highlight "Processing update: $($updateInfo.Title)" -HighlightText $updateInfo.Title -HighlightColor "Green"
         
         # Re-search for this specific update to get the COM object
         $updateId = $updateInfo.Identity
@@ -397,7 +429,7 @@ function Install-WindowsUpdates {
         $SingleUpdateCollection.Add($Update) | Out-Null
         
         # Download single update with progress tracking
-        Write-Log "Downloading update: $($Update.Title)"
+        Write-Log-Highlight "Downloading update: $($Update.Title)" -HighlightText $Update.Title -HighlightColor "Yellow"
         # Use MinDownloadSize as the baseline size (cap progress at 100% as more data may be downloaded)
         $updateSize = if ($Update.MinDownloadSize -gt 0) { [math]::Round($Update.MinDownloadSize / 1MB, 2) } else { 0 }
         Write-Log "Update size: $updateSize MB"
@@ -405,69 +437,61 @@ function Install-WindowsUpdates {
         $Downloader = $UpdateSession.CreateUpdateDownloader()
         $Downloader.Updates = $SingleUpdateCollection
         
-        # Monitor download progress using Write-Progress
-        $downloadJob = Start-Job -ScriptBlock {
-            param($downloader, $updateTitle, $updateSize)
-
-            while ($true) {
-                try {
-                    Start-Sleep -Seconds 1
-                    $progress = $downloader.Progress
-                    Write-Progress -Activity "Downloading Windows Update: $updateTitle" -Status "Downloading..." -PercentComplete $progress
-                    
-                    if ($progress -eq 100) {
-                        break
-                    }
-                } catch {
-                    Write-Log "Error monitoring download progress: $($_.Exception.Message)"
-                    break
-                }
-            }
-        } -ArgumentList $Downloader, $Update.Title, $updateSize
+        # Begin asynchronous download
+        $DownloadResult = $Downloader.BeginDownload()
         
-        $DownloadResult = $Downloader.Download()
-        Stop-Job -Job $downloadJob -ErrorAction SilentlyContinue
-        Remove-Job -Job $downloadJob -ErrorAction SilentlyContinue
+        # Wait for download to complete with progress monitoring
+        while ($DownloadResult.IsCompleted -eq $false) {
+            Start-Sleep -Seconds 1
+            
+            # Monitor download progress
+            try {
+                $progress = $Downloader.Progress
+                Write-Progress -Activity "Downloading Windows Update: $($Update.Title)" -Status "Downloading..." -PercentComplete $progress
+            } catch {
+                Write-Log "Error monitoring download progress: $($_.Exception.Message)"
+            }
+        }
+        
+        # End the download and get the result
+        $DownloadResult = $Downloader.EndDownload($DownloadResult)
+        
         Write-Progress -Activity "Downloading Windows Update: $($Update.Title)" -Completed
         
         if ($DownloadResult.ResultCode -eq 2) {
-            Write-Log "Update downloaded successfully: $($Update.Title)"
+            Write-Log-Highlight "Update downloaded successfully: $($Update.Title)" -HighlightText $Update.Title -HighlightColor "Green"
             
             # Install single update with progress tracking
-            Write-Log "Installing update: $($Update.Title)"
+            Write-Log-Highlight "Installing update: $($Update.Title)" -HighlightText $Update.Title -HighlightColor "Magenta"
             $Installer = $UpdateSession.CreateUpdateInstaller()
             $Installer.Updates = $SingleUpdateCollection
             
-            # Monitor installation progress using Write-Progress
-            $installJob = Start-Job -ScriptBlock {
-                param($installer, $updateTitle)
-                
-                while ($true) {
-                    try {
-                        Start-Sleep -Seconds 1
-                        $progress = $installer.Progress
-                        Write-Progress -Activity "Installing Windows Update: $updateTitle" -Status "Installing..." -PercentComplete $progress
-                        
-                        if ($progress -eq 100) {
-                            break
-                        }
-                    } catch {
-                        Write-Log "Error monitoring installation progress: $($_.Exception.Message)"
-                        break
-                    }
-                }
-            } -ArgumentList $Installer, $Update.Title
+            # Begin asynchronous installation
+            $InstallResult = $Installer.BeginInstall()
             
-            $InstallResult = $Installer.Install()
-            Stop-Job -Job $installJob -ErrorAction SilentlyContinue
-            Remove-Job -Job $installJob -ErrorAction SilentlyContinue
+            # Wait for installation to complete with progress monitoring
+            while ($InstallResult.IsCompleted -eq $false) {
+                Start-Sleep -Seconds 1
+                
+                # Monitor installation progress
+                try {
+                    $progress = $Installer.Progress
+                    Write-Progress -Activity "Installing Windows Update: $($Update.Title)" -Status "Installing..." -PercentComplete $progress
+                } catch {
+                    Write-Log "Error monitoring installation progress: $($_.Exception.Message)"
+                }
+            }
+            
+            # End the installation and get the result
+            $InstallResult = $Installer.EndInstall($InstallResult)
+            
             Write-Progress -Activity "Installing Windows Update: $($Update.Title)" -Completed
             
             if ($InstallResult.ResultCode -eq 2) {
-                Write-Log "Update installed successfully: $($Update.Title)"
+                Write-Log-Highlight "Update installed successfully: $($Update.Title)" -HighlightText $Update.Title -HighlightColor "Green"
                 if ($InstallResult.RebootRequired) {
                     $rebootRequired = $true
-                    Write-Log "Reboot required after: $($Update.Title)"
+                    Write-Log-Highlight "Reboot required after: $($Update.Title)" -HighlightText $Update.Title -HighlightColor "Red"
                 }
             } else {
                 throw "Failed to install update: $($Update.Title). Result code: $($InstallResult.ResultCode)"
