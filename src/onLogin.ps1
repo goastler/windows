@@ -47,7 +47,7 @@ function Invoke-CommandWithExitCode {
         if (!$process.StandardOutput.EndOfStream) {
             $line = $process.StandardOutput.ReadLine()
             if ($line) {
-                Write-Host $line
+                Write-Host $line -ForegroundColor Green
                 $stdoutOutput += $line
                 $hasOutput = $true
             }
@@ -121,33 +121,24 @@ function Wait-ForUserCancellation {
         [string]$Message = "Press any key to cancel..."
     )
     
-    Write-Host $Message -ForegroundColor Yellow
-    
-    # Create a job to wait for key press
-    $keyJob = Start-Job -ScriptBlock {
-        $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
-        return $true
-    }
-    
-    # Wait for either the time to expire or a key to be pressed
     $timeout = $Seconds
-    $elapsed = 0
-    
-    while ($elapsed -lt $timeout) {
-        if ($keyJob.State -eq "Completed") {
-            Write-Host "`nUser cancelled. Exiting script..." -ForegroundColor Red
-            Stop-Job $keyJob -ErrorAction SilentlyContinue
-            Remove-Job $keyJob -ErrorAction SilentlyContinue
+    $stopwatch = [Diagnostics.Stopwatch]::StartNew()
+
+    Write-Host "$Message" -ForegroundColor Yellow
+
+    while ($stopwatch.Elapsed.TotalSeconds -lt $timeout) {
+        if ([Console]::KeyAvailable) {
+            $key = [Console]::ReadKey($true)  # $true prevents echo to screen
+            Write-Host "`nYou pressed: $($key.Key)" -ForegroundColor Red
+            Write-Host "User cancelled. Exiting script..." -ForegroundColor Red
             exit 1
         }
-        
         Start-Sleep -Milliseconds 100
-        $elapsed += 0.1
     }
-    
-    # Clean up the job
-    Stop-Job $keyJob -ErrorAction SilentlyContinue
-    Remove-Job $keyJob -ErrorAction SilentlyContinue
+
+    if (-not [Console]::KeyAvailable -and $stopwatch.Elapsed.TotalSeconds -ge $timeout) {
+        Write-Host "No key was pressed within $timeout seconds." -ForegroundColor Green
+    }
 }
 
 function Install-ChocolateyAndPackages {
@@ -418,7 +409,7 @@ function Setup-BgInfo {
         Write-Log "Creating BgInfo startup task..."
         
         # Create the action
-        $action = New-ScheduledTaskAction -Execute $bgInfoExe -Argument "/nolicprompt /timer:0 /silent /accepteula"
+        $action = New-ScheduledTaskAction -Execute $bgInfoExe -Argument "/nolicprompt /timer:0 /all"
         
         # Create the trigger (at startup)
         $trigger = New-ScheduledTaskTrigger -AtStartup
