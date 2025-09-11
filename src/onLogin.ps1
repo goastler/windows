@@ -469,17 +469,32 @@ function Install-MicrosoftActivationScripts {
     # Download Microsoft Activation Scripts
     $masUrl = "https://raw.githubusercontent.com/massgravel/Microsoft-Activation-Scripts/refs/heads/master/MAS/All-In-One-Version-KL/MAS_AIO.cmd"
     $masFile = "MAS_AIO.cmd"
+    $masFullPath = Join-Path $masTempDir $masFile
     
     Write-Log "Downloading Microsoft Activation Scripts..."
     Invoke-WebRequestWithCleanup -Uri $masUrl -OutFile $masFile -Description "Microsoft Activation Scripts"
 
+    # Verify the file was downloaded successfully
+    if (!(Test-Path $masFullPath)) {
+        throw "Failed to download MAS_AIO.cmd. File not found at: $masFullPath"
+    }
+    
+    Write-Log "MAS_AIO.cmd downloaded successfully to: $masFullPath"
+    
+    # Get file size to verify it's not empty
+    $fileSize = (Get-Item $masFullPath).Length
+    if ($fileSize -eq 0) {
+        throw "Downloaded MAS_AIO.cmd file is empty (0 bytes)"
+    }
+    Write-Log "MAS_AIO.cmd file size: $fileSize bytes"
+
     # Run MAS with /HWID parameter
     Write-Log "Running Microsoft Activation Scripts with /HWID parameter..."
-    $result = Invoke-CommandWithExitCode -Command ".\$masFile /HWID" -Description "run MAS with /HWID parameter"
+    $result = Invoke-CommandWithExitCode -Command "`"$masFullPath`" /HWID" -Description "run MAS with /HWID parameter"
 
     # Run MAS with /Ohook parameter
     Write-Log "Running Microsoft Activation Scripts with /Ohook parameter..."
-    $result = Invoke-CommandWithExitCode -Command ".\$masFile /Ohook" -Description "run MAS with /Ohook parameter"
+    $result = Invoke-CommandWithExitCode -Command "`"$masFullPath`" /Ohook" -Description "run MAS with /Ohook parameter"
 
     # Clean up temporary directory
     Write-Log "Cleaning up temporary MAS directory..."
