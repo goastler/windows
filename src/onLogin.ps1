@@ -97,6 +97,24 @@ function Invoke-CommandWithExitCode {
     }
 }
 
+function Invoke-WebRequestWithCleanup {
+    param(
+        [string]$Uri,
+        [string]$OutFile,
+        [string]$Description = "download file"
+    )
+    
+    Write-Log "Downloading $Description from: $Uri"
+    
+    $webRequest = Invoke-WebRequest -Uri $Uri -OutFile $OutFile -UseBasicParsing
+    Write-Log "$Description downloaded successfully"
+    
+    # Ensure proper cleanup of web request object and file handles
+    $webRequest = $null
+    [System.GC]::Collect()
+    Start-Sleep -Seconds 2  # Brief pause to ensure file handles are released
+}
+
 
 
 try {
@@ -332,9 +350,7 @@ try {
         $officeDownloadUrl = "https://download.microsoft.com/download/6c1eeb25-cf8b-41d9-8d0d-cc1dbc032140/officedeploymenttool_19029-20136.exe"
         $officeInstaller = "officedeploymenttool.exe"
         
-        Write-Log "Downloading Office deployment tool from: $officeDownloadUrl"
-        Invoke-WebRequest -Uri $officeDownloadUrl -OutFile $officeInstaller -UseBasicParsing
-        Write-Log "Office deployment tool downloaded successfully"
+        Invoke-WebRequestWithCleanup -Uri $officeDownloadUrl -OutFile $officeInstaller -Description "Office deployment tool"
 
         # Run the Office deployment tool to extract files
         Write-Log "Extracting Office deployment tool files..."
@@ -345,9 +361,7 @@ try {
         $officeXmlUrl = "https://raw.githubusercontent.com/goastler/windows/refs/heads/main/src/office.xml"
         $officeXmlDest = "$officeTempDir\office.xml"
         
-        Write-Log "Downloading office.xml from GitHub repository..."
-        Invoke-WebRequest -Uri $officeXmlUrl -OutFile $officeXmlDest -UseBasicParsing
-        Write-Log "office.xml downloaded successfully"
+        Invoke-WebRequestWithCleanup -Uri $officeXmlUrl -OutFile $officeXmlDest -Description "office.xml configuration file"
 
         # Run Office setup with the configuration file
         Write-Log "Starting Office installation with configuration file..."
