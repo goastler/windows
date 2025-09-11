@@ -6,6 +6,9 @@ $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
 # Scheduled task name
 $scheduledTaskName = "OnLogin"
 
+# Store original directory location for restoration on error
+$originalScriptLocation = Get-Location
+
 # Set error action preference for the entire script
 $ErrorActionPreference = "Stop"
 
@@ -607,6 +610,15 @@ try {
     Write-Host "`n=== ERROR ===" -ForegroundColor Red
     Write-Host "An error occurred during setup: $($_.Exception.Message)" -ForegroundColor Red
     Write-Host "Error details: $($_.Exception)" -ForegroundColor Red
+    
+    # Restore original directory location on error
+    try {
+        Set-Location $originalScriptLocation
+        Write-Log "Restored to original directory: $originalScriptLocation"
+    }
+    catch {
+        Write-Log "Warning: Could not restore to original directory: $($_.Exception.Message)"
+    }
 }
 
 Write-Host "`n=== REBOOT REQUIRED ===" -ForegroundColor Yellow
