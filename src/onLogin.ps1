@@ -444,7 +444,7 @@ function Install-WindowsUpdates {
             
             # Monitor download progress
             try {
-                $progress = $Downloader.GetProgress().get_PercentComplete()
+                $progress = $DownloadJob.GetProgress().get_PercentComplete()
                 Write-Progress -Activity "Downloading Windows Update: $($Update.Title)" -Status "Downloading..." -PercentComplete $progress
             } catch {
                 Write-Log "Error monitoring download progress: $($_.Exception.Message)"
@@ -474,7 +474,7 @@ function Install-WindowsUpdates {
                 
                 # Monitor installation progress
                 try {
-                    $progress = $Installer.GetProgress().get_PercentComplete()
+                    $progress = $InstallJob.GetProgress().get_PercentComplete()
                     Write-Progress -Activity "Installing Windows Update: $($Update.Title)" -Status "Installing..." -PercentComplete $progress
                 } catch {
                     Write-Log "Error monitoring installation progress: $($_.Exception.Message)"
