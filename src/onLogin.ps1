@@ -115,8 +115,6 @@ function Invoke-WebRequestWithCleanup {
     Start-Sleep -Seconds 2  # Brief pause to ensure file handles are released
 }
 
-
-
 try {
     Write-Log "Starting on login setup..."
 
@@ -139,7 +137,7 @@ try {
     # Check if Chocolatey is already installed
     if (Get-Command choco -ErrorAction SilentlyContinue) {
         Write-Log "Chocolatey is already installed. Updating..."
-        Invoke-CommandWithExitCode -Command "choco upgrade chocolatey -y" -Description "upgrade Chocolatey"
+        $result = Invoke-CommandWithExitCode -Command "choco upgrade chocolatey -y" -Description "upgrade Chocolatey"
     } else {
         Write-Log "Installing Chocolatey..."
         # Install Chocolatey
@@ -157,7 +155,7 @@ try {
     Start-Sleep -Seconds 5
 
     # Clear any existing Chocolatey downloads to prevent corrupted package issues
-    Invoke-CommandWithExitCode -Command "choco cache remove --expired -y" -Description "clear Chocolatey downloads"
+    $result = Invoke-CommandWithExitCode -Command "choco cache remove --expired -y" -Description "clear Chocolatey downloads"
 
     # Define common packages to install
     $packages = @(
@@ -171,14 +169,14 @@ try {
 
     # Install packages
     foreach ($package in $packages) {
-        Invoke-CommandWithExitCode -Command "choco install $package -y --ignore-checksums" -Description "install package '$package'"
+        $result = Invoke-CommandWithExitCode -Command "choco install $package -y --ignore-checksums" -Description "install package '$package'"
     }
 
     # Update all packages
-    Invoke-CommandWithExitCode -Command "choco upgrade all -y --ignore-checksums" -Description "upgrade all packages"
+    $result = Invoke-CommandWithExitCode -Command "choco upgrade all -y --ignore-checksums" -Description "upgrade all packages"
 
     # Clean up
-    Invoke-CommandWithExitCode -Command "choco cache remove --expired -y" -Description "clean up Chocolatey cache"
+    $result = Invoke-CommandWithExitCode -Command "choco cache remove --expired -y" -Description "clean up Chocolatey cache"
 
     Write-Log "Chocolatey installation and package setup completed!"
 
