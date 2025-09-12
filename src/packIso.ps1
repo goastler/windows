@@ -217,7 +217,7 @@ function Add-AutounattendXml {
     $userSid = $currentUser.User
     
     $acl = Get-Acl $destinationPath
-    $accessRule = New-Object System.Security.AccessControl.FileSystemAccessRule($userSid, "FullControl", "None", "Allow")
+    $accessRule = New-Object System.Security.AccessControl.FileSystemAccessRule($userSid, "FullControl", "ContainerInherit,ObjectInherit", "None", "Allow")
     $acl.SetOwner($currentUser.User)
     $acl.SetAccessRule($accessRule)
     Set-Acl -Path $destinationPath -AclObject $acl
