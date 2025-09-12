@@ -305,15 +305,15 @@ function Install-WindowsUpdates {
     Write-Log "Preparing Windows Update check..."
     
     # Clear Windows Update cache to resolve stuck states
-    Write-Log "Clearing Windows Update cache..."
-    Stop-Service -Name "wuauserv" -Force -ErrorAction SilentlyContinue
-    Start-Sleep -Seconds 3
-    if (Test-Path "$env:SystemRoot\SoftwareDistribution\DataStore") {
-        Remove-Item -Path "$env:SystemRoot\SoftwareDistribution\DataStore\*" -Recurse -Force -ErrorAction SilentlyContinue
-    }
-    Start-Service -Name "wuauserv" -ErrorAction SilentlyContinue
-    Start-Sleep -Seconds 5
-    Write-Log "Windows Update cache cleared and service restarted"
+    # Write-Log "Clearing Windows Update cache..."
+    # Stop-Service -Name "wuauserv" -Force -ErrorAction SilentlyContinue
+    # Start-Sleep -Seconds 3
+    # if (Test-Path "$env:SystemRoot\SoftwareDistribution\DataStore") {
+    #     Remove-Item -Path "$env:SystemRoot\SoftwareDistribution\DataStore\*" -Recurse -Force -ErrorAction SilentlyContinue
+    # }
+    # Start-Service -Name "wuauserv" -ErrorAction SilentlyContinue
+    # Start-Sleep -Seconds 5
+    # Write-Log "Windows Update cache cleared and service restarted"
 
     Write-Log "Checking for available Windows updates..."
 
