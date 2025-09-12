@@ -371,9 +371,6 @@ function Install-WindowsUpdates {
         $ShuffledUpdates = $UpdatesArray | Get-Random -Count $UpdatesArray.Count
     }
     
-    # Install the updates one by one
-    $rebootRequired = $false
-    
     foreach ($Update in $ShuffledUpdates) {
         Write-Log-Highlight "Processing update: $($Update.Title)" -HighlightText $Update.Title -HighlightColor "Green"
         
@@ -442,23 +439,17 @@ function Install-WindowsUpdates {
             
             Write-Progress -Activity "Installing Windows Update: $($Update.Title)" -Completed
 
-            # Print update properties
-            Write-Host "Update Properties:" -ForegroundColor Cyan
-            Write-Host "  Title: $($Update.Title)"
-            Write-Host "  Description: $($Update.Description)"
-            Write-Host "  KBArticleIDs: $($Update.KBArticleIDs -join ', ')"
-            Write-Host "  SupportURL: $($Update.SupportURL)"
-            Write-Host "  IsDownloaded: $($Update.IsDownloaded)"
-            Write-Host "  IsInstalled: $($Update.IsInstalled)"
-            Write-Host "  RebootBehavior: $($Update.RebootBehavior)"
-            Write-Host "  MsrcSeverity: $($Update.MsrcSeverity)"
-            Write-Host "  Categories: $((($Update.Categories | ForEach-Object { $_.Name }) -join ', '))"
-            
-            if ($Update.IsInstalled) {
+            $UpdateResult = $Update.GetUpdateResult()
+            if ($UpdateResult.ResultCode -eq 2) {
                 Write-Log-Highlight "Update installed successfully: $($Update.Title)" -HighlightText $Update.Title -HighlightColor "Green"
-                if ($Update.RebootBehavior -ne 0) {
-                    $rebootRequired = $true
-                    Write-Log-Highlight "Reboot required after: $($Update.Title)" -HighlightText $Update.Title -HighlightColor "Red"
+                if ($UpdateResult.RebootRequired) {
+                    Write-Host "`n=== REBOOT REQUIRED ===" -ForegroundColor Yellow
+                    Write-Host "Windows updates require a system reboot." -ForegroundColor Yellow
+                    Write-Host "The computer will restart in 30 seconds..." -ForegroundColor Yellow
+                    Wait-ForUserCancellation -Seconds 30 -Message "Press any key to cancel the reboot"
+                    Write-Log "Reboot required. Restarting computer..."
+                    # Restart-Computer -Force
+                    Pause
                 }
             } else {
                 throw "Failed to install update: $($Update.Title)"
@@ -469,17 +460,13 @@ function Install-WindowsUpdates {
     }
     
     Write-Log "All updates processed"
-    if ($rebootRequired) {
-        Write-Host "`n=== REBOOT REQUIRED ===" -ForegroundColor Yellow
-        Write-Host "Windows updates require a system reboot." -ForegroundColor Yellow
-        Write-Host "The computer will restart in 30 seconds..." -ForegroundColor Yellow
-        Wait-ForUserCancellation -Seconds 30 -Message "Press any key to cancel the reboot"
-        Write-Log "Reboot required. Restarting computer..."
-        # Restart-Computer -Force
-        Pause
-    } else {
-        Write-Log "No reboot required. All updates processed successfully."
-    }
+    Write-Host "`n=== REBOOT REQUIRED ===" -ForegroundColor Yellow
+    Write-Host "Windows updates require a system reboot." -ForegroundColor Yellow
+    Write-Host "The computer will restart in 30 seconds..." -ForegroundColor Yellow
+    Wait-ForUserCancellation -Seconds 30 -Message "Press any key to cancel the reboot"
+    Write-Log "Reboot required. Restarting computer..."
+    # Restart-Computer -Force
+    Pause
 }
 
 function Install-Office {
