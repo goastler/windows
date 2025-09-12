@@ -445,7 +445,7 @@ function Install-WindowsUpdates {
                     Write-Host "The computer will restart in 30 seconds..." -ForegroundColor Yellow
                     Wait-ForUserCancellation -Seconds 30 -Message "Press any key to cancel the reboot"
                     Write-Log "Reboot required. Restarting computer..."
-                    # Restart-Computer -Force
+                    Restart-Computer -Force
                     Pause
                 }
             } else {
@@ -462,7 +462,7 @@ function Install-WindowsUpdates {
     Write-Host "The computer will restart in 30 seconds..." -ForegroundColor Yellow
     Wait-ForUserCancellation -Seconds 30 -Message "Press any key to cancel the reboot"
     Write-Log "Reboot required. Restarting computer..."
-    # Restart-Computer -Force
+    Restart-Computer -Force
     Pause
 }
 
@@ -747,8 +747,8 @@ try {
 }
 
 Write-Host "`n=== REBOOT REQUIRED ===" -ForegroundColor Yellow
-Write-Host "The system will reboot in 10 seconds..." -ForegroundColor Yellow
-Wait-ForUserCancellation -Seconds 10
+Write-Host "The system will reboot in 30 seconds..." -ForegroundColor Yellow
+Wait-ForUserCancellation -Seconds 30
 Write-Host "Rebooting now..." -ForegroundColor Red
-# Restart-Computer -Force
+Restart-Computer -Force
 Pause
