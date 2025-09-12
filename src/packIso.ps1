@@ -65,15 +65,6 @@ function Test-RequiredTools {
     # Always install Windows ADK via Chocolatey (it won't reinstall if already present)
     Install-WindowsADK
     
-    # After installation, find oscdimg.exe
-    $oscdimgPath = Get-Command "oscdimg.exe" -ErrorAction SilentlyContinue
-    if ($oscdimgPath) {
-        $script:oscdimgPath = $oscdimgPath.Source
-        Write-ColorOutput "Found oscdimg.exe at: $script:oscdimgPath" "Green"
-        return
-    }
-    
-    throw "oscdimg.exe not found after Windows ADK installation. Please check the installation."
 }
 
 function Test-Chocolatey {
