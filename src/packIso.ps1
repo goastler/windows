@@ -179,6 +179,22 @@ function Extract-IsoContents {
         if ($LASTEXITCODE -gt 7) {
             throw "Failed to extract ISO contents. Robocopy exit code: $LASTEXITCODE"
         }
+
+        # Take ownership of all extracted files
+        Write-ColorOutput "Taking ownership of extracted files..." "Yellow"
+        
+        # Get current user's SID for ownership
+        $currentUser = [System.Security.Principal.WindowsIdentity]::GetCurrent()
+        $userSid = $currentUser.User
+        
+        # Take ownership recursively
+        $acl = Get-Acl $ExtractPath
+        $accessRule = New-Object System.Security.AccessControl.FileSystemAccessRule($userSid, "FullControl", "ContainerInherit,ObjectInherit", "None", "Allow")
+        $acl.SetOwner($currentUser.User)
+        $acl.SetAccessRule($accessRule)
+        Set-Acl -Path $ExtractPath -AclObject $acl
+        
+        Write-ColorOutput "Ownership taken successfully" "Green"
         
         Write-ColorOutput "ISO contents extracted successfully" "Green"
     } finally {
@@ -206,58 +222,33 @@ function New-IsoFromDirectory {
     )
     Write-ColorOutput "Creating new ISO from directory: $SourcePath" "Yellow"
 
-    $originalLocation   = Get-Location
-    $oscdimgWorkingDir  = "C:\OscdimgWork_$(Get-Date -Format 'yyyyMMdd_HHmmss')"
-    New-Item -ItemType Directory -Path $oscdimgWorkingDir -Force | Out-Null
-
     # Resolve absolute paths
     $absSrc    = (Resolve-Path $SourcePath).ProviderPath
     $absOutDir = (Resolve-Path (Split-Path $OutputPath -Parent)).ProviderPath
     $absOutIso = Join-Path $absOutDir (Split-Path $OutputPath -Leaf)
 
-    # Map X: to the PARENT of the source, then reference leaf\.
-    $parent = Split-Path $absSrc -Parent
-    $leaf   = Split-Path $absSrc -Leaf
-    $drive  = "X:"
+    # Use source directly without drive mapping
+    $sourcePathDot = "$absSrc\."
+    $etfsbootPath  = "$absSrc\boot\etfsboot.com"
+    $efisysPath    = "$absSrc\efi\microsoft\boot\efisys.bin"
 
-    try {
-        subst $drive /D | Out-Null 2>$null
-        subst $drive $parent
-        if (!(Test-Path $drive)) { throw "Failed to map $drive to $parent" }
+    Write-ColorOutput "Using source directly: $absSrc" "Cyan"
 
-        Set-Location $oscdimgWorkingDir
-        Write-ColorOutput "Changed working directory to: $oscdimgWorkingDir" "Cyan"
-        Write-ColorOutput "Using mapped source: $drive\$leaf" "Cyan"
+    $arguments = @(
+        "-m"
+        "-u2"
+        "-udfver102"
+        "-l","W11_CUSTOM"
+        "-bootdata:2#p0,e,b`"$etfsbootPath`"#pEF,e,b`"$efisysPath`""
+        "`"$sourcePathDot`""
+        "`"$absOutIso`""
+    )
 
-        # Use \. to avoid the quoted-backslash parser bug
-        $shortSrc      = "$drive\$leaf"
-        $shortSrcDot   = "$shortSrc\."
-        $etfsbootPath  = "$shortSrc\boot\etfsboot.com"
-        $efisysPath    = "$shortSrc\efi\microsoft\boot\efisys.bin"
+    Write-ColorOutput "Running oscdimg with arguments: $($arguments -join ' ')" "Cyan"
+    $p = Start-Process -FilePath $OscdimgPath -ArgumentList $arguments -Wait -PassThru -NoNewWindow
+    if ($p.ExitCode -ne 0) { throw "oscdimg failed with exit code: $($p.ExitCode)" }
 
-        $arguments = @(
-            "-m"
-            "-u2"
-            "-udfver102"
-            "-l","W11_CUSTOM"
-            "-bootdata:2#p0,e,b`"$etfsbootPath`"#pEF,e,b`"$efisysPath`""
-            "`"$shortSrcDot`""
-            "`"$absOutIso`""
-        )
-
-        Write-ColorOutput "Running oscdimg with arguments: $($arguments -join ' ')" "Cyan"
-        $p = Start-Process -FilePath $OscdimgPath -ArgumentList $arguments -Wait -PassThru -NoNewWindow
-        if ($p.ExitCode -ne 0) { throw "oscdimg failed with exit code: $($p.ExitCode)" }
-
-        Write-ColorOutput "ISO created successfully: $absOutIso" "Green"
-    }
-    finally {
-        try { subst $drive /D | Out-Null 2>$null } catch {}
-        Set-Location $originalLocation
-        if (Test-Path $oscdimgWorkingDir) {
-            Remove-Item $oscdimgWorkingDir -Recurse -Force -ErrorAction SilentlyContinue
-        }
-    }
+    Write-ColorOutput "ISO created successfully: $absOutIso" "Green"
 }
 
 function Remove-WorkingDirectory {
