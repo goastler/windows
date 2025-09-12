@@ -227,8 +227,6 @@ function New-IsoFromDirectory {
     $absOutDir = (Resolve-Path (Split-Path $OutputPath -Parent)).ProviderPath
     $absOutIso = Join-Path $absOutDir (Split-Path $OutputPath -Leaf)
 
-    # Use source directly without drive mapping
-    $sourcePathDot = "$absSrc\."
     $etfsbootPath  = "$absSrc\boot\etfsboot.com"
     $efisysPath    = "$absSrc\efi\microsoft\boot\efisys.bin"
 
@@ -238,9 +236,9 @@ function New-IsoFromDirectory {
         "-m"
         "-u2"
         "-udfver102"
-        "-l","W11_CUSTOM"
+        "-l","WIN_CUSTOM"
         "-bootdata:2#p0,e,b`"$etfsbootPath`"#pEF,e,b`"$efisysPath`""
-        "`"$sourcePathDot`""
+        "`"$absSrc`""
         "`"$absOutIso`""
     )
 
