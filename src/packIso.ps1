@@ -59,12 +59,32 @@ function Test-Administrator {
     return $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 }
 
+function Find-OscdimgPath {
+    $adkPaths = @(
+        "${env:ProgramFiles(x86)}\Windows Kits\10\Assessment and Deployment Kit\Deployment Tools\amd64\Oscdimg\oscdimg.exe",
+        "${env:ProgramFiles}\Windows Kits\10\Assessment and Deployment Kit\Deployment Tools\amd64\Oscdimg\oscdimg.exe",
+        "${env:ProgramFiles(x86)}\Windows Kits\8.1\Assessment and Deployment Kit\Deployment Tools\amd64\Oscdimg\oscdimg.exe",
+        "${env:ProgramFiles}\Windows Kits\8.1\Assessment and Deployment Kit\Deployment Tools\amd64\Oscdimg\oscdimg.exe"
+    )
+    
+    foreach ($path in $adkPaths) {
+        if (Test-Path $path) {
+            Write-ColorOutput "Found oscdimg.exe at: $path" "Green"
+            return $path
+        }
+    }
+    
+    throw "oscdimg.exe not found. Please ensure Windows ADK is properly installed."
+}
+
 function Test-RequiredTools {
     Write-ColorOutput "Installing Windows ADK via Chocolatey..." "Yellow"
     
     # Always install Windows ADK via Chocolatey (it won't reinstall if already present)
     Install-WindowsADK
     
+    # Find oscdimg.exe path
+    $script:oscdimgPath = Find-OscdimgPath
 }
 
 function Test-Chocolatey {
@@ -233,25 +253,48 @@ try {
     Test-RequiredTools
     
     Write-ColorOutput "Validating input files..." "Yellow"
-    if (-not (Test-Path $InputIso -PathType Leaf)) {
-        throw "Input ISO file not found: $InputIso"
+    
+    # Resolve and validate ISO paths
+    try {
+        $resolvedInputIso = Resolve-Path $InputIso -ErrorAction Stop
+        Write-ColorOutput "Resolved input ISO path: $resolvedInputIso" "Cyan"
+    } catch {
+        throw "Cannot resolve input ISO file path: $InputIso. Error: $($_.Exception.Message)"
+    }
+    
+    try {
+        $resolvedOutputIso = Resolve-Path $OutputIso -ErrorAction SilentlyContinue
+        if (-not $resolvedOutputIso) {
+            # If path doesn't exist, resolve the parent directory and create the full path
+            $outputDir = Split-Path $OutputIso -Parent
+            $outputFile = Split-Path $OutputIso -Leaf
+            $resolvedOutputDir = Resolve-Path $outputDir -ErrorAction Stop
+            $resolvedOutputIso = Join-Path $resolvedOutputDir $outputFile
+        }
+        Write-ColorOutput "Resolved output ISO path: $resolvedOutputIso" "Cyan"
+    } catch {
+        throw "Cannot resolve output ISO file path: $OutputIso. Error: $($_.Exception.Message)"
+    }
+    
+    if (-not (Test-Path $resolvedInputIso -PathType Leaf)) {
+        throw "Input ISO file not found: $resolvedInputIso"
     }
     if (-not (Test-Path $AutounattendXml -PathType Leaf)) {
         throw "Autounattend XML file not found: $AutounattendXml"
     }
     Write-ColorOutput "Input files validated" "Green"
     
-    if (Test-Path $OutputIso) {
+    if (Test-Path $resolvedOutputIso) {
         Write-ColorOutput "Output ISO already exists. Removing..." "Yellow"
-        Remove-Item $OutputIso -Force
+        Remove-Item $resolvedOutputIso -Force
     }
     
-    Extract-IsoContents -IsoPath $InputIso -ExtractPath $WorkingDirectory
+    Extract-IsoContents -IsoPath $resolvedInputIso -ExtractPath $WorkingDirectory
     Add-AutounattendXml -ExtractPath $WorkingDirectory -AutounattendXmlPath $AutounattendXml
-    New-IsoFromDirectory -SourcePath $WorkingDirectory -OutputPath $OutputIso -OscdimgPath $script:oscdimgPath
+    New-IsoFromDirectory -SourcePath $WorkingDirectory -OutputPath $resolvedOutputIso -OscdimgPath $script:oscdimgPath
     
-    if (Test-Path $OutputIso) {
-        $fileSize = (Get-Item $OutputIso).Length
+    if (Test-Path $resolvedOutputIso) {
+        $fileSize = (Get-Item $resolvedOutputIso).Length
         $fileSizeGB = [math]::Round($fileSize / 1GB, 2)
         Write-ColorOutput "Output ISO created successfully!" "Green"
         Write-ColorOutput "File size: $fileSizeGB GB" "Green"
