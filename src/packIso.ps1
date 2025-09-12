@@ -108,7 +108,7 @@ function Install-Chocolatey {
         iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
         
         if (Test-Chocolatey) {
-            Write-ColorOutput "✓ Chocolatey installed successfully!" "Green"
+            Write-ColorOutput "[OK] Chocolatey installed successfully!" "Green"
             return $true
         } else {
             Write-ColorOutput "Chocolatey installation failed to become available on PATH." "Red"
@@ -131,14 +131,14 @@ function Install-WindowsADK {
             throw "Windows ADK installation aborted (Chocolatey missing)."
         }
     } else {
-        Write-ColorOutput "✓ Chocolatey found" "Green"
+        Write-ColorOutput "[OK] Chocolatey found" "Green"
     }
 
     Write-ColorOutput "Installing Windows ADK via Chocolatey..." "Yellow"
     try {
         $result = Start-Process -FilePath "choco" -ArgumentList @("install","windows-adk","-y") -Wait -PassThru -NoNewWindow
         if ($result.ExitCode -eq 0) {
-            Write-ColorOutput "✓ Windows ADK installed successfully via Chocolatey!" "Green"
+            Write-ColorOutput "[OK] Windows ADK installed successfully via Chocolatey!" "Green"
             $env:Path = [System.Environment]::GetEnvironmentVariable('Path','Machine') + ';' + `
                         [System.Environment]::GetEnvironmentVariable('Path','User')
             return
