@@ -198,7 +198,6 @@ function Add-AutounattendXml {
     Copy-Item $AutounattendXmlPath $destinationPath -Force
     Write-ColorOutput "autounattend.xml added to: $destinationPath" "Green"
 }
-
 function New-IsoFromDirectory {
     param(
         [string]$SourcePath,
@@ -207,8 +206,8 @@ function New-IsoFromDirectory {
     )
     Write-ColorOutput "Creating new ISO from directory: $SourcePath" "Yellow"
 
-    $originalLocation = Get-Location
-    $oscdimgWorkingDir = "C:\OscdimgWork_$(Get-Date -Format 'yyyyMMdd_HHmmss')"
+    $originalLocation   = Get-Location
+    $oscdimgWorkingDir  = "C:\OscdimgWork_$(Get-Date -Format 'yyyyMMdd_HHmmss')"
     New-Item -ItemType Directory -Path $oscdimgWorkingDir -Force | Out-Null
 
     # Resolve absolute paths
@@ -216,28 +215,33 @@ function New-IsoFromDirectory {
     $absOutDir = (Resolve-Path (Split-Path $OutputPath -Parent)).ProviderPath
     $absOutIso = Join-Path $absOutDir (Split-Path $OutputPath -Leaf)
 
-    # Map a short virtual drive to the source to dodge oscdimg’s “delete existing file” bug
-    $drive = "X:"
+    # Map X: to the PARENT of the source, then reference leaf\.
+    $parent = Split-Path $absSrc -Parent
+    $leaf   = Split-Path $absSrc -Leaf
+    $drive  = "X:"
+
     try {
-        # Clean any stale mapping, then map
         subst $drive /D | Out-Null 2>$null
-        subst $drive $absSrc
-        if (!(Test-Path $drive)) { throw "Failed to map $drive to $absSrc" }
+        subst $drive $parent
+        if (!(Test-Path $drive)) { throw "Failed to map $drive to $parent" }
 
         Set-Location $oscdimgWorkingDir
         Write-ColorOutput "Changed working directory to: $oscdimgWorkingDir" "Cyan"
-        Write-ColorOutput "Using mapped source: $drive\" "Cyan"
+        Write-ColorOutput "Using mapped source: $drive\$leaf" "Cyan"
 
-        $shortSrc = "$drive\"
+        # Use \. to avoid the quoted-backslash parser bug
+        $shortSrc      = "$drive\$leaf"
+        $shortSrcDot   = "$shortSrc\."
+        $etfsbootPath  = "$shortSrc\boot\etfsboot.com"
+        $efisysPath    = "$shortSrc\efi\microsoft\boot\efisys.bin"
 
-        # Build args: no -o; BIOS+UEFI boot
         $arguments = @(
             "-m"
             "-u2"
             "-udfver102"
             "-l","W11_CUSTOM"
-            "-bootdata:2#p0,e,b`"$shortSrc\boot\etfsboot.com`"#pEF,e,b`"$shortSrc\efi\microsoft\boot\efisys.bin`""
-            "`"$shortSrc`""
+            "-bootdata:2#p0,e,b`"$etfsbootPath`"#pEF,e,b`"$efisysPath`""
+            "`"$shortSrcDot`""
             "`"$absOutIso`""
         )
 
@@ -255,7 +259,6 @@ function New-IsoFromDirectory {
         }
     }
 }
-
 
 function Remove-WorkingDirectory {
     param([string]$Path)
