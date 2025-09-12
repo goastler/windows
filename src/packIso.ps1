@@ -180,22 +180,6 @@ function Extract-IsoContents {
             throw "Failed to extract ISO contents. Robocopy exit code: $LASTEXITCODE"
         }
 
-        # Take ownership of all extracted files
-        Write-ColorOutput "Taking ownership of extracted files..." "Yellow"
-        
-        # Get current user's SID for ownership
-        $currentUser = [System.Security.Principal.WindowsIdentity]::GetCurrent()
-        $userSid = $currentUser.User
-        
-        # Take ownership recursively
-        $acl = Get-Acl $ExtractPath
-        $accessRule = New-Object System.Security.AccessControl.FileSystemAccessRule($userSid, "FullControl", "ContainerInherit,ObjectInherit", "None", "Allow")
-        $acl.SetOwner($currentUser.User)
-        $acl.SetAccessRule($accessRule)
-        Set-Acl -Path $ExtractPath -AclObject $acl
-        
-        Write-ColorOutput "Ownership taken successfully" "Green"
-        
         Write-ColorOutput "ISO contents extracted successfully" "Green"
     } finally {
         Write-ColorOutput "Dismounting ISO..." "Yellow"
@@ -212,15 +196,6 @@ function Add-AutounattendXml {
     Write-ColorOutput "Adding autounattend.xml to ISO contents..." "Yellow"
     $destinationPath = Join-Path $ExtractPath "autounattend.xml"
     Copy-Item $AutounattendXmlPath $destinationPath -Force
-    # Take ownership of the autounattend.xml file
-    $currentUser = [System.Security.Principal.WindowsIdentity]::GetCurrent()
-    $userSid = $currentUser.User
-    
-    $acl = Get-Acl $destinationPath
-    $accessRule = New-Object System.Security.AccessControl.FileSystemAccessRule($userSid, "FullControl", "ContainerInherit,ObjectInherit", "None", "Allow")
-    $acl.SetOwner($currentUser.User)
-    $acl.SetAccessRule($accessRule)
-    Set-Acl -Path $destinationPath -AclObject $acl
     Write-ColorOutput "autounattend.xml added to: $destinationPath" "Green"
 }
 
@@ -254,8 +229,9 @@ function New-IsoFromDirectory {
 
     Write-ColorOutput "Current working directory: $(Get-Location)" "Cyan"
     Write-ColorOutput "Running oscdimg with arguments: $($arguments -join ' ')" "Cyan"
-    $p = Start-Process -FilePath $OscdimgPath -ArgumentList $arguments -Wait -PassThru -NoNewWindow
-    if ($p.ExitCode -ne 0) { throw "oscdimg failed with exit code: $($p.ExitCode)" }
+    
+    & $OscdimgPath $arguments
+    if ($LASTEXITCODE -ne 0) { throw "oscdimg failed with exit code: $LASTEXITCODE" }
 
     Write-ColorOutput "ISO created successfully: $absOutIso" "Green"
 }
