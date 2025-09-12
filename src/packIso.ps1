@@ -148,33 +148,65 @@ function Test-RequiredTools {
 function Test-Chocolatey {
     return (Get-Command "choco" -ErrorAction SilentlyContinue) -ne $null
 }
-
-# Function to install Chocolatey
 function Install-Chocolatey {
     Write-ColorOutput "Installing Chocolatey package manager..." "Yellow"
-    
     try {
-        # Download and install Chocolatey
         $installScript = @"
 Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
 "@
-        
         Invoke-Expression $installScript
-        
-        # Refresh environment variables
-        $env:Path = [System.Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path", "User")
+
+        # Refresh PATH in this process so 'choco' is available immediately
+        $env:Path = [System.Environment]::GetEnvironmentVariable('Path','Machine') + ';' + [System.Environment]::GetEnvironmentVariable('Path','User')
         Start-Sleep -Seconds 3
+
         if (Test-Chocolatey) {
             Write-ColorOutput "✓ Chocolatey installed successfully!" "Green"
             return $true
         } else {
-            Write-ColorOutput "Chocolatey installation failed" "Red"
+            Write-ColorOutput "Chocolatey installation failed to become available on PATH." "Red"
             return $false
         }
     } catch {
         Write-ColorOutput "Chocolatey installation failed: $($_.Exception.Message)" "Red"
         return $false
     }
+}
+
+function Install-WindowsADK {
+    Write-ColorOutput "=== Windows ADK Installation ===" "Cyan"
+
+    if (-not (Test-Chocolatey)) {
+        Write-ColorOutput "Chocolatey not found. Installing Chocolatey..." "Yellow"
+        if (-not (Install-Chocolatey)) {
+            Write-ColorOutput "Failed to install Chocolatey. Showing manual installation instructions..." "Red"
+            Show-ManualInstallInstructions
+            throw "Windows ADK installation aborted (Chocolatey missing)."
+        }
+    } else {
+        Write-ColorOutput "✓ Chocolatey found" "Green"
+    }
+
+    Write-ColorOutput "Installing Windows ADK via Chocolatey..." "Yellow"
+    try {
+        $result = Start-Process -FilePath "choco" -ArgumentList @("install","windows-adk","-y") -Wait -PassThru -NoNewWindow
+        if ($result.ExitCode -eq 0) {
+            Write-ColorOutput "✓ Windows ADK installed successfully via Chocolatey!" "Green"
+
+            # Refresh PATH so newly installed tools are discoverable
+            $env:Path = [System.Environment]::GetEnvironmentVariable('Path','Machine') + ';' + [System.Environment]::GetEnvironmentVariable('Path','User')
+            return
+        } else {
+            Write-ColorOutput "Windows ADK installation via Chocolatey failed with exit code: $($result.ExitCode)" "Red"
+        }
+    } catch {
+        Write-ColorOutput "Windows ADK installation via Chocolatey threw an error: $($_.Exception.Message)" "Red"
+    }
+
+    # If we’re here, Chocolatey path failed — fall back to manual instructions
+    Write-ColorOutput "Falling back to manual installation instructions..." "Yellow"
+    Show-ManualInstallInstructions
+    throw "Windows ADK installation required. Please install it and run this script again."
 }
 
 # Function to install Windows ADK
