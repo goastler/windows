@@ -151,14 +151,23 @@ function Test-Chocolatey {
 function Install-Chocolatey {
     Write-ColorOutput "Installing Chocolatey package manager..." "Yellow"
     try {
-        $installScript = @"
-Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
-"@
-        Invoke-Expression $installScript
-
-        # Refresh PATH in this process so 'choco' is available immediately
-        $env:Path = [System.Environment]::GetEnvironmentVariable('Path','Machine') + ';' + [System.Environment]::GetEnvironmentVariable('Path','User')
-        Start-Sleep -Seconds 3
+        
+        # Check if Chocolatey is already installed
+        if (Get-Command choco -ErrorAction SilentlyContinue) {
+            Write-Log "Chocolatey is already installed. Updating..."
+            $chocoUpgradeResult = Invoke-CommandWithExitCode -Command "choco upgrade chocolatey -y" -Description "upgrade Chocolatey"
+        } else {
+            Write-Log "Installing Chocolatey..."
+            # Install Chocolatey
+            Set-ExecutionPolicy Bypass -Scope Process -Force
+            [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072
+            iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
+            
+            # Refresh environment variables
+            $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
+            
+            Write-Log "Chocolatey installed successfully"
+        }
 
         if (Test-Chocolatey) {
             Write-ColorOutput "✓ Chocolatey installed successfully!" "Green"
