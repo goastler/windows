@@ -62,9 +62,9 @@ function Test-Administrator {
 }
 
 function Test-RequiredTools {
-    Write-ColorOutput "Checking for required tools..." "Yellow"
+    # Write-ColorOutput "Checking for required tools..." "Yellow"
     
-    $oscdimgPath = Get-Command "oscdimg.exe" -ErrorAction SilentlyContinue
+    # $oscdimgPath = Get-Command "oscdimg.exe" -ErrorAction SilentlyContinue
     # if (-not $oscdimgPath) {
     #     $commonPaths = @(
     #         "${env:ProgramFiles(x86)}\Windows Kits\10\Assessment and Deployment Kit\Deployment Tools\amd64\Oscdimg\oscdimg.exe",
@@ -92,7 +92,7 @@ function Test-RequiredTools {
     #     $script:oscdimgPath = $oscdimgPath.Source
     # }
     
-    Write-ColorOutput "Found oscdimg.exe at: $script:oscdimgPath" "Green"
+    # Write-ColorOutput "Found oscdimg.exe at: $script:oscdimgPath" "Green"
 }
 
 # function Test-Chocolatey {
