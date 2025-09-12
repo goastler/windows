@@ -36,6 +36,9 @@ param(
     [string]$AutounattendXml = (Join-Path $PSScriptRoot "autounattend.xml"),
 
     [Parameter(Mandatory = $false)]
+    [string]$OemDirectory = (Join-Path (Split-Path $PSScriptRoot -Parent) '$OEM$'),
+
+    [Parameter(Mandatory = $false)]
     [string]$WorkingDirectory = "C:\WinIsoRepack_$(Get-Date -Format 'yyyyMMdd_HHmmss')",
 
     [Parameter(Mandatory = $false)]
@@ -199,6 +202,30 @@ function Add-AutounattendXml {
     Write-ColorOutput "autounattend.xml added to: $destinationPath" "Green"
 }
 
+function Add-OemDirectory {
+    param(
+        [string]$ExtractPath,
+        [string]$OemSourcePath
+    )
+    Write-ColorOutput "Adding $OEM$ directory to ISO contents..." "Yellow"
+    
+    if (-not (Test-Path $OemSourcePath -PathType Container)) {
+        Write-ColorOutput "Warning: $OEM$ directory not found at: $OemSourcePath" "Yellow"
+        return
+    }
+    
+    $destinationPath = Join-Path $ExtractPath '$OEM$'
+    
+    # Remove existing $OEM$ directory if it exists
+    if (Test-Path $destinationPath) {
+        Remove-Item $destinationPath -Recurse -Force
+    }
+    
+    # Copy the entire $OEM$ directory structure
+    Copy-Item $OemSourcePath $destinationPath -Recurse -Force
+    Write-ColorOutput "$OEM$ directory added to: $destinationPath" "Green"
+}
+
 function New-IsoFromDirectory {
     param(
         [string]$SourcePath,
@@ -260,6 +287,7 @@ try {
     Write-ColorOutput "Input ISO: $InputIso" "White"
     Write-ColorOutput "Output ISO: $OutputIso" "White"
     Write-ColorOutput "Autounattend XML: $AutounattendXml" "White"
+    Write-ColorOutput "OEM Directory: $OemDirectory" "White"
     Write-ColorOutput "Working Directory: $WorkingDirectory" "White"
     
     Test-RequiredTools
@@ -303,6 +331,7 @@ try {
     
     Extract-IsoContents -IsoPath $resolvedInputIso -ExtractPath $WorkingDirectory
     Add-AutounattendXml -ExtractPath $WorkingDirectory -AutounattendXmlPath $AutounattendXml
+    Add-OemDirectory -ExtractPath $WorkingDirectory -OemSourcePath $OemDirectory
     New-IsoFromDirectory -SourcePath $WorkingDirectory -OutputPath $resolvedOutputIso -OscdimgPath $script:oscdimgPath
     
     if (Test-Path $resolvedOutputIso) {
