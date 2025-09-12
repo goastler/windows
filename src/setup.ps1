@@ -67,6 +67,34 @@ function Write-Log-Highlight {
     Add-Content -Path $logFile -Value $logMessage
 }
 
+function Write-ProgressWithPercentage {
+    param(
+        [string]$Activity,
+        [string]$Status,
+        [int]$PercentComplete,
+        [string]$CurrentOperation = "",
+        [int]$Id = 0
+    )
+    
+    # Format the status with percentage
+    $formattedStatus = if ($CurrentOperation) {
+        "$Status - $CurrentOperation ($PercentComplete%)"
+    } else {
+        "$Status ($PercentComplete%)"
+    }
+    
+    # Create a visual progress bar
+    $barLength = 30
+    $filledLength = [math]::Floor($barLength * $PercentComplete / 100)
+    $bar = "[" + ("=" * $filledLength) + (" " * ($barLength - $filledLength)) + "]"
+    
+    # Write progress with enhanced formatting
+    Write-Progress -Activity $Activity -Status $formattedStatus -PercentComplete $PercentComplete -CurrentOperation $CurrentOperation -Id $Id
+    
+    # Also write to console for better visibility
+    Write-Host "`r$Activity - $bar $PercentComplete% - $Status" -NoNewline -ForegroundColor Cyan
+}
+
 function Invoke-CommandWithExitCode {
     param(
         [string]$Command,
@@ -225,17 +253,86 @@ function Invoke-WebRequestWithCleanup {
     param(
         [string]$Uri,
         [string]$OutFile,
-        [string]$Description = "download file"
+        [string]$Description = "download file",
+        [int]$ProgressId = 3
     )
     
     Write-Log "Downloading $Description from: $Uri"
     
     $webRequest = $null
     try {
-        $webRequest = Invoke-WebRequest -Uri $Uri -OutFile $OutFile -UseBasicParsing
+        # Create a web client for progress tracking
+        $webClient = New-Object System.Net.WebClient
+        
+        # Set up progress tracking
+        $totalBytes = 0
+        $downloadedBytes = 0
+        
+        # Register for download progress
+        Register-ObjectEvent -InputObject $webClient -EventName "DownloadProgressChanged" -Action {
+            $global:downloadProgress = $Event.SourceEventArgs
+        } | Out-Null
+        
+        # Get file size first
+        try {
+            $headRequest = [System.Net.WebRequest]::Create($Uri)
+            $headRequest.Method = "HEAD"
+            $response = $headRequest.GetResponse()
+            $totalBytes = $response.ContentLength
+            $response.Close()
+        } catch {
+            Write-Log "Could not determine file size, progress tracking may be limited"
+        }
+        
+        # Start download with progress tracking
+        $downloadTask = $webClient.DownloadFileTaskAsync($Uri, $OutFile)
+        
+        # Monitor progress
+        while (-not $downloadTask.IsCompleted) {
+            Start-Sleep -Milliseconds 100
+            
+            if ($global:downloadProgress) {
+                $percentComplete = if ($totalBytes -gt 0) {
+                    [math]::Round(($global:downloadProgress.BytesReceived / $totalBytes) * 100)
+                } else {
+                    [math]::Round(($global:downloadProgress.BytesReceived / ($global:downloadProgress.BytesReceived + 1)) * 100)
+                }
+                
+                $downloadedMB = [math]::Round($global:downloadProgress.BytesReceived / 1MB, 2)
+                $totalMB = if ($totalBytes -gt 0) { [math]::Round($totalBytes / 1MB, 2) } else { "Unknown" }
+                
+                Write-ProgressWithPercentage -Activity "Downloading $Description" -Status "Downloaded $downloadedMB MB of $totalMB MB" -PercentComplete $percentComplete -Id $ProgressId
+            }
+        }
+        
+        # Wait for completion and handle any exceptions
+        $downloadTask.Wait()
+        if ($downloadTask.Exception) {
+            throw $downloadTask.Exception
+        }
+        
+        Write-Progress -Activity "Downloading $Description" -Completed -Id $ProgressId
+        Write-Host "" # Clear the progress line
         Write-Log "$Description downloaded successfully"
     }
     finally {
+        # Clean up event subscription
+        try {
+            Get-EventSubscriber | Where-Object { $_.SourceObject -eq $webClient } | Unregister-Event
+        } catch {
+            # Ignore cleanup errors
+        }
+        
+        # Properly dispose of web client
+        if ($webClient) {
+            try {
+                $webClient.Dispose()
+            }
+            catch {
+                # Ignore disposal errors
+            }
+        }
+        
         # Properly dispose of web request object
         if ($webRequest) {
             try {
@@ -307,9 +404,22 @@ function Install-ChocolateyAndPackages {
 
     Write-Log "Installing common packages..."
 
-    # Install all packages in one command
-    $packageList = $packages -join " "
-    $chocoInstallResult = Invoke-CommandWithExitCode -Command "choco install $packageList -y --ignore-checksums" -Description "install all packages: $packageList"
+    # Install packages with progress tracking
+    $totalPackages = $packages.Count
+    $installedPackages = 0
+    
+    foreach ($package in $packages) {
+        $installedPackages++
+        $percentComplete = [math]::Round(($installedPackages / $totalPackages) * 100)
+        
+        Write-ProgressWithPercentage -Activity "Installing Chocolatey Packages" -Status "Installing $package" -PercentComplete $percentComplete -CurrentOperation "Package $installedPackages of $totalPackages" -Id 9
+        
+        Write-Log "Installing package: $package"
+        $chocoInstallResult = Invoke-CommandWithExitCode -Command "choco install $package -y --ignore-checksums" -Description "install package: $package"
+    }
+    
+    Write-Progress -Activity "Installing Chocolatey Packages" -Completed -Id 9
+    Write-Host "" # Clear the progress line
 
     # Clean up
     $chocoCacheCleanupResult = Invoke-CommandWithExitCode -Command "choco cache remove --expired -y" -Description "clean up Chocolatey cache"
@@ -466,7 +576,9 @@ function Install-WindowsUpdates {
                 
                 # Monitor download progress
                 try {
-                    Write-Progress -Activity "Downloading Windows Update: $($Update.Title)" -Status "Downloading..." -PercentComplete $DownloadJob.GetProgress().PercentComplete
+                    $progress = $DownloadJob.GetProgress()
+                    $percentComplete = if ($progress -and $progress.PercentComplete -ge 0) { $progress.PercentComplete } else { 0 }
+                    Write-ProgressWithPercentage -Activity "Downloading Windows Update" -Status "Downloading..." -PercentComplete $percentComplete -CurrentOperation $Update.Title -Id 1
                 } catch {
                     Write-Log "Error monitoring download progress: $($_.Exception.Message)"
                 }
@@ -475,7 +587,8 @@ function Install-WindowsUpdates {
             # End the download and get the result
             $DownloadResult = $Downloader.EndDownload($DownloadJob)
             
-            Write-Progress -Activity "Downloading Windows Update: $($Update.Title)" -Completed
+            Write-Progress -Activity "Downloading Windows Update" -Completed -Id 1
+            Write-Host "" # Clear the progress line
             
             if ($Update.IsDownloaded) {
                 Write-Log-Highlight "Update downloaded successfully: $($Update.Title)" -HighlightText $Update.Title -HighlightColor "Green"
@@ -497,7 +610,9 @@ function Install-WindowsUpdates {
                     
                     # Monitor installation progress
                     try {
-                        Write-Progress -Activity "Installing Windows Update: $($Update.Title)" -Status "Installing..." -PercentComplete $InstallJob.GetProgress().PercentComplete
+                        $progress = $InstallJob.GetProgress()
+                        $percentComplete = if ($progress -and $progress.PercentComplete -ge 0) { $progress.PercentComplete } else { 0 }
+                        Write-ProgressWithPercentage -Activity "Installing Windows Update" -Status "Installing..." -PercentComplete $percentComplete -CurrentOperation $Update.Title -Id 2
                     } catch {
                         Write-Log "Error monitoring installation progress: $($_.Exception.Message)"
                     }
@@ -506,7 +621,8 @@ function Install-WindowsUpdates {
                 # End the installation and get the result
                 $InstallResult = $Installer.EndInstall($InstallJob)
                 
-                Write-Progress -Activity "Installing Windows Update: $($Update.Title)" -Completed
+                Write-Progress -Activity "Installing Windows Update" -Completed -Id 2
+                Write-Host "" # Clear the progress line
 
                 if ($InstallResult.ResultCode -eq 2) {
                     Write-Log-Highlight "Update installed successfully: $($Update.Title)" -HighlightText $Update.Title -HighlightColor "Green"
@@ -578,7 +694,7 @@ function Install-Office {
         $officeInstaller = "officedeploymenttool.exe"
         $officeInstallerFullPath = Join-Path $officeTempDir $officeInstaller
         
-        Invoke-WebRequestWithCleanup -Uri $officeDownloadUrl -OutFile $officeInstallerFullPath -Description "Office deployment tool"
+        Invoke-WebRequestWithCleanup -Uri $officeDownloadUrl -OutFile $officeInstallerFullPath -Description "Office deployment tool" -ProgressId 4
 
         # Run the Office deployment tool to extract files
         Write-Log "Extracting Office deployment tool files..."
@@ -589,7 +705,7 @@ function Install-Office {
         $officeXmlUrl = "https://raw.githubusercontent.com/goastler/windows/refs/heads/main/src/office.xml"
         $officeXmlDest = "$officeTempDir\office.xml"
         
-        Invoke-WebRequestWithCleanup -Uri $officeXmlUrl -OutFile $officeXmlDest -Description "office.xml configuration file"
+        Invoke-WebRequestWithCleanup -Uri $officeXmlUrl -OutFile $officeXmlDest -Description "office.xml configuration file" -ProgressId 5
 
         # Run Office setup with the configuration file
         Write-Log "Starting Office installation with configuration file..."
@@ -638,7 +754,7 @@ function Setup-BgInfo {
     if (!(Test-Path $bgInfoExe)) {
         try {
             Write-Log "Downloading BgInfo..."
-            Invoke-WebRequestWithCleanup -Uri $bgInfoUrl -OutFile $bgInfoZip -Description "BgInfo"
+            Invoke-WebRequestWithCleanup -Uri $bgInfoUrl -OutFile $bgInfoZip -Description "BgInfo" -ProgressId 6
             
             # Extract BgInfo
             Write-Log "Extracting BgInfo..."
@@ -666,7 +782,7 @@ function Setup-BgInfo {
     $bgInfoConfigFile = "$bgInfoDir\BgInfo.bgi"
     
     Write-Log "Downloading BgInfo configuration file from GitHub..."
-    Invoke-WebRequestWithCleanup -Uri $bgInfoConfigUrl -OutFile $bgInfoConfigFile -Description "BgInfo configuration file"
+    Invoke-WebRequestWithCleanup -Uri $bgInfoConfigUrl -OutFile $bgInfoConfigFile -Description "BgInfo configuration file" -ProgressId 7
     Write-Log "BgInfo configuration file downloaded: $bgInfoConfigFile"
 
     # Create BgInfo startup task
@@ -718,7 +834,7 @@ function Install-MicrosoftActivationScripts {
     
     try {
         Write-Log "Downloading Microsoft Activation Scripts..."
-        Invoke-WebRequestWithCleanup -Uri $masUrl -OutFile $masFullPath -Description "Microsoft Activation Scripts"
+        Invoke-WebRequestWithCleanup -Uri $masUrl -OutFile $masFullPath -Description "Microsoft Activation Scripts" -ProgressId 8
 
         # Verify the file was downloaded successfully
         if (!(Test-Path $masFullPath)) {
@@ -797,9 +913,26 @@ function Create-SetupScheduledTask {
 try {
     Write-Log "Starting on login setup..."
 
+    # Define setup steps for overall progress tracking
+    $setupSteps = @(
+        "Creating Scheduled Task",
+        "Windows Update Configuration", 
+        "Windows Update Installation",
+        "Chocolatey Installation",
+        "Package Installation",
+        "Office Installation",
+        "Microsoft Activation Scripts",
+        "Final Cleanup"
+    )
+    $totalSteps = $setupSteps.Count
+    $currentStep = 0
+
     # =============================================================================
     # CREATE SCHEDULED TASK
     # =============================================================================
+    $currentStep++
+    $overallProgress = [math]::Round(($currentStep / $totalSteps) * 100)
+    Write-ProgressWithPercentage -Activity "Windows Setup" -Status $setupSteps[$currentStep - 1] -PercentComplete $overallProgress -Id 0
 
     Create-SetupScheduledTask
 
@@ -814,13 +947,24 @@ try {
     # =============================================================================
     # WINDOWS UPDATE CONFIGURATION AND INSTALLATION
     # =============================================================================
+    $currentStep++
+    $overallProgress = [math]::Round(($currentStep / $totalSteps) * 100)
+    Write-ProgressWithPercentage -Activity "Windows Setup" -Status $setupSteps[$currentStep - 1] -PercentComplete $overallProgress -Id 0
 
     Configure-WindowsUpdates
+    
+    $currentStep++
+    $overallProgress = [math]::Round(($currentStep / $totalSteps) * 100)
+    Write-ProgressWithPercentage -Activity "Windows Setup" -Status $setupSteps[$currentStep - 1] -PercentComplete $overallProgress -Id 0
+
     Install-WindowsUpdates
 
     # =============================================================================
     # CHOCOLATEY INSTALLATION AND PACKAGE SETUP
     # =============================================================================
+    $currentStep++
+    $overallProgress = [math]::Round(($currentStep / $totalSteps) * 100)
+    Write-ProgressWithPercentage -Activity "Windows Setup" -Status $setupSteps[$currentStep - 1] -PercentComplete $overallProgress -Id 0
 
     Install-ChocolateyAndPackages
 
@@ -833,18 +977,27 @@ try {
     # =============================================================================
     # OFFICE INSTALLATION
     # =============================================================================
+    $currentStep++
+    $overallProgress = [math]::Round(($currentStep / $totalSteps) * 100)
+    Write-ProgressWithPercentage -Activity "Windows Setup" -Status $setupSteps[$currentStep - 1] -PercentComplete $overallProgress -Id 0
 
     Install-Office
 
-    =============================================================================
-    MICROSOFT ACTIVATION SCRIPTS
-    =============================================================================
+    # =============================================================================
+    # MICROSOFT ACTIVATION SCRIPTS
+    # =============================================================================
+    $currentStep++
+    $overallProgress = [math]::Round(($currentStep / $totalSteps) * 100)
+    Write-ProgressWithPercentage -Activity "Windows Setup" -Status $setupSteps[$currentStep - 1] -PercentComplete $overallProgress -Id 0
 
     Install-MicrosoftActivationScripts
 
     # =============================================================================
     # FINAL CLEANUP - REMOVE SCHEDULED TASK
     # =============================================================================
+    $currentStep++
+    $overallProgress = [math]::Round(($currentStep / $totalSteps) * 100)
+    Write-ProgressWithPercentage -Activity "Windows Setup" -Status $setupSteps[$currentStep - 1] -PercentComplete $overallProgress -Id 0
 
     Write-Log "Setup completed successfully. Removing setup scheduled task..."
     Unregister-ScheduledTask -TaskName $scheduledTaskName -Confirm:$false
@@ -853,6 +1006,8 @@ try {
     # =============================================================================
     # COMPLETION
     # =============================================================================
+    Write-Progress -Activity "Windows Setup" -Completed -Id 0
+    Write-Host "" # Clear the progress line
 
     Write-Log "Setup completed. Log saved to: $logFile"
 
