@@ -36,7 +36,7 @@ param(
     [string]$AutounattendXml = (Join-Path $PSScriptRoot "autounattend.xml"),
 
     [Parameter(Mandatory = $false)]
-    [string]$WorkingDirectory = (Join-Path $env:TEMP "WindowsIsoRepack_$(Get-Date -Format 'yyyyMMdd_HHmmss')"),
+    [string]$WorkingDirectory = "C:\WinIsoRepack_$(Get-Date -Format 'yyyyMMdd_HHmmss')",
 
     [Parameter(Mandatory = $false)]
     [switch]$KeepWorkingDirectory
@@ -207,10 +207,10 @@ function New-IsoFromDirectory {
     )
     Write-ColorOutput "Creating new ISO from directory: $SourcePath" "Yellow"
 
-    # Create an isolated working dir that's NOT the parent of $SourcePath
-    $originalLocation = Get-Location
-    $oscdimgWorkingDir = Join-Path $env:TEMP "OscdimgWork_$(Get-Date -Format 'yyyyMMdd_HHmmss_ffff')"
-    New-Item -ItemType Directory -Path $oscdimgWorkingDir -Force | Out-Null
+     # Create an isolated working dir that's NOT the parent of $SourcePath
+     $originalLocation = Get-Location
+     $oscdimgWorkingDir = "C:\OscdimgWork_$(Get-Date -Format 'yyyyMMdd_HHmmss')"
+     New-Item -ItemType Directory -Path $oscdimgWorkingDir -Force | Out-Null
 
     try {
         Set-Location $oscdimgWorkingDir
