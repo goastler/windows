@@ -226,30 +226,39 @@ function New-IsoFromDirectory {
         
         Write-ColorOutput "Temporary copy created at: $tempSourcePath" "Green"
         
-        # Change to the temp directory and run oscdimg from there
+        # Try a different approach - run oscdimg from a different working directory
         $originalLocation = Get-Location
-        Set-Location $tempDir
-        Write-ColorOutput "Changed working directory to: $tempDir" "Cyan"
+        $oscdimgWorkingDir = Join-Path $env:TEMP "OscdimgWork_$(Get-Date -Format 'yyyyMMdd_HHmmss_ffff')"
+        New-Item -ItemType Directory -Path $oscdimgWorkingDir -Force | Out-Null
         
-        $arguments = @(
-            "-m"
-            "-o"
-            "-u2"
-            "-udfver102"
-            "-l"
-            "Windows"
-            "Source"
-            "`"$OutputPath`""
-        )
-        Write-ColorOutput "Running oscdimg with arguments: $($arguments -join ' ')" "Cyan"
-        $process = Start-Process -FilePath $OscdimgPath -ArgumentList $arguments -Wait -PassThru -NoNewWindow
-        if ($process.ExitCode -ne 0) {
-            throw "oscdimg failed with exit code: $($process.ExitCode)"
+        try {
+            Set-Location $oscdimgWorkingDir
+            Write-ColorOutput "Changed working directory to: $oscdimgWorkingDir" "Cyan"
+            
+            # Use absolute paths to avoid any directory conflicts
+            $arguments = @(
+                "-m"
+                "-o"
+                "-u2"
+                "-udfver102"
+                "-l"
+                "Windows"
+                "`"$tempSourcePath`""
+                "`"$OutputPath`""
+            )
+            Write-ColorOutput "Running oscdimg with arguments: $($arguments -join ' ')" "Cyan"
+            $process = Start-Process -FilePath $OscdimgPath -ArgumentList $arguments -Wait -PassThru -NoNewWindow
+            if ($process.ExitCode -ne 0) {
+                throw "oscdimg failed with exit code: $($process.ExitCode)"
+            }
+            Write-ColorOutput "ISO created successfully: $OutputPath" "Green"
+        } finally {
+            Set-Location $originalLocation
+            if (Test-Path $oscdimgWorkingDir) {
+                Remove-Item $oscdimgWorkingDir -Recurse -Force -ErrorAction SilentlyContinue
+            }
         }
-        Write-ColorOutput "ISO created successfully: $OutputPath" "Green"
     } finally {
-        Set-Location $originalLocation
-        
         # Clean up the entire temporary directory
         if (Test-Path $tempDir) {
             Write-ColorOutput "Cleaning up temporary directory..." "Yellow"
