@@ -221,7 +221,6 @@ function New-IsoFromDirectory {
         "-m"
         "-u2"
         "-udfver102"
-        "-l","WIN_CUSTOM"
         "-bootdata:2#p0,e,b`"$etfsbootPath`"#pEF,e,b`"$efisysPath`""
         "`"$absSrc`""
         "`"$absOutIso`""
