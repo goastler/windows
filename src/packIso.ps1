@@ -54,28 +54,28 @@ param(
     [Parameter(Mandatory = $false)]
     [string]$VirtioCacheDirectory = (Join-Path $env:TEMP "virtio-cache"),
 
-    [Parameter(Mandatory = $false)]
+    [Parameter(Mandatory = $true)]
     [ValidateSet("amd64", "x86", "arm64")]
-    [string]$TargetArchitecture = "amd64",
+    [string]$Arch,
 
-    [Parameter(Mandatory = $false)]
+    [Parameter(Mandatory = $true)]
     [ValidateSet("w10", "w11")]
-    [string]$WindowsVersion = "w11",
+    [string]$Version
 
 )
 
 $ErrorActionPreference = "Stop"
 
 # Validate Windows 11 architecture compatibility
-if ($WindowsVersion -eq "w11" -and $TargetArchitecture -eq "x86") {
-    throw "Windows 11 does not support x86 architecture. Windows 11 only supports amd64 and arm64 architectures. Please use WindowsVersion 'w10' for x86 architecture or change TargetArchitecture to 'amd64' or 'arm64' for Windows 11."
+if ($Version -eq "w11" -and $Arch -eq "x86") {
+    throw "Windows 11 does not support x86 architecture. Windows 11 only supports amd64 and arm64 architectures. Please use Version 'w10' for x86 architecture or change Arch to 'amd64' or 'arm64' for Windows 11."
 }
 
 # Validate VirtIO driver parameters
 if ($IncludeVirtioDrivers) {
     # Validate VirtIO driver availability for ARM64 (only when VirtIO drivers are requested)
-    if ($TargetArchitecture -eq "arm64") {
-        throw "VirtIO drivers are not available for ARM64 architecture. VirtIO drivers are only available for x86 and amd64 architectures. Please change TargetArchitecture to 'x86' or 'amd64'."
+    if ($Arch -eq "arm64") {
+        throw "VirtIO drivers are not available for ARM64 architecture. VirtIO drivers are only available for x86 and amd64 architectures. Please change Arch to 'x86' or 'amd64'."
     }
 }
 
@@ -526,10 +526,10 @@ function Add-VirtioDrivers {
         Write-ColorOutput "Available driver directories: $($driverDirs -join ', ')" "Cyan"
         
         # Inject drivers into boot.wim
-        Inject-VirtioDriversIntoBootWim -ExtractPath $ExtractPath -VirtioDir $virtioDir -TargetArchitecture $TargetArchitecture -WindowsVersion $WindowsVersion
+        Inject-VirtioDriversIntoBootWim -ExtractPath $ExtractPath -VirtioDir $virtioDir -Arch $Arch -Version $Version
         
         # Inject drivers into install.wim
-        Inject-VirtioDriversIntoInstallWim -ExtractPath $ExtractPath -VirtioDir $virtioDir -TargetArchitecture $TargetArchitecture -WindowsVersion $WindowsVersion
+        Inject-VirtioDriversIntoInstallWim -ExtractPath $ExtractPath -VirtioDir $virtioDir -Arch $Arch -Version $Version
         
     } catch {
         Write-ColorOutput "Failed to add VirtIO drivers: $($_.Exception.Message)" "Red"
@@ -541,8 +541,8 @@ function Inject-VirtioDriversIntoBootWim {
     param(
         [string]$ExtractPath,
         [string]$VirtioDir,
-        [string]$TargetArchitecture,
-        [string]$WindowsVersion
+        [string]$Arch,
+        [string]$Version
     )
     
     Write-ColorOutput "=== Injecting VirtIO Drivers into boot.wim ===" "Cyan"
@@ -562,23 +562,23 @@ function Inject-VirtioDriversIntoBootWim {
         New-Item -ItemType Directory -Path $mountDir -Force | Out-Null
         
         # Use the specified architecture and Windows version
-        $driverPath = Join-Path $VirtioDir $TargetArchitecture
+        $driverPath = Join-Path $VirtioDir $Arch
         
         if (-not (Test-Path $driverPath)) {
-            Write-ColorOutput "Error: No drivers found for architecture $TargetArchitecture at: $driverPath" "Red"
-            throw "VirtIO drivers not found for architecture: $TargetArchitecture"
+            Write-ColorOutput "Error: No drivers found for architecture $Arch at: $driverPath" "Red"
+            throw "VirtIO drivers not found for architecture: $Arch"
         }
         
         # Find the specified Windows version drivers
-        $windowsDriverPath = Join-Path $driverPath $WindowsVersion
+        $windowsDriverPath = Join-Path $driverPath $Version
         if (-not (Test-Path $windowsDriverPath)) {
-            Write-ColorOutput "Error: No drivers found for Windows version $WindowsVersion at: $windowsDriverPath" "Red"
-            throw "VirtIO drivers not found for Windows version: $WindowsVersion"
+            Write-ColorOutput "Error: No drivers found for Windows version $Version at: $windowsDriverPath" "Red"
+            throw "VirtIO drivers not found for Windows version: $Version"
         }
         
         Write-ColorOutput "Using drivers from: $windowsDriverPath" "Green"
-        Write-ColorOutput "Target Architecture: $TargetArchitecture" "Cyan"
-        Write-ColorOutput "Windows Version: $WindowsVersion" "Cyan"
+        Write-ColorOutput "Architecture: $Arch" "Cyan"
+        Write-ColorOutput "Version: $Version" "Cyan"
         
         # Get DISM path
         $dismPath = Get-DismPath
@@ -659,8 +659,8 @@ function Inject-VirtioDriversIntoInstallWim {
     param(
         [string]$ExtractPath,
         [string]$VirtioDir,
-        [string]$TargetArchitecture,
-        [string]$WindowsVersion
+        [string]$Arch,
+        [string]$Version
     )
     
     Write-ColorOutput "=== Injecting VirtIO Drivers into install.wim ===" "Cyan"
@@ -681,23 +681,23 @@ function Inject-VirtioDriversIntoInstallWim {
         New-Item -ItemType Directory -Path $mountDir -Force | Out-Null
         
         # Use the specified architecture and Windows version
-        $driverPath = Join-Path $VirtioDir $TargetArchitecture
+        $driverPath = Join-Path $VirtioDir $Arch
         
         if (-not (Test-Path $driverPath)) {
-            Write-ColorOutput "Error: No drivers found for architecture $TargetArchitecture at: $driverPath" "Red"
-            throw "VirtIO drivers not found for architecture: $TargetArchitecture"
+            Write-ColorOutput "Error: No drivers found for architecture $Arch at: $driverPath" "Red"
+            throw "VirtIO drivers not found for architecture: $Arch"
         }
         
         # Find the specified Windows version drivers
-        $windowsDriverPath = Join-Path $driverPath $WindowsVersion
+        $windowsDriverPath = Join-Path $driverPath $Version
         if (-not (Test-Path $windowsDriverPath)) {
-            Write-ColorOutput "Error: No drivers found for Windows version $WindowsVersion at: $windowsDriverPath" "Red"
-            throw "VirtIO drivers not found for Windows version: $WindowsVersion"
+            Write-ColorOutput "Error: No drivers found for Windows version $Version at: $windowsDriverPath" "Red"
+            throw "VirtIO drivers not found for Windows version: $Version"
         }
         
         Write-ColorOutput "Using drivers from: $windowsDriverPath" "Green"
-        Write-ColorOutput "Target Architecture: $TargetArchitecture" "Cyan"
-        Write-ColorOutput "Windows Version: $WindowsVersion" "Cyan"
+        Write-ColorOutput "Architecture: $Arch" "Cyan"
+        Write-ColorOutput "Version: $Version" "Cyan"
         
         # Get DISM path
         $dismPath = Get-DismPath
@@ -900,8 +900,8 @@ try {
     if ($IncludeVirtioDrivers) {
         Write-ColorOutput "VirtIO Version: $VirtioVersion" "White"
         Write-ColorOutput "VirtIO Cache Directory: $VirtioCacheDirectory" "White"
-        Write-ColorOutput "Target Architecture: $TargetArchitecture" "White"
-        Write-ColorOutput "Windows Version: $WindowsVersion" "White"
+        Write-ColorOutput "Architecture: $Arch" "White"
+        Write-ColorOutput "Version: $Version" "White"
     }
     
     Test-RequiredTools

@@ -88,16 +88,16 @@ This project now includes automatic VirtIO driver integration for virtualization
 ### Usage:
 ```powershell
 # Basic usage with VirtIO drivers (Windows 10 x64)
-.\src\packIso.ps1 -InputIso "C:\path\to\input.iso" -OutputIso "C:\path\to\output.iso" -IncludeVirtioDrivers -TargetArchitecture "amd64" -WindowsVersion "w10"
+.\src\packIso.ps1 -InputIso "C:\path\to\input.iso" -OutputIso "C:\path\to\output.iso" -IncludeVirtioDrivers -Arch "amd64" -Version "w10"
 
 # Windows 11 x64 with latest VirtIO drivers
-.\src\packIso.ps1 -InputIso "C:\path\to\input.iso" -OutputIso "C:\path\to\output.iso" -IncludeVirtioDrivers -VirtioVersion "latest" -TargetArchitecture "amd64" -WindowsVersion "w11"
+.\src\packIso.ps1 -InputIso "C:\path\to\input.iso" -OutputIso "C:\path\to\output.iso" -IncludeVirtioDrivers -VirtioVersion "latest" -Arch "amd64" -Version "w11"
 
 # Windows 10 x86 with custom cache directory
-.\src\packIso.ps1 -InputIso "C:\path\to\input.iso" -OutputIso "C:\path\to\output.iso" -IncludeVirtioDrivers -TargetArchitecture "x86" -WindowsVersion "w10" -VirtioCacheDirectory "C:\virtio-cache"
+.\src\packIso.ps1 -InputIso "C:\path\to\input.iso" -OutputIso "C:\path\to\output.iso" -IncludeVirtioDrivers -Arch "x86" -Version "w10" -VirtioCacheDirectory "C:\virtio-cache"
 
 # Windows 11 ARM64
-.\src\packIso.ps1 -InputIso "C:\path\to\input.iso" -OutputIso "C:\path\to\output.iso" -IncludeVirtioDrivers -TargetArchitecture "arm64" -WindowsVersion "w11"
+.\src\packIso.ps1 -InputIso "C:\path\to\input.iso" -OutputIso "C:\path\to\output.iso" -IncludeVirtioDrivers -Arch "arm64" -Version "w11"
 ```
 
 ### Example Script:
