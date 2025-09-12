@@ -207,14 +207,26 @@ function New-IsoFromDirectory {
     )
     Write-ColorOutput "Creating new ISO from directory: $SourcePath" "Yellow"
     
-    # Change to the parent directory of the source to avoid oscdimg trying to delete the source directory
-    $originalLocation = Get-Location
-    $sourceParent = Split-Path $SourcePath -Parent
-    $sourceName = Split-Path $SourcePath -Leaf
+    # Create a temporary copy of the source directory that oscdimg can safely delete
+    $tempSourcePath = Join-Path $env:TEMP "IsoSource_$(Get-Date -Format 'yyyyMMdd_HHmmss_ffff')"
     
     try {
-        Set-Location $sourceParent
-        Write-ColorOutput "Changed working directory to: $sourceParent" "Cyan"
+        Write-ColorOutput "Creating temporary copy for oscdimg processing..." "Cyan"
+        robocopy $SourcePath $tempSourcePath /E /COPY:DAT /R:3 /W:10 /NFL /NDL /NJH /NJS /nc /ns /np
+        
+        if ($LASTEXITCODE -gt 7) {
+            throw "Failed to create temporary copy. Robocopy exit code: $LASTEXITCODE"
+        }
+        
+        Write-ColorOutput "Temporary copy created at: $tempSourcePath" "Green"
+        
+        # Change to the parent directory of the temp source
+        $originalLocation = Get-Location
+        $tempSourceParent = Split-Path $tempSourcePath -Parent
+        $tempSourceName = Split-Path $tempSourcePath -Leaf
+        
+        Set-Location $tempSourceParent
+        Write-ColorOutput "Changed working directory to: $tempSourceParent" "Cyan"
         
         $arguments = @(
             "-m"
@@ -223,7 +235,7 @@ function New-IsoFromDirectory {
             "-udfver102"
             "-l"
             "Windows"
-            "`"$sourceName`""
+            "`"$tempSourceName`""
             "`"$OutputPath`""
         )
         Write-ColorOutput "Running oscdimg with arguments: $($arguments -join ' ')" "Cyan"
@@ -234,6 +246,12 @@ function New-IsoFromDirectory {
         Write-ColorOutput "ISO created successfully: $OutputPath" "Green"
     } finally {
         Set-Location $originalLocation
+        
+        # Clean up the temporary copy
+        if (Test-Path $tempSourcePath) {
+            Write-ColorOutput "Cleaning up temporary copy..." "Yellow"
+            Remove-Item $tempSourcePath -Recurse -Force -ErrorAction SilentlyContinue
+        }
     }
 }
 
