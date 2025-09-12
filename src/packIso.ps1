@@ -148,10 +148,10 @@ function Test-RequiredTools {
 function Test-Chocolatey {
     return (Get-Command "choco" -ErrorAction SilentlyContinue) -ne $null
 }
+
 function Install-Chocolatey {
     Write-ColorOutput "Installing Chocolatey package manager..." "Yellow"
     try {
-        
         Set-ExecutionPolicy Bypass -Scope Process -Force
         [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072
         iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
@@ -167,7 +167,8 @@ function Install-Chocolatey {
         Write-ColorOutput "Chocolatey installation failed: $($_.Exception.Message)" "Red"
         return $false
     }
-}
+}   # <-- this was missing
+
 
 function Install-WindowsADK {
     Write-ColorOutput "=== Windows ADK Installation ===" "Cyan"
