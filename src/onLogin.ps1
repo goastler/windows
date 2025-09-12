@@ -367,9 +367,7 @@ function Install-WindowsUpdates {
     
     # Shuffle the order of updates (only if updates are available)
     $UpdatesArray = @($searchResult.Updates)
-    if ($UpdatesArray.Count -gt 0) {
-        $ShuffledUpdates = $UpdatesArray | Get-Random -Count $UpdatesArray.Count
-    }
+    $ShuffledUpdates = Get-Random -InputObject $UpdatesArray -Count $UpdatesArray.Count
     
     foreach ($Update in $ShuffledUpdates) {
         Write-Log-Highlight "Processing update: $($Update.Title)" -HighlightText $Update.Title -HighlightColor "Green"
