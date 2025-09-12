@@ -1,49 +1,49 @@
-#Requires -RunAsAdministrator
+# #Requires -RunAsAdministrator
 
-param(
-    [Parameter(Mandatory = $true)]
-    [ValidateScript({
-        if (-not (Test-Path $_ -PathType Leaf)) {
-            throw "Input ISO file does not exist: $_"
-        }
-        if ($_ -notmatch '\.iso$') {
-            throw "Input file must have .iso extension: $_"
-        }
-        $true
-    })]
-    [string]$InputIso,
+# param(
+#     [Parameter(Mandatory = $true)]
+#     [ValidateScript({
+#         if (-not (Test-Path $_ -PathType Leaf)) {
+#             throw "Input ISO file does not exist: $_"
+#         }
+#         if ($_ -notmatch '\.iso$') {
+#             throw "Input file must have .iso extension: $_"
+#         }
+#         $true
+#     })]
+#     [string]$InputIso,
 
-    [Parameter(Mandatory = $true)]
-    [ValidateScript({
-        $parentDir = Split-Path $_ -Parent
-        if (-not (Test-Path $parentDir -PathType Container)) {
-            throw "Output directory does not exist: $parentDir"
-        }
-        if ($_ -notmatch '\.iso$') {
-            throw "Output file must have .iso extension: $_"
-        }
-        $true
-    })]
-    [string]$OutputIso,
+#     [Parameter(Mandatory = $true)]
+#     [ValidateScript({
+#         $parentDir = Split-Path $_ -Parent
+#         if (-not (Test-Path $parentDir -PathType Container)) {
+#             throw "Output directory does not exist: $parentDir"
+#         }
+#         if ($_ -notmatch '\.iso$') {
+#             throw "Output file must have .iso extension: $_"
+#         }
+#         $true
+#     })]
+#     [string]$OutputIso,
 
-    [Parameter(Mandatory = $false)]
-    [ValidateScript({
-        if (-not (Test-Path $_ -PathType Leaf)) {
-            throw "Autounattend XML file does not exist: $_"
-        }
-        $true
-    })]
-    [string]$AutounattendXml = (Join-Path $PSScriptRoot "autounattend.xml"),
+#     [Parameter(Mandatory = $false)]
+#     [ValidateScript({
+#         if (-not (Test-Path $_ -PathType Leaf)) {
+#             throw "Autounattend XML file does not exist: $_"
+#         }
+#         $true
+#     })]
+#     [string]$AutounattendXml = (Join-Path $PSScriptRoot "autounattend.xml"),
 
-    [Parameter(Mandatory = $false)]
-    [string]$WorkingDirectory = (Join-Path $env:TEMP "WindowsIsoRepack_$(Get-Date -Format 'yyyyMMdd_HHmmss')"),
+#     [Parameter(Mandatory = $false)]
+#     [string]$WorkingDirectory = (Join-Path $env:TEMP "WindowsIsoRepack_$(Get-Date -Format 'yyyyMMdd_HHmmss')"),
 
-    [Parameter(Mandatory = $false)]
-    [switch]$KeepWorkingDirectory,
+#     [Parameter(Mandatory = $false)]
+#     [switch]$KeepWorkingDirectory,
 
-    [Parameter(Mandatory = $false)]
-    [switch]$SkipAutoInstall
-)
+#     [Parameter(Mandatory = $false)]
+#     [switch]$SkipAutoInstall
+# )
 
 $ErrorActionPreference = "Stop"
 
@@ -266,19 +266,19 @@ try {
     Write-ColorOutput "=== Windows ISO Repack Script ===" "Cyan"
     Write-ColorOutput "Checking administrator privileges..." "Yellow"
     
-    if (-not (Test-Administrator)) {
-        Write-ColorOutput "ERROR: This script must be run as Administrator!" "Red"
-        throw "Administrator privileges required."
-    }
+    # if (-not (Test-Administrator)) {
+    #     Write-ColorOutput "ERROR: This script must be run as Administrator!" "Red"
+    #     throw "Administrator privileges required."
+    # }
     
-    Write-ColorOutput "✓ Administrator privileges confirmed" "Green"
-    Write-ColorOutput "Input ISO: $InputIso" "White"
-    Write-ColorOutput "Output ISO: $OutputIso" "White"
-    Write-ColorOutput "Autounattend XML: $AutounattendXml" "White"
-    Write-ColorOutput "Working Directory: $WorkingDirectory" "White"
-    Write-ColorOutput "Skip Auto Install: $SkipAutoInstall" "White"
+    # Write-ColorOutput "✓ Administrator privileges confirmed" "Green"
+    # Write-ColorOutput "Input ISO: $InputIso" "White"
+    # Write-ColorOutput "Output ISO: $OutputIso" "White"
+    # Write-ColorOutput "Autounattend XML: $AutounattendXml" "White"
+    # Write-ColorOutput "Working Directory: $WorkingDirectory" "White"
+    # Write-ColorOutput "Skip Auto Install: $SkipAutoInstall" "White"
     
-    Test-RequiredTools
+    # Test-RequiredTools
     
     # Write-ColorOutput "Validating input files..." "Yellow"
     # if (-not (Test-Path $InputIso -PathType Leaf)) {
