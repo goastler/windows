@@ -61,7 +61,7 @@ function Test-Administrator {
     return $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 }
 
-function Test-RequiredTools {
+# function Test-RequiredTools {
     # Write-ColorOutput "Checking for required tools..." "Yellow"
     
     # $oscdimgPath = Get-Command "oscdimg.exe" -ErrorAction SilentlyContinue
@@ -93,7 +93,7 @@ function Test-RequiredTools {
     # }
     
     # Write-ColorOutput "Found oscdimg.exe at: $script:oscdimgPath" "Green"
-}
+# }
 
 # function Test-Chocolatey {
 #     return (Get-Command "choco" -ErrorAction SilentlyContinue) -ne $null
@@ -278,7 +278,7 @@ try {
     Write-ColorOutput "Working Directory: $WorkingDirectory" "White"
     Write-ColorOutput "Skip Auto Install: $SkipAutoInstall" "White"
     
-    Test-RequiredTools
+    # Test-RequiredTools
     
     # Write-ColorOutput "Validating input files..." "Yellow"
     # if (-not (Test-Path $InputIso -PathType Leaf)) {
