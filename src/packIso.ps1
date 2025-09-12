@@ -271,12 +271,12 @@ try {
         throw "Administrator privileges required."
     }
     
-    Write-ColorOutput "✓ Administrator privileges confirmed" "Green"
-    Write-ColorOutput "Input ISO: $InputIso" "White"
-    Write-ColorOutput "Output ISO: $OutputIso" "White"
-    Write-ColorOutput "Autounattend XML: $AutounattendXml" "White"
-    Write-ColorOutput "Working Directory: $WorkingDirectory" "White"
-    Write-ColorOutput "Skip Auto Install: $SkipAutoInstall" "White"
+    # Write-ColorOutput "✓ Administrator privileges confirmed" "Green"
+    # Write-ColorOutput "Input ISO: $InputIso" "White"
+    # Write-ColorOutput "Output ISO: $OutputIso" "White"
+    # Write-ColorOutput "Autounattend XML: $AutounattendXml" "White"
+    # Write-ColorOutput "Working Directory: $WorkingDirectory" "White"
+    # Write-ColorOutput "Skip Auto Install: $SkipAutoInstall" "White"
     
     # Test-RequiredTools
     
