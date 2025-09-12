@@ -61,98 +61,98 @@ function Test-Administrator {
     return $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 }
 
-# function Test-RequiredTools {
-#     Write-ColorOutput "Checking for required tools..." "Yellow"
+function Test-RequiredTools {
+    Write-ColorOutput "Checking for required tools..." "Yellow"
     
-#     $oscdimgPath = Get-Command "oscdimg.exe" -ErrorAction SilentlyContinue
-#     if (-not $oscdimgPath) {
-#         $commonPaths = @(
-#             "${env:ProgramFiles(x86)}\Windows Kits\10\Assessment and Deployment Kit\Deployment Tools\amd64\Oscdimg\oscdimg.exe",
-#             "${env:ProgramFiles}\Windows Kits\10\Assessment and Deployment Kit\Deployment Tools\amd64\Oscdimg\oscdimg.exe",
-#             "${env:ProgramFiles(x86)}\Windows Kits\8.1\Assessment and Deployment Kit\Deployment Tools\amd64\Oscdimg\oscdimg.exe",
-#             "${env:ProgramFiles}\Windows Kits\8.1\Assessment and Deployment Kit\Deployment Tools\amd64\Oscdimg\oscdimg.exe"
-#         )
+    $oscdimgPath = Get-Command "oscdimg.exe" -ErrorAction SilentlyContinue
+    if (-not $oscdimgPath) {
+        $commonPaths = @(
+            "${env:ProgramFiles(x86)}\Windows Kits\10\Assessment and Deployment Kit\Deployment Tools\amd64\Oscdimg\oscdimg.exe",
+            "${env:ProgramFiles}\Windows Kits\10\Assessment and Deployment Kit\Deployment Tools\amd64\Oscdimg\oscdimg.exe",
+            "${env:ProgramFiles(x86)}\Windows Kits\8.1\Assessment and Deployment Kit\Deployment Tools\amd64\Oscdimg\oscdimg.exe",
+            "${env:ProgramFiles}\Windows Kits\8.1\Assessment and Deployment Kit\Deployment Tools\amd64\Oscdimg\oscdimg.exe"
+        )
         
-#         foreach ($path in $commonPaths) {
-#             if (Test-Path $path) {
-#                 $script:oscdimgPath = $path
-#                 break
-#             }
-#         }
+        foreach ($path in $commonPaths) {
+            if (Test-Path $path) {
+                $script:oscdimgPath = $path
+                break
+            }
+        }
         
-#         if (-not $script:oscdimgPath) {
-#             if ($SkipAutoInstall) {
-#                 throw "oscdimg.exe not found. Please install Windows ADK or ensure oscdimg.exe is in PATH."
-#             } else {
-#                 Write-ColorOutput "oscdimg.exe not found. Attempting to install Windows ADK..." "Yellow"
-#                 Install-WindowsADK
-#             }
-#         }
-#     } else {
-#         $script:oscdimgPath = $oscdimgPath.Source
-#     }
+        if (-not $script:oscdimgPath) {
+            if ($SkipAutoInstall) {
+                throw "oscdimg.exe not found. Please install Windows ADK or ensure oscdimg.exe is in PATH."
+            } else {
+                Write-ColorOutput "oscdimg.exe not found. Attempting to install Windows ADK..." "Yellow"
+                Install-WindowsADK
+            }
+        }
+    } else {
+        $script:oscdimgPath = $oscdimgPath.Source
+    }
     
-#     Write-ColorOutput "Found oscdimg.exe at: $script:oscdimgPath" "Green"
-# }
+    Write-ColorOutput "Found oscdimg.exe at: $script:oscdimgPath" "Green"
+}
 
-# function Test-Chocolatey {
-#     return (Get-Command "choco" -ErrorAction SilentlyContinue) -ne $null
-# }
+function Test-Chocolatey {
+    return (Get-Command "choco" -ErrorAction SilentlyContinue) -ne $null
+}
 
-# function Install-Chocolatey {
-#     Write-ColorOutput "Installing Chocolatey package manager..." "Yellow"
-#     try {
-#         Set-ExecutionPolicy Bypass -Scope Process -Force
-#         [System.Net.ServicePointManager]::SecurityProtocol = `
-#             [System.Net.ServicePointManager]::SecurityProtocol -bor 3072
-#         iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
+function Install-Chocolatey {
+    Write-ColorOutput "Installing Chocolatey package manager..." "Yellow"
+    try {
+        Set-ExecutionPolicy Bypass -Scope Process -Force
+        [System.Net.ServicePointManager]::SecurityProtocol = `
+            [System.Net.ServicePointManager]::SecurityProtocol -bor 3072
+        iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
         
-#         if (Test-Chocolatey) {
-#             Write-ColorOutput "✓ Chocolatey installed successfully!" "Green"
-#             return $true
-#         } else {
-#             Write-ColorOutput "Chocolatey installation failed to become available on PATH." "Red"
-#             return $false
-#         }
-#     } catch {
-#         Write-ColorOutput "Chocolatey installation failed: $($_.Exception.Message)" "Red"
-#         return $false
-#     }
-# }
+        if (Test-Chocolatey) {
+            Write-ColorOutput "✓ Chocolatey installed successfully!" "Green"
+            return $true
+        } else {
+            Write-ColorOutput "Chocolatey installation failed to become available on PATH." "Red"
+            return $false
+        }
+    } catch {
+        Write-ColorOutput "Chocolatey installation failed: $($_.Exception.Message)" "Red"
+        return $false
+    }
+}
 
-# function Install-WindowsADK {
-#     Write-ColorOutput "=== Windows ADK Installation ===" "Cyan"
+function Install-WindowsADK {
+    Write-ColorOutput "=== Windows ADK Installation ===" "Cyan"
 
-#     if (-not (Test-Chocolatey)) {
-#         Write-ColorOutput "Chocolatey not found. Installing Chocolatey..." "Yellow"
-#         if (-not (Install-Chocolatey)) {
-#             Write-ColorOutput "Failed to install Chocolatey. Showing manual installation instructions..." "Red"
-#             Show-ManualInstallInstructions
-#             throw "Windows ADK installation aborted (Chocolatey missing)."
-#         }
-#     } else {
-#         Write-ColorOutput "✓ Chocolatey found" "Green"
-#     }
+    if (-not (Test-Chocolatey)) {
+        Write-ColorOutput "Chocolatey not found. Installing Chocolatey..." "Yellow"
+        if (-not (Install-Chocolatey)) {
+            Write-ColorOutput "Failed to install Chocolatey. Showing manual installation instructions..." "Red"
+            Show-ManualInstallInstructions
+            throw "Windows ADK installation aborted (Chocolatey missing)."
+        }
+    } else {
+        Write-ColorOutput "✓ Chocolatey found" "Green"
+    }
 
-#     Write-ColorOutput "Installing Windows ADK via Chocolatey..." "Yellow"
-#     try {
-#         $result = Start-Process -FilePath "choco" -ArgumentList @("install","windows-adk","-y") -Wait -PassThru -NoNewWindow
-#         if ($result.ExitCode -eq 0) {
-#             Write-ColorOutput "✓ Windows ADK installed successfully via Chocolatey!" "Green"
-#             $env:Path = [System.Environment]::GetEnvironmentVariable('Path','Machine') + ';' + `
-#                         [System.Environment]::GetEnvironmentVariable('Path','User')
-#             return
-#         } else {
-#             Write-ColorOutput "Windows ADK installation via Chocolatey failed with exit code: $($result.ExitCode)" "Red"
-#         }
-#     } catch {
-#         Write-ColorOutput "Windows ADK installation via Chocolatey threw an error: $($_.Exception.Message)" "Red"
-#     }
+    Write-ColorOutput "Installing Windows ADK via Chocolatey..." "Yellow"
+    try {
+        $result = Start-Process -FilePath "choco" -ArgumentList @("install","windows-adk","-y") -Wait -PassThru -NoNewWindow
+        if ($result.ExitCode -eq 0) {
+            Write-ColorOutput "✓ Windows ADK installed successfully via Chocolatey!" "Green"
+            $env:Path = [System.Environment]::GetEnvironmentVariable('Path','Machine') + ';' + `
+                        [System.Environment]::GetEnvironmentVariable('Path','User')
+            return
+        } else {
+            Write-ColorOutput "Windows ADK installation via Chocolatey failed with exit code: $($result.ExitCode)" "Red"
+        }
+    } catch {
+        Write-ColorOutput "Windows ADK installation via Chocolatey threw an error: $($_.Exception.Message)" "Red"
+    }
 
-#     Write-ColorOutput "Falling back to manual installation instructions..." "Yellow"
-#     Show-ManualInstallInstructions
-#     throw "Windows ADK installation required. Please install it and run this script again."
-# }
+    Write-ColorOutput "Falling back to manual installation instructions..." "Yellow"
+    Show-ManualInstallInstructions
+    throw "Windows ADK installation required. Please install it and run this script again."
+}
 
 # function Show-ManualInstallInstructions {
 #     Write-ColorOutput "=== Manual Installation Instructions ===" "Cyan"
@@ -271,14 +271,14 @@ try {
         throw "Administrator privileges required."
     }
     
-    # Write-ColorOutput "✓ Administrator privileges confirmed" "Green"
-    # Write-ColorOutput "Input ISO: $InputIso" "White"
-    # Write-ColorOutput "Output ISO: $OutputIso" "White"
-    # Write-ColorOutput "Autounattend XML: $AutounattendXml" "White"
-    # Write-ColorOutput "Working Directory: $WorkingDirectory" "White"
-    # Write-ColorOutput "Skip Auto Install: $SkipAutoInstall" "White"
+    Write-ColorOutput "✓ Administrator privileges confirmed" "Green"
+    Write-ColorOutput "Input ISO: $InputIso" "White"
+    Write-ColorOutput "Output ISO: $OutputIso" "White"
+    Write-ColorOutput "Autounattend XML: $AutounattendXml" "White"
+    Write-ColorOutput "Working Directory: $WorkingDirectory" "White"
+    Write-ColorOutput "Skip Auto Install: $SkipAutoInstall" "White"
     
-    # Test-RequiredTools
+    Test-RequiredTools
     
     # Write-ColorOutput "Validating input files..." "Yellow"
     # if (-not (Test-Path $InputIso -PathType Leaf)) {
