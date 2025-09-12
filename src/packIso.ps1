@@ -152,23 +152,12 @@ function Install-Chocolatey {
     Write-ColorOutput "Installing Chocolatey package manager..." "Yellow"
     try {
         
-        # Check if Chocolatey is already installed
-        if (Get-Command choco -ErrorAction SilentlyContinue) {
-            Write-Log "Chocolatey is already installed. Updating..."
-            $chocoUpgradeResult = Invoke-CommandWithExitCode -Command "choco upgrade chocolatey -y" -Description "upgrade Chocolatey"
-        } else {
-            Write-Log "Installing Chocolatey..."
-            # Install Chocolatey
-            Set-ExecutionPolicy Bypass -Scope Process -Force
-            [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072
-            iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
-            
-            # Refresh environment variables
-            $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
-            
-            Write-Log "Chocolatey installed successfully"
-        }
-
+        Write-Log "Installing Chocolatey..."
+        # Install Chocolatey
+        Set-ExecutionPolicy Bypass -Scope Process -Force
+        [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072
+        iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
+        
         if (Test-Chocolatey) {
             Write-ColorOutput "✓ Chocolatey installed successfully!" "Green"
             return $true
@@ -216,57 +205,6 @@ function Install-WindowsADK {
     Write-ColorOutput "Falling back to manual installation instructions..." "Yellow"
     Show-ManualInstallInstructions
     throw "Windows ADK installation required. Please install it and run this script again."
-}
-
-# Function to install Windows ADK
-function Install-WindowsADK {
-    Write-ColorOutput "=== Windows ADK Installation ===" "Cyan"
-    
-    # Get Windows version to determine appropriate ADK version
-    $osVersion = [System.Environment]::OSVersion.Version
-    $windowsVersion = "$($osVersion.Major).$($osVersion.Minor)"
-    
-    Write-ColorOutput "Detected Windows version: $windowsVersion" "White"
-    
-    # Determine ADK version based on Windows version
-    $adkVersion = switch ($windowsVersion) {
-        "10.0" { 
-            if ($osVersion.Build -ge 22000) { "Windows 11 ADK" } else { "Windows 10 ADK" }
-        }
-        default { "Windows 10 ADK" }
-    }
-    
-    Write-ColorOutput "Recommended ADK: $adkVersion" "White"
-    
-    # Check if Chocolatey is available
-    if (-not (Test-Chocolatey)) {
-        Write-ColorOutput "Chocolatey not found. Installing Chocolatey..." "Yellow"
-        if (-not (Install-Chocolatey)) {
-            Write-ColorOutput "Failed to install Chocolatey. Showing manual installation instructions..." "Red"
-            Show-ManualInstallInstructions
-            return
-        }
-    } else {
-        Write-ColorOutput "✓ Chocolatey found" "Green"
-    }
-    
-    # Install Windows ADK via Chocolatey
-    Write-ColorOutput "Installing Windows ADK via Chocolatey..." "Yellow"
-    try {
-        $result = Start-Process -FilePath "choco" -ArgumentList @("install", "windows-adk", "-y") -Wait -PassThru -NoNewWindow
-        if ($result.ExitCode -eq 0) {
-            Write-ColorOutput "✓ Windows ADK installed successfully via Chocolatey!" "Green"
-            # Refresh PATH and try to find oscdimg again
-            $env:Path = [System.Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path", "User")
-            Write-ColorOutput "Chocolatey installation failed with exit code: $($result.ExitCode)" "Red"
-        }
-    } catch {
-        Write-ColorOutput "Chocolatey installation failed: $($_.Exception.Message)" "Red"
-    }
-    
-    # If installation failed, show manual instructions
-    Write-ColorOutput "Chocolatey installation failed. Showing manual installation instructions..." "Yellow"
-    Show-ManualInstallInstructions
 }
 
 # Function to show manual installation instructions
