@@ -167,7 +167,7 @@ function Install-Chocolatey {
         Write-ColorOutput "Chocolatey installation failed: $($_.Exception.Message)" "Red"
         return $false
     }
-}   # <-- this was missing
+}   
 
 
 function Install-WindowsADK {
