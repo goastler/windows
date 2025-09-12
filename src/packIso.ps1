@@ -163,7 +163,6 @@ Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManage
         
         # Refresh environment variables
         $env:Path = [System.Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path", "User")
-        
         # Verify installation
         Start-Sleep -Seconds 3
         if (Test-Chocolatey) {
@@ -219,8 +218,6 @@ function Install-WindowsADK {
             Write-ColorOutput "✓ Windows ADK installed successfully via Chocolatey!" "Green"
             # Refresh PATH and try to find oscdimg again
             $env:Path = [System.Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path", "User")
-            Start-Sleep -Seconds 5
-            Test-RequiredTools
             return
         } else {
             Write-ColorOutput "Chocolatey installation failed with exit code: $($result.ExitCode)" "Red"
