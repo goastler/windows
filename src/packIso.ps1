@@ -206,34 +206,44 @@ function New-IsoFromDirectory {
         [string]$OscdimgPath
     )
     Write-ColorOutput "Creating new ISO from directory: $SourcePath" "Yellow"
-    
-    # Change to the parent directory of the source to use relative paths
+
+    # Create an isolated working dir that's NOT the parent of $SourcePath
     $originalLocation = Get-Location
-    $sourceParent = Split-Path $SourcePath -Parent
-    $sourceName = Split-Path $SourcePath -Leaf
-    
+    $oscdimgWorkingDir = Join-Path $env:TEMP "OscdimgWork_$(Get-Date -Format 'yyyyMMdd_HHmmss_ffff')"
+    New-Item -ItemType Directory -Path $oscdimgWorkingDir -Force | Out-Null
+
     try {
-        Set-Location $sourceParent
-        Write-ColorOutput "Changed working directory to: $sourceParent" "Cyan"
-        
+        Set-Location $oscdimgWorkingDir
+        Write-ColorOutput "Changed working directory to: $oscdimgWorkingDir" "Cyan"
+
+        # Absolute paths so we don't depend on CWD
+        $absSrc = (Resolve-Path $SourcePath).ProviderPath
+        $absOut = (Resolve-Path (Split-Path $OutputPath -Parent)).ProviderPath
+        $absOutIso = Join-Path $absOut (Split-Path $OutputPath -Leaf)
+
+        # Build args: no -o; UEFI+BIOS boot
         $arguments = @(
             "-m"
             "-u2"
             "-udfver102"
-            "-l"
-            "Windows"
-            "-bootdata:2#p0,e,b`"$sourceName\boot\etfsboot.com`"#pEF,e,b`"$sourceName\efi\microsoft\boot\efisys.bin`""
-            "`"$sourceName`""
-            "`"$OutputPath`""
+            "-l","W11_CUSTOM"
+            "-bootdata:2#p0,e,b`"$absSrc\boot\etfsboot.com`"#pEF,e,b`"$absSrc\efi\microsoft\boot\efisys.bin`""
+            "`"$absSrc`""
+            "`"$absOutIso`""
         )
+
         Write-ColorOutput "Running oscdimg with arguments: $($arguments -join ' ')" "Cyan"
         $process = Start-Process -FilePath $OscdimgPath -ArgumentList $arguments -Wait -PassThru -NoNewWindow
         if ($process.ExitCode -ne 0) {
             throw "oscdimg failed with exit code: $($process.ExitCode)"
         }
-        Write-ColorOutput "ISO created successfully: $OutputPath" "Green"
-    } finally {
+        Write-ColorOutput "ISO created successfully: $absOutIso" "Green"
+    }
+    finally {
         Set-Location $originalLocation
+        if (Test-Path $oscdimgWorkingDir) {
+            Remove-Item $oscdimgWorkingDir -Recurse -Force -ErrorAction SilentlyContinue
+        }
     }
 }
 
