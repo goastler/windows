@@ -14,33 +14,6 @@
     - Accessing system directories
     
     Run PowerShell as Administrator before executing this script.
-
-.PARAMETER InputIso
-    Path to the input Windows ISO file.
-
-.PARAMETER OutputIso
-    Path where the modified ISO will be created.
-
-.PARAMETER AutounattendXml
-    Path to the autounattend.xml file to add to the ISO. Defaults to "autounattend.xml" in the same directory as this script.
-
-.PARAMETER WorkingDirectory
-    Temporary directory for extracting ISO contents. Defaults to a temp directory.
-
-.PARAMETER KeepWorkingDirectory
-    If specified, the working directory will not be cleaned up after completion.
-
-.PARAMETER SkipAutoInstall
-    If specified, the script will not attempt to automatically install Windows ADK if oscdimg is not found.
-
-.EXAMPLE
-    .\packIso.ps1 -InputIso "C:\ISOs\Windows11.iso" -OutputIso "C:\ISOs\Windows11_Unattended.iso"
-
-.EXAMPLE
-    .\packIso.ps1 -InputIso "C:\ISOs\Windows11.iso" -OutputIso "C:\ISOs\Windows11_Unattended.iso" -AutounattendXml "C:\Custom\autounattend.xml"
-
-.EXAMPLE
-    .\packIso.ps1 -InputIso "C:\ISOs\Windows11.iso" -OutputIso "C:\ISOs\Windows11_Unattended.iso" -SkipAutoInstall
 #>
 
 param(
@@ -88,10 +61,8 @@ param(
     [switch]$SkipAutoInstall
 )
 
-# Set error action preference
 $ErrorActionPreference = "Stop"
 
-# Function to write colored output
 function Write-ColorOutput {
     param(
         [string]$Message,
@@ -100,21 +71,17 @@ function Write-ColorOutput {
     Write-Host $Message -ForegroundColor $Color
 }
 
-# Function to check if running as administrator
 function Test-Administrator {
     $currentUser = [Security.Principal.WindowsIdentity]::GetCurrent()
     $principal = New-Object Security.Principal.WindowsPrincipal($currentUser)
     return $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 }
 
-# Function to check if required tools are available
 function Test-RequiredTools {
     Write-ColorOutput "Checking for required tools..." "Yellow"
     
-    # Check for oscdimg (Windows ADK tool)
     $oscdimgPath = Get-Command "oscdimg.exe" -ErrorAction SilentlyContinue
     if (-not $oscdimgPath) {
-        # Try common installation paths
         $commonPaths = @(
             "${env:ProgramFiles(x86)}\Windows Kits\10\Assessment and Deployment Kit\Deployment Tools\amd64\Oscdimg\oscdimg.exe",
             "${env:ProgramFiles}\Windows Kits\10\Assessment and Deployment Kit\Deployment Tools\amd64\Oscdimg\oscdimg.exe",
@@ -131,7 +98,7 @@ function Test-RequiredTools {
         
         if (-not $script:oscdimgPath) {
             if ($SkipAutoInstall) {
-                throw "oscdimg.exe not found. Please install Windows ADK (Assessment and Deployment Kit) or ensure oscdimg.exe is in your PATH. Use -SkipAutoInstall:$false to enable automatic installation."
+                throw "oscdimg.exe not found. Please install Windows ADK or ensure oscdimg.exe is in PATH."
             } else {
                 Write-ColorOutput "oscdimg.exe not found. Attempting to install Windows ADK..." "Yellow"
                 Install-WindowsADK
@@ -144,7 +111,6 @@ function Test-RequiredTools {
     Write-ColorOutput "Found oscdimg.exe at: $script:oscdimgPath" "Green"
 }
 
-# Function to check if Chocolatey is installed
 function Test-Chocolatey {
     return (Get-Command "choco" -ErrorAction SilentlyContinue) -ne $null
 }
@@ -153,7 +119,8 @@ function Install-Chocolatey {
     Write-ColorOutput "Installing Chocolatey package manager..." "Yellow"
     try {
         Set-ExecutionPolicy Bypass -Scope Process -Force
-        [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072
+        [System.Net.ServicePointManager]::SecurityProtocol = `
+            [System.Net.ServicePointManager]::SecurityProtocol -bor 3072
         iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
         
         if (Test-Chocolatey) {
@@ -167,8 +134,7 @@ function Install-Chocolatey {
         Write-ColorOutput "Chocolatey installation failed: $($_.Exception.Message)" "Red"
         return $false
     }
-}   
-
+}
 
 function Install-WindowsADK {
     Write-ColorOutput "=== Windows ADK Installation ===" "Cyan"
@@ -189,9 +155,8 @@ function Install-WindowsADK {
         $result = Start-Process -FilePath "choco" -ArgumentList @("install","windows-adk","-y") -Wait -PassThru -NoNewWindow
         if ($result.ExitCode -eq 0) {
             Write-ColorOutput "✓ Windows ADK installed successfully via Chocolatey!" "Green"
-
-            # Refresh PATH so newly installed tools are discoverable
-            $env:Path = [System.Environment]::GetEnvironmentVariable('Path','Machine') + ';' + [System.Environment]::GetEnvironmentVariable('Path','User')
+            $env:Path = [System.Environment]::GetEnvironmentVariable('Path','Machine') + ';' + `
+                        [System.Environment]::GetEnvironmentVariable('Path','User')
             return
         } else {
             Write-ColorOutput "Windows ADK installation via Chocolatey failed with exit code: $($result.ExitCode)" "Red"
@@ -200,13 +165,11 @@ function Install-WindowsADK {
         Write-ColorOutput "Windows ADK installation via Chocolatey threw an error: $($_.Exception.Message)" "Red"
     }
 
-    # If we’re here, Chocolatey path failed — fall back to manual instructions
     Write-ColorOutput "Falling back to manual installation instructions..." "Yellow"
     Show-ManualInstallInstructions
     throw "Windows ADK installation required. Please install it and run this script again."
 }
 
-# Function to show manual installation instructions
 function Show-ManualInstallInstructions {
     Write-ColorOutput "=== Manual Installation Instructions ===" "Cyan"
     Write-ColorOutput "Please install Windows ADK manually:" "Yellow"
@@ -221,7 +184,6 @@ function Show-ManualInstallInstructions {
     Write-ColorOutput "  Set-ExecutionPolicy Bypass -Scope Process -Force; iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))" "Cyan"
     Write-ColorOutput "  choco install windows-adk -y" "Cyan"
     
-    # Ask user if they want to continue with manual download
     $response = Read-Host "Would you like to open the ADK download page? (y/n)"
     if ($response -eq 'y' -or $response -eq 'Y') {
         Start-Process "https://docs.microsoft.com/en-us/windows-hardware/get-started/adk-install"
@@ -230,7 +192,6 @@ function Show-ManualInstallInstructions {
     throw "Windows ADK installation required. Please install it and run this script again."
 }
 
-# Function to mount ISO and extract contents
 function Extract-IsoContents {
     param(
         [string]$IsoPath,
@@ -238,8 +199,6 @@ function Extract-IsoContents {
     )
     
     Write-ColorOutput "Mounting ISO: $IsoPath" "Yellow"
-    
-    # Mount the ISO
     $mountResult = Mount-DiskImage -ImagePath $IsoPath -PassThru
     $driveLetter = ($mountResult | Get-Volume).DriveLetter
     
@@ -253,13 +212,11 @@ function Extract-IsoContents {
     try {
         Write-ColorOutput "Extracting ISO contents to: $ExtractPath" "Yellow"
         
-        # Create extraction directory
         if (Test-Path $ExtractPath) {
             Remove-Item $ExtractPath -Recurse -Force
         }
         New-Item -ItemType Directory -Path $ExtractPath -Force | Out-Null
         
-        # Copy all contents from mounted ISO
         robocopy $mountedPath $ExtractPath /E /COPY:DAT /R:3 /W:10 /NFL /NDL /NJH /NJS /nc /ns /np
         
         if ($LASTEXITCODE -gt 7) {
@@ -267,69 +224,51 @@ function Extract-IsoContents {
         }
         
         Write-ColorOutput "ISO contents extracted successfully" "Green"
-        
     } finally {
-        # Dismount the ISO
         Write-ColorOutput "Dismounting ISO..." "Yellow"
         Dismount-DiskImage -ImagePath $IsoPath
         Write-ColorOutput "ISO dismounted" "Green"
     }
 }
 
-# Function to add autounattend.xml to ISO contents
 function Add-AutounattendXml {
     param(
         [string]$ExtractPath,
         [string]$AutounattendXmlPath
     )
-    
     Write-ColorOutput "Adding autounattend.xml to ISO contents..." "Yellow"
-    
-    # Copy autounattend.xml to the root of the extracted ISO
     $destinationPath = Join-Path $ExtractPath "autounattend.xml"
     Copy-Item $AutounattendXmlPath $destinationPath -Force
-    
     Write-ColorOutput "autounattend.xml added to: $destinationPath" "Green"
 }
 
-# Function to create new ISO
 function New-IsoFromDirectory {
     param(
         [string]$SourcePath,
         [string]$OutputPath,
         [string]$OscdimgPath
     )
-    
     Write-ColorOutput "Creating new ISO from directory: $SourcePath" "Yellow"
-    
-    # Prepare oscdimg command arguments
     $arguments = @(
-        "-m"                    # Allow files larger than 2GB
-        "-o"                    # Optimize storage by encoding duplicate files only once
-        "-u2"                   # Use UDF file system
-        "-udfver102"            # Use UDF version 1.02
-        "-l"                    # Set volume label
-        "Windows"               # Volume label
-        "`"$SourcePath`""       # Source directory
-        "`"$OutputPath`""       # Output ISO file
+        "-m"
+        "-o"
+        "-u2"
+        "-udfver102"
+        "-l"
+        "Windows"
+        "`"$SourcePath`""
+        "`"$OutputPath`""
     )
-    
     Write-ColorOutput "Running oscdimg with arguments: $($arguments -join ' ')" "Cyan"
-    
-    # Execute oscdimg
     $process = Start-Process -FilePath $OscdimgPath -ArgumentList $arguments -Wait -PassThru -NoNewWindow
-    
     if ($process.ExitCode -ne 0) {
         throw "oscdimg failed with exit code: $($process.ExitCode)"
     }
-    
     Write-ColorOutput "ISO created successfully: $OutputPath" "Green"
 }
 
-# Function to cleanup working directory
 function Remove-WorkingDirectory {
     param([string]$Path)
-    
     if (-not $KeepWorkingDirectory -and (Test-Path $Path)) {
         Write-ColorOutput "Cleaning up working directory: $Path" "Yellow"
         Remove-Item $Path -Recurse -Force
@@ -339,46 +278,24 @@ function Remove-WorkingDirectory {
     }
 }
 
-# Main execution
 try {
-    # Check if running as administrator FIRST - before any other operations
     Write-ColorOutput "=== Windows ISO Repack Script ===" "Cyan"
     Write-ColorOutput "Checking administrator privileges..." "Yellow"
     
     if (-not (Test-Administrator)) {
         Write-ColorOutput "ERROR: This script must be run as Administrator!" "Red"
-        Write-ColorOutput "" "White"
-        Write-ColorOutput "Required for:" "White"
-        Write-ColorOutput "  - Mounting/unmounting ISO files" "White"
-        Write-ColorOutput "  - Installing Windows ADK (if needed)" "White"
-        Write-ColorOutput "  - Accessing system directories" "White"
-        Write-ColorOutput "" "White"
-        Write-ColorOutput "To run as Administrator:" "White"
-        Write-ColorOutput "  1. Right-click PowerShell" "White"
-        Write-ColorOutput "  2. Select 'Run as Administrator'" "White"
-        Write-ColorOutput "  3. Navigate to script directory" "White"
-        Write-ColorOutput "  4. Run the script again" "White"
-        Write-ColorOutput "" "White"
-        Write-ColorOutput "Example:" "White"
-        Write-ColorOutput "  cd 'C:\path\to\script'" "Cyan"
-        Write-ColorOutput "  .\packIso.ps1 -InputIso 'C:\ISOs\Windows11.iso' -OutputIso 'C:\ISOs\Windows11_Unattended.iso'" "Cyan"
-        throw "Administrator privileges required. Please run PowerShell as Administrator and try again."
+        throw "Administrator privileges required."
     }
     
     Write-ColorOutput "✓ Administrator privileges confirmed" "Green"
-    Write-ColorOutput "" "White"
-    Write-ColorOutput "Script Configuration:" "White"
     Write-ColorOutput "Input ISO: $InputIso" "White"
     Write-ColorOutput "Output ISO: $OutputIso" "White"
     Write-ColorOutput "Autounattend XML: $AutounattendXml" "White"
     Write-ColorOutput "Working Directory: $WorkingDirectory" "White"
     Write-ColorOutput "Skip Auto Install: $SkipAutoInstall" "White"
-    Write-ColorOutput "=================================" "Cyan"
     
-    # Check for required tools
     Test-RequiredTools
     
-    # Validate input files
     Write-ColorOutput "Validating input files..." "Yellow"
     if (-not (Test-Path $InputIso -PathType Leaf)) {
         throw "Input ISO file not found: $InputIso"
@@ -388,22 +305,15 @@ try {
     }
     Write-ColorOutput "Input files validated" "Green"
     
-    # Check if output file already exists
     if (Test-Path $OutputIso) {
         Write-ColorOutput "Output ISO already exists. Removing..." "Yellow"
         Remove-Item $OutputIso -Force
     }
     
-    # Extract ISO contents
     Extract-IsoContents -IsoPath $InputIso -ExtractPath $WorkingDirectory
-    
-    # Add autounattend.xml
     Add-AutounattendXml -ExtractPath $WorkingDirectory -AutounattendXmlPath $AutounattendXml
-    
-    # Create new ISO
     New-IsoFromDirectory -SourcePath $WorkingDirectory -OutputPath $OutputIso -OscdimgPath $script:oscdimgPath
     
-    # Verify output file was created
     if (Test-Path $OutputIso) {
         $fileSize = (Get-Item $OutputIso).Length
         $fileSizeGB = [math]::Round($fileSize / 1GB, 2)
@@ -412,12 +322,10 @@ try {
     } else {
         throw "Output ISO was not created successfully"
     }
-    
 } catch {
     Write-ColorOutput "Error: $($_.Exception.Message)" "Red"
     exit 1
 } finally {
-    # Cleanup
     Remove-WorkingDirectory -Path $WorkingDirectory
 }
 
