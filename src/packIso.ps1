@@ -271,7 +271,7 @@ try {
         throw "Administrator privileges required."
     }
     
-    Write-ColorOutput "Administrator privileges confirmed" "Green"
+    Write-ColorOutput "[OK] Administrator privileges confirmed" "Green"
     # Write-ColorOutput "Input ISO: $InputIso" "White"
     # Write-ColorOutput "Output ISO: $OutputIso" "White"
     # Write-ColorOutput "Autounattend XML: $AutounattendXml" "White"
