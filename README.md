@@ -49,6 +49,7 @@ Comprehensive unattended installation configuration including:
 - Application removal and system optimization
 - Network and security settings
 - Custom scripts and configurations
+- VirtIO driver integration into boot.wim and install.wim
 
 ### 3. Post-Installation Scripts
 - **setup.ps1**: System configuration and optimization
@@ -59,6 +60,7 @@ Comprehensive unattended installation configuration including:
 
 - **Automated ISO Processing**: Mount, extract, modify, and repack Windows ISOs
 - **Unattended Installation**: Fully automated Windows setup
+- **VirtIO Driver Integration**: Automatic download and integration of VirtIO drivers for virtualization
 - **System Optimization**: Remove bloatware, configure performance settings
 - **Custom Configuration**: Add drivers, applications, and system modifications
 - **Error Handling**: Comprehensive error checking and user guidance
@@ -71,6 +73,35 @@ Comprehensive unattended installation configuration including:
 - **Administrator privileges**
 - **Internet connection** (for automatic tool installation)
 - **Sufficient disk space** (at least 2x the size of your ISO file)
+
+## VirtIO Driver Integration
+
+This project now includes automatic VirtIO driver integration for virtualization environments. VirtIO drivers provide better performance and compatibility when running Windows in virtual machines.
+
+### Features:
+- **Automatic Download**: Downloads the latest VirtIO drivers from Red Hat/Fedora
+- **Version Selection**: Choose between "stable" or "latest" driver versions
+- **Caching**: Drivers are cached locally to avoid re-downloading
+- **Multi-Architecture**: Supports x86, amd64, and arm64 architectures
+- **WIM Image Integration**: Drivers are baked into both boot.wim and install.wim using DISM
+
+### Usage:
+```powershell
+# Basic usage with VirtIO drivers (Windows 10 x64)
+.\src\packIso.ps1 -InputIso "C:\path\to\input.iso" -OutputIso "C:\path\to\output.iso" -IncludeVirtioDrivers -TargetArchitecture "amd64" -WindowsVersion "w10"
+
+# Windows 11 x64 with latest VirtIO drivers
+.\src\packIso.ps1 -InputIso "C:\path\to\input.iso" -OutputIso "C:\path\to\output.iso" -IncludeVirtioDrivers -VirtioVersion "latest" -TargetArchitecture "amd64" -WindowsVersion "w11"
+
+# Windows 10 x86 with custom cache directory
+.\src\packIso.ps1 -InputIso "C:\path\to\input.iso" -OutputIso "C:\path\to\output.iso" -IncludeVirtioDrivers -TargetArchitecture "x86" -WindowsVersion "w10" -VirtioCacheDirectory "C:\virtio-cache"
+
+# Windows 11 ARM64
+.\src\packIso.ps1 -InputIso "C:\path\to\input.iso" -OutputIso "C:\path\to\output.iso" -IncludeVirtioDrivers -TargetArchitecture "arm64" -WindowsVersion "w11"
+```
+
+### Example Script:
+See `example-with-virtio.ps1` for a complete example of creating a Windows ISO with VirtIO drivers.
 
 ## Getting Started
 
