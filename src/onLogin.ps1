@@ -11,6 +11,22 @@ $originalScriptLocation = Get-Location
 # Set error action preference for the entire script
 $ErrorActionPreference = "Stop"
 
+# Check if running with administrator privileges
+function Test-Administrator {
+    $currentUser = [Security.Principal.WindowsIdentity]::GetCurrent()
+    $principal = New-Object Security.Principal.WindowsPrincipal($currentUser)
+    return $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+}
+
+if (-not (Test-Administrator)) {
+    Write-Host "This script requires administrator privileges. Please run as administrator." -ForegroundColor Red
+    Write-Host "Right-click PowerShell and select 'Run as administrator'" -ForegroundColor Yellow
+    Read-Host "Press Enter to exit"
+    exit 1
+}
+
+Write-Host "Running with administrator privileges - OK" -ForegroundColor Green
+
 function Write-Log {
     param(
         [string]$Message,
@@ -76,46 +92,57 @@ function Invoke-CommandWithExitCode {
         $process = New-Object System.Diagnostics.Process
         $process.StartInfo = $processInfo
         
-        # Start the process
-        $process.Start() | Out-Null
-        
-        # Stream output in real-time and collect separately
-        $stdoutOutput = @()
-        $stderrOutput = @()
-        
-        # Use asynchronous reading to avoid blocking
-        $stdoutTask = $process.StandardOutput.ReadToEndAsync()
-        $stderrTask = $process.StandardError.ReadToEndAsync()
-        
-        # Wait for process to complete
-        $process.WaitForExit()
-        
-        # Get the output after process has completed
-        $stdoutText = if ($stdoutTask -and $stdoutTask.Result) { $stdoutTask.Result } else { "" }
-        $stderrText = if ($stderrTask -and $stderrTask.Result) { $stderrTask.Result } else { "" }
-        
-        # Split output into lines and display
-        if ($stdoutText) {
-            $stdoutLines = $stdoutText -split "`r?`n"
-            foreach ($line in $stdoutLines) {
-                if ($line.Trim()) {
-                    Write-Host $line -ForegroundColor Green
-                    $stdoutOutput += $line
+        try {
+            # Start the process
+            $process.Start() | Out-Null
+            
+            # Stream output in real-time and collect separately
+            $stdoutOutput = @()
+            $stderrOutput = @()
+            
+            # Use asynchronous reading to avoid blocking
+            $stdoutTask = $process.StandardOutput.ReadToEndAsync()
+            $stderrTask = $process.StandardError.ReadToEndAsync()
+            
+            # Wait for process to complete
+            $process.WaitForExit()
+            
+            # Get the output after process has completed
+            $stdoutText = if ($stdoutTask -and $stdoutTask.Result) { $stdoutTask.Result } else { "" }
+            $stderrText = if ($stderrTask -and $stderrTask.Result) { $stderrTask.Result } else { "" }
+            
+            # Split output into lines and display
+            if ($stdoutText) {
+                $stdoutLines = $stdoutText -split "`r?`n"
+                foreach ($line in $stdoutLines) {
+                    if ($line.Trim()) {
+                        Write-Host $line -ForegroundColor Green
+                        $stdoutOutput += $line
+                    }
                 }
             }
-        }
-        
-        if ($stderrText) {
-            $stderrLines = $stderrText -split "`r?`n"
-            foreach ($line in $stderrLines) {
-                if ($line.Trim()) {
-                    Write-Host $line -ForegroundColor Red
-                    $stderrOutput += $line
+            
+            if ($stderrText) {
+                $stderrLines = $stderrText -split "`r?`n"
+                foreach ($line in $stderrLines) {
+                    if ($line.Trim()) {
+                        Write-Host $line -ForegroundColor Red
+                        $stderrOutput += $line
+                    }
                 }
             }
+            
+            $exitCode = $process.ExitCode
         }
-        
-        $exitCode = $process.ExitCode
+        finally {
+            # Properly dispose of process and its resources
+            if ($process -and !$process.HasExited) {
+                try { $process.Kill() } catch { }
+            }
+            if ($process) {
+                $process.Dispose()
+            }
+        }
     } else {
         # For non-batch commands, stream output in real-time
         $processInfo = New-Object System.Diagnostics.ProcessStartInfo
@@ -131,37 +158,48 @@ function Invoke-CommandWithExitCode {
         $process = New-Object System.Diagnostics.Process
         $process.StartInfo = $processInfo
         
-        # Start the process
-        $process.Start() | Out-Null
-        
-        # Stream output in real-time
-        $stdoutOutput = @()
-        $stderrOutput = @()
-        
-        # Read both stdout and stderr in a single loop
-        while (-not $process.StandardOutput.EndOfStream -or -not $process.StandardError.EndOfStream) {
-            # Read stdout if available
-            if (-not $process.StandardOutput.EndOfStream) {
-                $line = $process.StandardOutput.ReadLine()
-                if ($line) {
-                    Write-Host $line -ForegroundColor Green
-                    $stdoutOutput += $line
+        try {
+            # Start the process
+            $process.Start() | Out-Null
+            
+            # Stream output in real-time
+            $stdoutOutput = @()
+            $stderrOutput = @()
+            
+            # Read both stdout and stderr in a single loop
+            while (-not $process.StandardOutput.EndOfStream -or -not $process.StandardError.EndOfStream) {
+                # Read stdout if available
+                if (-not $process.StandardOutput.EndOfStream) {
+                    $line = $process.StandardOutput.ReadLine()
+                    if ($line) {
+                        Write-Host $line -ForegroundColor Green
+                        $stdoutOutput += $line
+                    }
+                }
+                
+                # Read stderr if available
+                if (-not $process.StandardError.EndOfStream) {
+                    $line = $process.StandardError.ReadLine()
+                    if ($line) {
+                        Write-Host $line -ForegroundColor Red
+                        $stderrOutput += $line
+                    }
                 }
             }
             
-            # Read stderr if available
-            if (-not $process.StandardError.EndOfStream) {
-                $line = $process.StandardError.ReadLine()
-                if ($line) {
-                    Write-Host $line -ForegroundColor Red
-                    $stderrOutput += $line
-                }
+            # Wait for process to complete
+            $process.WaitForExit()
+            $exitCode = $process.ExitCode
+        }
+        finally {
+            # Properly dispose of process and its resources
+            if ($process -and !$process.HasExited) {
+                try { $process.Kill() } catch { }
+            }
+            if ($process) {
+                $process.Dispose()
             }
         }
-        
-        # Wait for process to complete
-        $process.WaitForExit()
-        $exitCode = $process.ExitCode
     }
     
     if ($exitCode -ne $ExpectedExitCode) {
@@ -192,13 +230,29 @@ function Invoke-WebRequestWithCleanup {
     
     Write-Log "Downloading $Description from: $Uri"
     
-    $webRequest = Invoke-WebRequest -Uri $Uri -OutFile $OutFile -UseBasicParsing
-    Write-Log "$Description downloaded successfully"
-    
-    # Ensure proper cleanup of web request object and file handles
     $webRequest = $null
-    [System.GC]::Collect()
-    Start-Sleep -Seconds 2  # Brief pause to ensure file handles are released
+    try {
+        $webRequest = Invoke-WebRequest -Uri $Uri -OutFile $OutFile -UseBasicParsing
+        Write-Log "$Description downloaded successfully"
+    }
+    finally {
+        # Properly dispose of web request object
+        if ($webRequest) {
+            try {
+                $webRequest.Dispose()
+            }
+            catch {
+                # Ignore disposal errors
+            }
+        }
+        
+        # Force garbage collection to ensure resources are released
+        [System.GC]::Collect()
+        [System.GC]::WaitForPendingFinalizers()
+        
+        # Brief pause to ensure file handles are released
+        Start-Sleep -Seconds 1
+    }
 }
 
 function Wait-ForUserCancellation {
@@ -239,6 +293,10 @@ function Install-ChocolateyAndPackages {
     # Clear any existing Chocolatey downloads to prevent corrupted package issues
     $chocoCacheClearResult = Invoke-CommandWithExitCode -Command "choco cache remove --expired -y" -Description "clear Chocolatey downloads"
 
+    # Upgrade existing packages first (if any are installed)
+    Write-Log "Upgrading existing packages..."
+    $chocoUpgradeAllResult = Invoke-CommandWithExitCode -Command "choco upgrade all -y --ignore-checksums" -Description "upgrade existing packages"
+
     # Define common packages to install
     $packages = @(
         # Web Browsers
@@ -252,9 +310,6 @@ function Install-ChocolateyAndPackages {
     # Install all packages in one command
     $packageList = $packages -join " "
     $chocoInstallResult = Invoke-CommandWithExitCode -Command "choco install $packageList -y --ignore-checksums" -Description "install all packages: $packageList"
-
-    # Update all packages
-    $chocoUpgradeAllResult = Invoke-CommandWithExitCode -Command "choco upgrade all -y --ignore-checksums" -Description "upgrade all packages"
 
     # Clean up
     $chocoCacheCleanupResult = Invoke-CommandWithExitCode -Command "choco cache remove --expired -y" -Description "clean up Chocolatey cache"
@@ -317,9 +372,16 @@ function Install-WindowsUpdates {
 
     Write-Log "Checking for available Windows updates..."
 
-    # Create Windows Update session
-    $UpdateSession = New-Object -ComObject Microsoft.Update.Session
-    $UpdateSearcher = $UpdateSession.CreateUpdateSearcher()
+    # Initialize COM objects
+    $UpdateSession = $null
+    $UpdateSearcher = $null
+    $searchJob = $null
+    $searchResult = $null
+    
+    try {
+        # Create Windows Update session
+        $UpdateSession = New-Object -ComObject Microsoft.Update.Session
+        $UpdateSearcher = $UpdateSession.CreateUpdateSearcher()
 
     # Search for updates with timeout to prevent hanging
     Write-Log "Searching for updates (timeout: 10 minutes)..."
@@ -370,89 +432,109 @@ function Install-WindowsUpdates {
     $ShuffledUpdates = Get-Random -InputObject $UpdatesArray -Count $UpdatesArray.Count
     
     foreach ($Update in $ShuffledUpdates) {
-        Write-Log-Highlight "Processing update: $($Update.Title)" -HighlightText $Update.Title -HighlightColor "Green"
+        $SingleUpdateCollection = $null
+        $Downloader = $null
+        $DownloadJob = $null
+        $DownloadResult = $null
+        $Installer = $null
+        $InstallJob = $null
+        $InstallResult = $null
         
-        # Create update collection for single update
-        $SingleUpdateCollection = New-Object -ComObject Microsoft.Update.UpdateColl
-        $SingleUpdateCollection.Add($Update) | Out-Null
-        
-        # Download single update with progress tracking
-        Write-Log-Highlight "Downloading update: $($Update.Title)" -HighlightText $Update.Title -HighlightColor "Yellow"
-        
-        $Downloader = $UpdateSession.CreateUpdateDownloader()
-        $Downloader.Updates = $SingleUpdateCollection
-        $Downloader.Priority = 3
-        
-        # Begin asynchronous download with callback
-        $dummyCallback = [System.AsyncCallback]{}
-        $dummyState1 = New-Object System.Object
-        $dummyState2 = New-Object System.Object
-        $DownloadJob = $Downloader.BeginDownload($dummyCallback, $dummyState1, $dummyState2)
-        
-        # Wait for download to complete with progress monitoring
-        while (-not $DownloadJob.IsCompleted) {
-            Start-Sleep -Seconds 1
+        try {
+            Write-Log-Highlight "Processing update: $($Update.Title)" -HighlightText $Update.Title -HighlightColor "Green"
             
-            # Monitor download progress
-            try {
-                Write-Progress -Activity "Downloading Windows Update: $($Update.Title)" -Status "Downloading..." -PercentComplete $DownloadJob.GetProgress().PercentComplete
-            } catch {
-                Write-Log "Error monitoring download progress: $($_.Exception.Message)"
-            }
-        }
-        
-        # End the download and get the result
-        $DownloadResult = $Downloader.EndDownload($DownloadJob)
-        
-        Write-Progress -Activity "Downloading Windows Update: $($Update.Title)" -Completed
-        
-        if ($Update.IsDownloaded) {
-            Write-Log-Highlight "Update downloaded successfully: $($Update.Title)" -HighlightText $Update.Title -HighlightColor "Green"
+            # Create update collection for single update
+            $SingleUpdateCollection = New-Object -ComObject Microsoft.Update.UpdateColl
+            $SingleUpdateCollection.Add($Update) | Out-Null
             
-            # Install single update with progress tracking
-            Write-Log-Highlight "Installing update: $($Update.Title)" -HighlightText $Update.Title -HighlightColor "Magenta"
-            $Installer = $UpdateSession.CreateUpdateInstaller()
-            $Installer.Updates = $SingleUpdateCollection
+            # Download single update with progress tracking
+            Write-Log-Highlight "Downloading update: $($Update.Title)" -HighlightText $Update.Title -HighlightColor "Yellow"
             
-            # Begin asynchronous installation with callback
+            $Downloader = $UpdateSession.CreateUpdateDownloader()
+            $Downloader.Updates = $SingleUpdateCollection
+            $Downloader.Priority = 3
+            
+            # Begin asynchronous download with callback
             $dummyCallback = [System.AsyncCallback]{}
             $dummyState1 = New-Object System.Object
             $dummyState2 = New-Object System.Object
-            $InstallJob = $Installer.BeginInstall($dummyCallback, $dummyState1, $dummyState2)
+            $DownloadJob = $Downloader.BeginDownload($dummyCallback, $dummyState1, $dummyState2)
             
-            # Wait for installation to complete with progress monitoring
-            while (-not $InstallJob.IsCompleted) {
+            # Wait for download to complete with progress monitoring
+            while (-not $DownloadJob.IsCompleted) {
                 Start-Sleep -Seconds 1
                 
-                # Monitor installation progress
+                # Monitor download progress
                 try {
-                    Write-Progress -Activity "Installing Windows Update: $($Update.Title)" -Status "Installing..." -PercentComplete $InstallJob.GetProgress().PercentComplete
+                    Write-Progress -Activity "Downloading Windows Update: $($Update.Title)" -Status "Downloading..." -PercentComplete $DownloadJob.GetProgress().PercentComplete
                 } catch {
-                    Write-Log "Error monitoring installation progress: $($_.Exception.Message)"
+                    Write-Log "Error monitoring download progress: $($_.Exception.Message)"
                 }
             }
             
-            # End the installation and get the result
-            $InstallResult = $Installer.EndInstall($InstallJob)
+            # End the download and get the result
+            $DownloadResult = $Downloader.EndDownload($DownloadJob)
             
-            Write-Progress -Activity "Installing Windows Update: $($Update.Title)" -Completed
+            Write-Progress -Activity "Downloading Windows Update: $($Update.Title)" -Completed
+            
+            if ($Update.IsDownloaded) {
+                Write-Log-Highlight "Update downloaded successfully: $($Update.Title)" -HighlightText $Update.Title -HighlightColor "Green"
+                
+                # Install single update with progress tracking
+                Write-Log-Highlight "Installing update: $($Update.Title)" -HighlightText $Update.Title -HighlightColor "Magenta"
+                $Installer = $UpdateSession.CreateUpdateInstaller()
+                $Installer.Updates = $SingleUpdateCollection
+                
+                # Begin asynchronous installation with callback
+                $dummyCallback = [System.AsyncCallback]{}
+                $dummyState1 = New-Object System.Object
+                $dummyState2 = New-Object System.Object
+                $InstallJob = $Installer.BeginInstall($dummyCallback, $dummyState1, $dummyState2)
+                
+                # Wait for installation to complete with progress monitoring
+                while (-not $InstallJob.IsCompleted) {
+                    Start-Sleep -Seconds 1
+                    
+                    # Monitor installation progress
+                    try {
+                        Write-Progress -Activity "Installing Windows Update: $($Update.Title)" -Status "Installing..." -PercentComplete $InstallJob.GetProgress().PercentComplete
+                    } catch {
+                        Write-Log "Error monitoring installation progress: $($_.Exception.Message)"
+                    }
+                }
+                
+                # End the installation and get the result
+                $InstallResult = $Installer.EndInstall($InstallJob)
+                
+                Write-Progress -Activity "Installing Windows Update: $($Update.Title)" -Completed
 
-            if ($InstallResult.ResultCode -eq 2) {
-                Write-Log-Highlight "Update installed successfully: $($Update.Title)" -HighlightText $Update.Title -HighlightColor "Green"
-                if ($InstallResult.RebootRequired) {
-                    Write-Host "`n=== REBOOT REQUIRED ===" -ForegroundColor Yellow
-                    Write-Host "Windows updates require a system reboot." -ForegroundColor Yellow
-                    Write-Host "The computer will restart in 30 seconds..." -ForegroundColor Yellow
-                    Wait-ForUserCancellation -Seconds 30 -Message "Press any key to cancel the reboot"
-                    Write-Log "Reboot required. Restarting computer..."
-                    Restart-Computer -Force
-                    Pause
+                if ($InstallResult.ResultCode -eq 2) {
+                    Write-Log-Highlight "Update installed successfully: $($Update.Title)" -HighlightText $Update.Title -HighlightColor "Green"
+                    if ($InstallResult.RebootRequired) {
+                        Write-Host "`n=== REBOOT REQUIRED ===" -ForegroundColor Yellow
+                        Write-Host "Windows updates require a system reboot." -ForegroundColor Yellow
+                        Write-Host "The computer will restart in 30 seconds..." -ForegroundColor Yellow
+                        Wait-ForUserCancellation -Seconds 30 -Message "Press any key to cancel the reboot"
+                        Write-Log "Reboot required. Restarting computer..."
+                        Restart-Computer -Force
+                        Pause
+                    }
+                } else {
+                    throw "Failed to install update: $($Update.Title)"
                 }
             } else {
-                throw "Failed to install update: $($Update.Title)"
+                throw "Failed to download update: $($Update.Title)"
             }
-        } else {
-            throw "Failed to download update: $($Update.Title)"
+        }
+        finally {
+            # Clean up COM objects for this update
+            if ($InstallResult) { [System.Runtime.InteropServices.Marshal]::ReleaseComObject($InstallResult) | Out-Null }
+            if ($InstallJob) { [System.Runtime.InteropServices.Marshal]::ReleaseComObject($InstallJob) | Out-Null }
+            if ($Installer) { [System.Runtime.InteropServices.Marshal]::ReleaseComObject($Installer) | Out-Null }
+            if ($DownloadResult) { [System.Runtime.InteropServices.Marshal]::ReleaseComObject($DownloadResult) | Out-Null }
+            if ($DownloadJob) { [System.Runtime.InteropServices.Marshal]::ReleaseComObject($DownloadJob) | Out-Null }
+            if ($Downloader) { [System.Runtime.InteropServices.Marshal]::ReleaseComObject($Downloader) | Out-Null }
+            if ($SingleUpdateCollection) { [System.Runtime.InteropServices.Marshal]::ReleaseComObject($SingleUpdateCollection) | Out-Null }
         }
     }
     
@@ -464,6 +546,18 @@ function Install-WindowsUpdates {
     Write-Log "Reboot required. Restarting computer..."
     Restart-Computer -Force
     Pause
+    }
+    finally {
+        # Clean up COM objects
+        if ($searchResult) { [System.Runtime.InteropServices.Marshal]::ReleaseComObject($searchResult) | Out-Null }
+        if ($searchJob) { [System.Runtime.InteropServices.Marshal]::ReleaseComObject($searchJob) | Out-Null }
+        if ($UpdateSearcher) { [System.Runtime.InteropServices.Marshal]::ReleaseComObject($UpdateSearcher) | Out-Null }
+        if ($UpdateSession) { [System.Runtime.InteropServices.Marshal]::ReleaseComObject($UpdateSession) | Out-Null }
+        
+        # Force garbage collection to ensure COM objects are released
+        [System.GC]::Collect()
+        [System.GC]::WaitForPendingFinalizers()
+    }
 }
 
 function Install-Office {
@@ -472,44 +566,55 @@ function Install-Office {
     # Create temporary directory for Office installation
     $officeTempDir = "$env:TEMP\OfficeInstall"
     Write-Log "Creating temporary directory: $officeTempDir"
-    if (Test-Path $officeTempDir) {
-        Remove-Item $officeTempDir -Recurse -Force
-    }
-    New-Item -ItemType Directory -Path $officeTempDir -Force | Out-Null
-
-    # Download Office deployment tool
-    $officeDownloadUrl = "https://download.microsoft.com/download/6c1eeb25-cf8b-41d9-8d0d-cc1dbc032140/officedeploymenttool_19029-20136.exe"
-    $officeInstaller = "officedeploymenttool.exe"
-    $officeInstallerFullPath = Join-Path $officeTempDir $officeInstaller
     
-    Invoke-WebRequestWithCleanup -Uri $officeDownloadUrl -OutFile $officeInstallerFullPath -Description "Office deployment tool"
+    try {
+        if (Test-Path $officeTempDir) {
+            Remove-Item $officeTempDir -Recurse -Force
+        }
+        New-Item -ItemType Directory -Path $officeTempDir -Force | Out-Null
 
-    # Run the Office deployment tool to extract files
-    Write-Log "Extracting Office deployment tool files..."
-    & $officeInstallerFullPath /quiet /extract:$officeTempDir
-    Write-Log "Office deployment tool extracted successfully"
+        # Download Office deployment tool
+        $officeDownloadUrl = "https://download.microsoft.com/download/6c1eeb25-cf8b-41d9-8d0d-cc1dbc032140/officedeploymenttool_19029-20136.exe"
+        $officeInstaller = "officedeploymenttool.exe"
+        $officeInstallerFullPath = Join-Path $officeTempDir $officeInstaller
+        
+        Invoke-WebRequestWithCleanup -Uri $officeDownloadUrl -OutFile $officeInstallerFullPath -Description "Office deployment tool"
 
-    # Download office.xml from GitHub repository
-    $officeXmlUrl = "https://raw.githubusercontent.com/goastler/windows/refs/heads/main/src/office.xml"
-    $officeXmlDest = "$officeTempDir\office.xml"
-    
-    Invoke-WebRequestWithCleanup -Uri $officeXmlUrl -OutFile $officeXmlDest -Description "office.xml configuration file"
+        # Run the Office deployment tool to extract files
+        Write-Log "Extracting Office deployment tool files..."
+        & $officeInstallerFullPath /quiet /extract:$officeTempDir
+        Write-Log "Office deployment tool extracted successfully"
 
-    # Run Office setup with the configuration file
-    Write-Log "Starting Office installation with configuration file..."
-    $setupExePath = "$officeTempDir\setup.exe"
-    $setupProcess = Start-Process -FilePath $setupExePath -ArgumentList "/configure", $officeXmlDest -Wait -PassThru -NoNewWindow
-    if ($setupProcess.ExitCode -ne 0) {
-        throw "Office installation completed with exit code: $($setupProcess.ExitCode)"
+        # Download office.xml from GitHub repository
+        $officeXmlUrl = "https://raw.githubusercontent.com/goastler/windows/refs/heads/main/src/office.xml"
+        $officeXmlDest = "$officeTempDir\office.xml"
+        
+        Invoke-WebRequestWithCleanup -Uri $officeXmlUrl -OutFile $officeXmlDest -Description "office.xml configuration file"
+
+        # Run Office setup with the configuration file
+        Write-Log "Starting Office installation with configuration file..."
+        $setupExePath = "$officeTempDir\setup.exe"
+        $setupProcess = Start-Process -FilePath $setupExePath -ArgumentList "/configure", $officeXmlDest -Wait -PassThru -NoNewWindow
+        if ($setupProcess.ExitCode -ne 0) {
+            throw "Office installation completed with exit code: $($setupProcess.ExitCode)"
+        }
+        Write-Log "Office installation completed successfully"
+
+        Write-Log "Office installation process completed!"
     }
-    Write-Log "Office installation completed successfully"
-
-    # Clean up temporary directory
-    Write-Log "Cleaning up temporary Office installation directory..."
-    Remove-Item $officeTempDir -Recurse -Force
-    Write-Log "Temporary directory cleaned up successfully"
-
-    Write-Log "Office installation process completed!"
+    finally {
+        # Clean up temporary directory
+        if (Test-Path $officeTempDir) {
+            Write-Log "Cleaning up temporary Office installation directory..."
+            try {
+                Remove-Item $officeTempDir -Recurse -Force
+                Write-Log "Temporary directory cleaned up successfully"
+            }
+            catch {
+                Write-Log "Warning: Could not clean up temporary directory: $($_.Exception.Message)"
+            }
+        }
+    }
 }
 
 function Setup-BgInfo {
@@ -531,17 +636,27 @@ function Setup-BgInfo {
     $bgInfoExe = "$bgInfoDir\BgInfo.exe"
     
     if (!(Test-Path $bgInfoExe)) {
-        Write-Log "Downloading BgInfo..."
-        Invoke-WebRequestWithCleanup -Uri $bgInfoUrl -OutFile $bgInfoZip -Description "BgInfo"
-        
-        # Extract BgInfo
-        Write-Log "Extracting BgInfo..."
-        Expand-Archive -Path $bgInfoZip -DestinationPath $bgInfoDir -Force
-        Write-Log "BgInfo extracted successfully"
-        
-        # Clean up zip file
-        Remove-Item $bgInfoZip -Force
-        Write-Log "BgInfo zip file cleaned up"
+        try {
+            Write-Log "Downloading BgInfo..."
+            Invoke-WebRequestWithCleanup -Uri $bgInfoUrl -OutFile $bgInfoZip -Description "BgInfo"
+            
+            # Extract BgInfo
+            Write-Log "Extracting BgInfo..."
+            Expand-Archive -Path $bgInfoZip -DestinationPath $bgInfoDir -Force
+            Write-Log "BgInfo extracted successfully"
+        }
+        finally {
+            # Clean up zip file
+            if (Test-Path $bgInfoZip) {
+                try {
+                    Remove-Item $bgInfoZip -Force
+                    Write-Log "BgInfo zip file cleaned up"
+                }
+                catch {
+                    Write-Log "Warning: Could not clean up BgInfo zip file: $($_.Exception.Message)"
+                }
+            }
+        }
     } else {
         Write-Log "BgInfo is already installed at: $bgInfoExe"
     }
@@ -601,32 +716,46 @@ function Install-MicrosoftActivationScripts {
     $masFile = "MAS_AIO.cmd"
     $masFullPath = Join-Path $downloadsDir $masFile
     
-    Write-Log "Downloading Microsoft Activation Scripts..."
-    Invoke-WebRequestWithCleanup -Uri $masUrl -OutFile $masFullPath -Description "Microsoft Activation Scripts"
+    try {
+        Write-Log "Downloading Microsoft Activation Scripts..."
+        Invoke-WebRequestWithCleanup -Uri $masUrl -OutFile $masFullPath -Description "Microsoft Activation Scripts"
 
-    # Verify the file was downloaded successfully
-    if (!(Test-Path $masFullPath)) {
-        throw "Failed to download MAS_AIO.cmd. File not found at: $masFullPath"
+        # Verify the file was downloaded successfully
+        if (!(Test-Path $masFullPath)) {
+            throw "Failed to download MAS_AIO.cmd. File not found at: $masFullPath"
+        }
+        
+        Write-Log "MAS_AIO.cmd downloaded successfully to: $masFullPath"
+        
+        # Get file size to verify it's not empty
+        $fileSize = (Get-Item $masFullPath).Length
+        if ($fileSize -eq 0) {
+            throw "Downloaded MAS_AIO.cmd file is empty (0 bytes)"
+        }
+        Write-Log "MAS_AIO.cmd file size: $fileSize bytes"
+
+        # Run MAS with /HWID parameter
+        Write-Log "Running Microsoft Activation Scripts with /HWID parameter..."
+        $masHwidResult = Invoke-CommandWithExitCode -Command "`"$masFullPath`" /HWID" -Description "run MAS with /HWID parameter"
+
+        # Run MAS with /Ohook parameter
+        Write-Log "Running Microsoft Activation Scripts with /Ohook parameter..."
+        $masOhookResult = Invoke-CommandWithExitCode -Command "`"$masFullPath`" /Ohook" -Description "run MAS with /Ohook parameter"
+
+        Write-Log "Microsoft Activation Scripts setup completed!"
     }
-    
-    Write-Log "MAS_AIO.cmd downloaded successfully to: $masFullPath"
-    
-    # Get file size to verify it's not empty
-    $fileSize = (Get-Item $masFullPath).Length
-    if ($fileSize -eq 0) {
-        throw "Downloaded MAS_AIO.cmd file is empty (0 bytes)"
+    finally {
+        # Clean up the downloaded MAS file
+        if (Test-Path $masFullPath) {
+            try {
+                Remove-Item $masFullPath -Force
+                Write-Log "MAS_AIO.cmd file cleaned up successfully"
+            }
+            catch {
+                Write-Log "Warning: Could not clean up MAS_AIO.cmd file: $($_.Exception.Message)"
+            }
+        }
     }
-    Write-Log "MAS_AIO.cmd file size: $fileSize bytes"
-
-    # Run MAS with /HWID parameter
-    Write-Log "Running Microsoft Activation Scripts with /HWID parameter..."
-    $masHwidResult = Invoke-CommandWithExitCode -Command "`"$masFullPath`" /HWID" -Description "run MAS with /HWID parameter"
-
-    # Run MAS with /Ohook parameter
-    Write-Log "Running Microsoft Activation Scripts with /Ohook parameter..."
-    $masOhookResult = Invoke-CommandWithExitCode -Command "`"$masFullPath`" /Ohook" -Description "run MAS with /Ohook parameter"
-
-    Write-Log "Microsoft Activation Scripts setup completed!"
 }
 
 function Create-OnLoginScheduledTask {
@@ -736,6 +865,16 @@ try {
     Write-Host "An error occurred during setup: $($_.Exception.Message)" -ForegroundColor Red
     Write-Host "Error details: $($_.Exception)" -ForegroundColor Red
     
+    # Clean up scheduled task on error
+    try {
+        Write-Log "Cleaning up scheduled task due to error..."
+        Unregister-ScheduledTask -TaskName $scheduledTaskName -Confirm:$false -ErrorAction SilentlyContinue
+        Write-Log "Scheduled task cleaned up successfully"
+    }
+    catch {
+        Write-Log "Warning: Could not clean up scheduled task: $($_.Exception.Message)"
+    }
+    
     # Restore original directory location on error
     try {
         Set-Location $originalScriptLocation
@@ -744,6 +883,10 @@ try {
     catch {
         Write-Log "Warning: Could not restore to original directory: $($_.Exception.Message)"
     }
+    
+    # Force garbage collection to clean up any remaining objects
+    [System.GC]::Collect()
+    [System.GC]::WaitForPendingFinalizers()
 }
 
 Write-Host "`n=== REBOOT REQUIRED ===" -ForegroundColor Yellow
@@ -752,3 +895,4 @@ Wait-ForUserCancellation -Seconds 30
 Write-Host "Rebooting now..." -ForegroundColor Red
 Restart-Computer -Force
 Pause
+ 
