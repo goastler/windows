@@ -95,30 +95,30 @@ function Test-RequiredTools {
     Write-ColorOutput "Found oscdimg.exe at: $script:oscdimgPath" "Green"
 }
 
-function Test-Chocolatey {
-    return (Get-Command "choco" -ErrorAction SilentlyContinue) -ne $null
-}
+# function Test-Chocolatey {
+#     return (Get-Command "choco" -ErrorAction SilentlyContinue) -ne $null
+# }
 
-function Install-Chocolatey {
-    Write-ColorOutput "Installing Chocolatey package manager..." "Yellow"
-    try {
-        Set-ExecutionPolicy Bypass -Scope Process -Force
-        [System.Net.ServicePointManager]::SecurityProtocol = `
-            [System.Net.ServicePointManager]::SecurityProtocol -bor 3072
-        iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
+# function Install-Chocolatey {
+#     Write-ColorOutput "Installing Chocolatey package manager..." "Yellow"
+#     try {
+#         Set-ExecutionPolicy Bypass -Scope Process -Force
+#         [System.Net.ServicePointManager]::SecurityProtocol = `
+#             [System.Net.ServicePointManager]::SecurityProtocol -bor 3072
+#         iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
         
-        if (Test-Chocolatey) {
-            Write-ColorOutput "✓ Chocolatey installed successfully!" "Green"
-            return $true
-        } else {
-            Write-ColorOutput "Chocolatey installation failed to become available on PATH." "Red"
-            return $false
-        }
-    } catch {
-        Write-ColorOutput "Chocolatey installation failed: $($_.Exception.Message)" "Red"
-        return $false
-    }
-}
+#         if (Test-Chocolatey) {
+#             Write-ColorOutput "✓ Chocolatey installed successfully!" "Green"
+#             return $true
+#         } else {
+#             Write-ColorOutput "Chocolatey installation failed to become available on PATH." "Red"
+#             return $false
+#         }
+#     } catch {
+#         Write-ColorOutput "Chocolatey installation failed: $($_.Exception.Message)" "Red"
+#         return $false
+#     }
+# }
 
 # function Install-WindowsADK {
 #     Write-ColorOutput "=== Windows ADK Installation ===" "Cyan"
