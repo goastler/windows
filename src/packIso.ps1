@@ -39,7 +39,7 @@ param(
     [string]$WorkingDirectory = (Join-Path $env:TEMP "WindowsIsoRepack_$(Get-Date -Format 'yyyyMMdd_HHmmss')"),
 
     [Parameter(Mandatory = $false)]
-    [switch]$KeepWorkingDirectory,
+    [switch]$KeepWorkingDirectory
 
 )
 
