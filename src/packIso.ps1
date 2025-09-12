@@ -207,11 +207,17 @@ function New-IsoFromDirectory {
     )
     Write-ColorOutput "Creating new ISO from directory: $SourcePath" "Yellow"
     
-    # Create a temporary copy of the source directory that oscdimg can safely delete
-    $tempSourcePath = Join-Path $env:TEMP "IsoSource_$(Get-Date -Format 'yyyyMMdd_HHmmss_ffff')"
+    # Create a temporary copy in a different location to avoid oscdimg cleanup issues
+    $tempDir = Join-Path $env:TEMP "IsoBuild_$(Get-Date -Format 'yyyyMMdd_HHmmss_ffff')"
+    $tempSourcePath = Join-Path $tempDir "Source"
     
     try {
-        Write-ColorOutput "Creating temporary copy for oscdimg processing..." "Cyan"
+        Write-ColorOutput "Creating isolated temporary directory for oscdimg processing..." "Cyan"
+        
+        # Create the temp directory structure
+        New-Item -ItemType Directory -Path $tempSourcePath -Force | Out-Null
+        
+        # Copy the source contents
         robocopy $SourcePath $tempSourcePath /E /COPY:DAT /R:3 /W:10 /NFL /NDL /NJH /NJS /nc /ns /np
         
         if ($LASTEXITCODE -gt 7) {
@@ -220,13 +226,10 @@ function New-IsoFromDirectory {
         
         Write-ColorOutput "Temporary copy created at: $tempSourcePath" "Green"
         
-        # Change to the parent directory of the temp source
+        # Change to the temp directory and run oscdimg from there
         $originalLocation = Get-Location
-        $tempSourceParent = Split-Path $tempSourcePath -Parent
-        $tempSourceName = Split-Path $tempSourcePath -Leaf
-        
-        Set-Location $tempSourceParent
-        Write-ColorOutput "Changed working directory to: $tempSourceParent" "Cyan"
+        Set-Location $tempDir
+        Write-ColorOutput "Changed working directory to: $tempDir" "Cyan"
         
         $arguments = @(
             "-m"
@@ -235,7 +238,7 @@ function New-IsoFromDirectory {
             "-udfver102"
             "-l"
             "Windows"
-            "`"$tempSourceName`""
+            "Source"
             "`"$OutputPath`""
         )
         Write-ColorOutput "Running oscdimg with arguments: $($arguments -join ' ')" "Cyan"
@@ -247,10 +250,10 @@ function New-IsoFromDirectory {
     } finally {
         Set-Location $originalLocation
         
-        # Clean up the temporary copy
-        if (Test-Path $tempSourcePath) {
-            Write-ColorOutput "Cleaning up temporary copy..." "Yellow"
-            Remove-Item $tempSourcePath -Recurse -Force -ErrorAction SilentlyContinue
+        # Clean up the entire temporary directory
+        if (Test-Path $tempDir) {
+            Write-ColorOutput "Cleaning up temporary directory..." "Yellow"
+            Remove-Item $tempDir -Recurse -Force -ErrorAction SilentlyContinue
         }
     }
 }
