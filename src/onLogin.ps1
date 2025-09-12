@@ -439,10 +439,9 @@ function Install-WindowsUpdates {
             
             Write-Progress -Activity "Installing Windows Update: $($Update.Title)" -Completed
 
-            $UpdateResult = $Update.GetUpdateResult()
-            if ($UpdateResult.ResultCode -eq 2) {
+            if ($InstallResult.ResultCode -eq 2) {
                 Write-Log-Highlight "Update installed successfully: $($Update.Title)" -HighlightText $Update.Title -HighlightColor "Green"
-                if ($UpdateResult.RebootRequired) {
+                if ($InstallResult.RebootRequired) {
                     Write-Host "`n=== REBOOT REQUIRED ===" -ForegroundColor Yellow
                     Write-Host "Windows updates require a system reboot." -ForegroundColor Yellow
                     Write-Host "The computer will restart in 30 seconds..." -ForegroundColor Yellow
