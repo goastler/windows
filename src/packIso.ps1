@@ -174,7 +174,7 @@ function Extract-IsoContents {
         }
         New-Item -ItemType Directory -Path $ExtractPath -Force | Out-Null
         
-        robocopy $mountedPath $ExtractPath /E /COPY:DAT /R:3 /W:10 /NFL /NDL /NJH /NJS /nc /ns /np
+        robocopy $mountedPath $ExtractPath /E /COPY:DT /R:3 /W:10 /NFL /NDL /NJH /NJS /nc /ns /np
         
         if ($LASTEXITCODE -gt 7) {
             throw "Failed to extract ISO contents. Robocopy exit code: $LASTEXITCODE"
@@ -207,63 +207,33 @@ function New-IsoFromDirectory {
     )
     Write-ColorOutput "Creating new ISO from directory: $SourcePath" "Yellow"
     
-    # Create a temporary copy in a different location to avoid oscdimg cleanup issues
-    $tempDir = Join-Path $env:TEMP "IsoBuild_$(Get-Date -Format 'yyyyMMdd_HHmmss_ffff')"
-    $tempSourcePath = Join-Path $tempDir "Source"
+    # Change to the parent directory of the source to use relative paths
+    $originalLocation = Get-Location
+    $sourceParent = Split-Path $SourcePath -Parent
+    $sourceName = Split-Path $SourcePath -Leaf
     
     try {
-        Write-ColorOutput "Creating isolated temporary directory for oscdimg processing..." "Cyan"
+        Set-Location $sourceParent
+        Write-ColorOutput "Changed working directory to: $sourceParent" "Cyan"
         
-        # Create the temp directory structure
-        New-Item -ItemType Directory -Path $tempSourcePath -Force | Out-Null
-        
-        # Copy the source contents
-        robocopy $SourcePath $tempSourcePath /E /COPY:DAT /R:3 /W:10 /NFL /NDL /NJH /NJS /nc /ns /np
-        
-        if ($LASTEXITCODE -gt 7) {
-            throw "Failed to create temporary copy. Robocopy exit code: $LASTEXITCODE"
+        $arguments = @(
+            "-m"
+            "-u2"
+            "-udfver102"
+            "-l"
+            "Windows"
+            "-bootdata:2#p0,e,b`"$sourceName\boot\etfsboot.com`"#pEF,e,b`"$sourceName\efi\microsoft\boot\efisys.bin`""
+            "`"$sourceName`""
+            "`"$OutputPath`""
+        )
+        Write-ColorOutput "Running oscdimg with arguments: $($arguments -join ' ')" "Cyan"
+        $process = Start-Process -FilePath $OscdimgPath -ArgumentList $arguments -Wait -PassThru -NoNewWindow
+        if ($process.ExitCode -ne 0) {
+            throw "oscdimg failed with exit code: $($process.ExitCode)"
         }
-        
-        Write-ColorOutput "Temporary copy created at: $tempSourcePath" "Green"
-        
-        # Try a different approach - run oscdimg from a different working directory
-        $originalLocation = Get-Location
-        $oscdimgWorkingDir = Join-Path $env:TEMP "OscdimgWork_$(Get-Date -Format 'yyyyMMdd_HHmmss_ffff')"
-        New-Item -ItemType Directory -Path $oscdimgWorkingDir -Force | Out-Null
-        
-        try {
-            Set-Location $oscdimgWorkingDir
-            Write-ColorOutput "Changed working directory to: $oscdimgWorkingDir" "Cyan"
-            
-            # Use absolute paths to avoid any directory conflicts
-            $arguments = @(
-                "-m"
-                "-o"
-                "-u2"
-                "-udfver102"
-                "-l"
-                "Windows"
-                "`"$tempSourcePath`""
-                "`"$OutputPath`""
-            )
-            Write-ColorOutput "Running oscdimg with arguments: $($arguments -join ' ')" "Cyan"
-            $process = Start-Process -FilePath $OscdimgPath -ArgumentList $arguments -Wait -PassThru -NoNewWindow
-            if ($process.ExitCode -ne 0) {
-                throw "oscdimg failed with exit code: $($process.ExitCode)"
-            }
-            Write-ColorOutput "ISO created successfully: $OutputPath" "Green"
-        } finally {
-            Set-Location $originalLocation
-            if (Test-Path $oscdimgWorkingDir) {
-                Remove-Item $oscdimgWorkingDir -Recurse -Force -ErrorAction SilentlyContinue
-            }
-        }
+        Write-ColorOutput "ISO created successfully: $OutputPath" "Green"
     } finally {
-        # Clean up the entire temporary directory
-        if (Test-Path $tempDir) {
-            Write-ColorOutput "Cleaning up temporary directory..." "Yellow"
-            Remove-Item $tempDir -Recurse -Force -ErrorAction SilentlyContinue
-        }
+        Set-Location $originalLocation
     }
 }
 
