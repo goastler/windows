@@ -229,6 +229,7 @@ function New-IsoFromDirectory {
 
     Write-ColorOutput "Current working directory: $(Get-Location)" "Cyan"
     Write-ColorOutput "Running oscdimg with arguments: $($arguments -join ' ')" "Cyan"
+    Write-ColorOutput "Full command: & `"$OscdimgPath`" $($arguments -join ' ')" "Cyan"
     
     & $OscdimgPath $arguments
     if ($LASTEXITCODE -ne 0) { throw "oscdimg failed with exit code: $LASTEXITCODE" }
