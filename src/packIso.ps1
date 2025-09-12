@@ -207,45 +207,55 @@ function New-IsoFromDirectory {
     )
     Write-ColorOutput "Creating new ISO from directory: $SourcePath" "Yellow"
 
-     # Create an isolated working dir that's NOT the parent of $SourcePath
-     $originalLocation = Get-Location
-     $oscdimgWorkingDir = "C:\OscdimgWork_$(Get-Date -Format 'yyyyMMdd_HHmmss')"
-     New-Item -ItemType Directory -Path $oscdimgWorkingDir -Force | Out-Null
+    $originalLocation = Get-Location
+    $oscdimgWorkingDir = "C:\OscdimgWork_$(Get-Date -Format 'yyyyMMdd_HHmmss')"
+    New-Item -ItemType Directory -Path $oscdimgWorkingDir -Force | Out-Null
 
+    # Resolve absolute paths
+    $absSrc    = (Resolve-Path $SourcePath).ProviderPath
+    $absOutDir = (Resolve-Path (Split-Path $OutputPath -Parent)).ProviderPath
+    $absOutIso = Join-Path $absOutDir (Split-Path $OutputPath -Leaf)
+
+    # Map a short virtual drive to the source to dodge oscdimg’s “delete existing file” bug
+    $drive = "X:"
     try {
+        # Clean any stale mapping, then map
+        subst $drive /D | Out-Null 2>$null
+        subst $drive $absSrc
+        if (!(Test-Path $drive)) { throw "Failed to map $drive to $absSrc" }
+
         Set-Location $oscdimgWorkingDir
         Write-ColorOutput "Changed working directory to: $oscdimgWorkingDir" "Cyan"
+        Write-ColorOutput "Using mapped source: $drive\" "Cyan"
 
-        # Absolute paths so we don't depend on CWD
-        $absSrc = (Resolve-Path $SourcePath).ProviderPath
-        $absOut = (Resolve-Path (Split-Path $OutputPath -Parent)).ProviderPath
-        $absOutIso = Join-Path $absOut (Split-Path $OutputPath -Leaf)
+        $shortSrc = "$drive\"
 
-        # Build args: no -o; UEFI+BIOS boot
+        # Build args: no -o; BIOS+UEFI boot
         $arguments = @(
             "-m"
             "-u2"
             "-udfver102"
             "-l","W11_CUSTOM"
-            "-bootdata:2#p0,e,b`"$absSrc\boot\etfsboot.com`"#pEF,e,b`"$absSrc\efi\microsoft\boot\efisys.bin`""
-            "`"$absSrc`""
+            "-bootdata:2#p0,e,b`"$shortSrc\boot\etfsboot.com`"#pEF,e,b`"$shortSrc\efi\microsoft\boot\efisys.bin`""
+            "`"$shortSrc`""
             "`"$absOutIso`""
         )
 
         Write-ColorOutput "Running oscdimg with arguments: $($arguments -join ' ')" "Cyan"
-        $process = Start-Process -FilePath $OscdimgPath -ArgumentList $arguments -Wait -PassThru -NoNewWindow
-        if ($process.ExitCode -ne 0) {
-            throw "oscdimg failed with exit code: $($process.ExitCode)"
-        }
+        $p = Start-Process -FilePath $OscdimgPath -ArgumentList $arguments -Wait -PassThru -NoNewWindow
+        if ($p.ExitCode -ne 0) { throw "oscdimg failed with exit code: $($p.ExitCode)" }
+
         Write-ColorOutput "ISO created successfully: $absOutIso" "Green"
     }
     finally {
+        try { subst $drive /D | Out-Null 2>$null } catch {}
         Set-Location $originalLocation
         if (Test-Path $oscdimgWorkingDir) {
             Remove-Item $oscdimgWorkingDir -Recurse -Force -ErrorAction SilentlyContinue
         }
     }
 }
+
 
 function Remove-WorkingDirectory {
     param([string]$Path)
