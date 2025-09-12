@@ -206,22 +206,35 @@ function New-IsoFromDirectory {
         [string]$OscdimgPath
     )
     Write-ColorOutput "Creating new ISO from directory: $SourcePath" "Yellow"
-    $arguments = @(
-        "-m"
-        "-o"
-        "-u2"
-        "-udfver102"
-        "-l"
-        "Windows"
-        "`"$SourcePath`""
-        "`"$OutputPath`""
-    )
-    Write-ColorOutput "Running oscdimg with arguments: $($arguments -join ' ')" "Cyan"
-    $process = Start-Process -FilePath $OscdimgPath -ArgumentList $arguments -Wait -PassThru -NoNewWindow
-    if ($process.ExitCode -ne 0) {
-        throw "oscdimg failed with exit code: $($process.ExitCode)"
+    
+    # Change to the parent directory of the source to avoid oscdimg trying to delete the source directory
+    $originalLocation = Get-Location
+    $sourceParent = Split-Path $SourcePath -Parent
+    $sourceName = Split-Path $SourcePath -Leaf
+    
+    try {
+        Set-Location $sourceParent
+        Write-ColorOutput "Changed working directory to: $sourceParent" "Cyan"
+        
+        $arguments = @(
+            "-m"
+            "-o"
+            "-u2"
+            "-udfver102"
+            "-l"
+            "Windows"
+            "`"$sourceName`""
+            "`"$OutputPath`""
+        )
+        Write-ColorOutput "Running oscdimg with arguments: $($arguments -join ' ')" "Cyan"
+        $process = Start-Process -FilePath $OscdimgPath -ArgumentList $arguments -Wait -PassThru -NoNewWindow
+        if ($process.ExitCode -ne 0) {
+            throw "oscdimg failed with exit code: $($process.ExitCode)"
+        }
+        Write-ColorOutput "ISO created successfully: $OutputPath" "Green"
+    } finally {
+        Set-Location $originalLocation
     }
-    Write-ColorOutput "ISO created successfully: $OutputPath" "Green"
 }
 
 function Remove-WorkingDirectory {
