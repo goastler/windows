@@ -65,32 +65,32 @@ function Test-RequiredTools {
     Write-ColorOutput "Checking for required tools..." "Yellow"
     
     $oscdimgPath = Get-Command "oscdimg.exe" -ErrorAction SilentlyContinue
-    if (-not $oscdimgPath) {
-        $commonPaths = @(
-            "${env:ProgramFiles(x86)}\Windows Kits\10\Assessment and Deployment Kit\Deployment Tools\amd64\Oscdimg\oscdimg.exe",
-            "${env:ProgramFiles}\Windows Kits\10\Assessment and Deployment Kit\Deployment Tools\amd64\Oscdimg\oscdimg.exe",
-            "${env:ProgramFiles(x86)}\Windows Kits\8.1\Assessment and Deployment Kit\Deployment Tools\amd64\Oscdimg\oscdimg.exe",
-            "${env:ProgramFiles}\Windows Kits\8.1\Assessment and Deployment Kit\Deployment Tools\amd64\Oscdimg\oscdimg.exe"
-        )
+    # if (-not $oscdimgPath) {
+    #     $commonPaths = @(
+    #         "${env:ProgramFiles(x86)}\Windows Kits\10\Assessment and Deployment Kit\Deployment Tools\amd64\Oscdimg\oscdimg.exe",
+    #         "${env:ProgramFiles}\Windows Kits\10\Assessment and Deployment Kit\Deployment Tools\amd64\Oscdimg\oscdimg.exe",
+    #         "${env:ProgramFiles(x86)}\Windows Kits\8.1\Assessment and Deployment Kit\Deployment Tools\amd64\Oscdimg\oscdimg.exe",
+    #         "${env:ProgramFiles}\Windows Kits\8.1\Assessment and Deployment Kit\Deployment Tools\amd64\Oscdimg\oscdimg.exe"
+    #     )
         
-        foreach ($path in $commonPaths) {
-            if (Test-Path $path) {
-                $script:oscdimgPath = $path
-                break
-            }
-        }
+    #     foreach ($path in $commonPaths) {
+    #         if (Test-Path $path) {
+    #             $script:oscdimgPath = $path
+    #             break
+    #         }
+    #     }
         
-        if (-not $script:oscdimgPath) {
-            if ($SkipAutoInstall) {
-                throw "oscdimg.exe not found. Please install Windows ADK or ensure oscdimg.exe is in PATH."
-            } else {
-                Write-ColorOutput "oscdimg.exe not found. Attempting to install Windows ADK..." "Yellow"
-                # Install-WindowsADK
-            }
-        }
-    } else {
-        $script:oscdimgPath = $oscdimgPath.Source
-    }
+    #     if (-not $script:oscdimgPath) {
+    #         if ($SkipAutoInstall) {
+    #             throw "oscdimg.exe not found. Please install Windows ADK or ensure oscdimg.exe is in PATH."
+    #         } else {
+    #             Write-ColorOutput "oscdimg.exe not found. Attempting to install Windows ADK..." "Yellow"
+    #             # Install-WindowsADK
+    #         }
+    #     }
+    # } else {
+    #     $script:oscdimgPath = $oscdimgPath.Source
+    # }
     
     Write-ColorOutput "Found oscdimg.exe at: $script:oscdimgPath" "Green"
 }
