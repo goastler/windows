@@ -81,6 +81,12 @@ function Test-Chocolatey {
 }
 
 function Install-Chocolatey {
+
+    if (Test-Chocolatey) {
+        Write-ColorOutput "[OK] Chocolatey already installed!" "Green"
+        return
+    }
+
     Write-ColorOutput "Installing Chocolatey package manager..." "Yellow"
     Set-ExecutionPolicy Bypass -Scope Process -Force
     [System.Net.ServicePointManager]::SecurityProtocol = `
