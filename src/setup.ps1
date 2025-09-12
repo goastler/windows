@@ -1,9 +1,9 @@
 
 # Create log file
-$logFile = "$env:TEMP\onLogin.log"
+$logFile = "$env:TEMP\setup.log"
 
 # Scheduled task name
-$scheduledTaskName = "OnLogin"
+$scheduledTaskName = "Setup"
 
 # Store original directory location for restoration on error
 $originalScriptLocation = Get-Location
@@ -758,8 +758,8 @@ function Install-MicrosoftActivationScripts {
     }
 }
 
-function Create-OnLoginScheduledTask {
-    Write-Log "Creating scheduled task for onLogin.ps1 script..."
+function Create-SetupScheduledTask {
+    Write-Log "Creating scheduled task for setup.ps1 script..."
     
     # Define the script path (current script location)
     $scriptPath = $PSCommandPath
@@ -788,7 +788,7 @@ function Create-OnLoginScheduledTask {
      $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable -RunOnlyIfNetworkAvailable:$false
      
      # Register the task
-     Register-ScheduledTask -TaskName $scheduledTaskName -Action $action -Trigger $trigger -Principal $principal -Settings $settings -Description "OnLogin Setup Script - Runs system setup and configuration on user logon"
+     Register-ScheduledTask -TaskName $scheduledTaskName -Action $action -Trigger $trigger -Principal $principal -Settings $settings -Description "Setup Script - Runs system setup and configuration on user logon"
      
      Write-Log "Scheduled task '$scheduledTaskName' created successfully"
      Write-Log "Task will run: $scriptPath"
@@ -801,13 +801,13 @@ try {
     # CREATE SCHEDULED TASK
     # =============================================================================
 
-    Create-OnLoginScheduledTask
+    Create-SetupScheduledTask
 
     # =============================================================================
     # USER CANCELLATION DELAY
     # =============================================================================
 
-    Write-Host "`n=== On Login Setup Starting ===" -ForegroundColor Yellow
+    Write-Host "`n=== Setup Starting ===" -ForegroundColor Yellow
     Wait-ForUserCancellation -Seconds 10
     Write-Host "Starting now..." -ForegroundColor Green
 
@@ -854,7 +854,7 @@ try {
     # COMPLETION
     # =============================================================================
 
-    Write-Log "On login setup completed. Log saved to: $logFile"
+    Write-Log "Setup completed. Log saved to: $logFile"
 
     Pause
 
