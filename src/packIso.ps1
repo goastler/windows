@@ -113,6 +113,23 @@ function Install-WindowsADK {
     $result = Start-Process -FilePath "choco" -ArgumentList @("install","windows-adk","-y") -Wait -PassThru -NoNewWindow
     if ($result.ExitCode -eq 0) {
         Write-ColorOutput "[OK] Windows ADK installed successfully via Chocolatey!" "Green"
+        
+        # Add ADK paths to current session PATH
+        $adkPaths = @(
+            "${env:ProgramFiles(x86)}\Windows Kits\10\Assessment and Deployment Kit\Deployment Tools\amd64\Oscdimg",
+            "${env:ProgramFiles}\Windows Kits\10\Assessment and Deployment Kit\Deployment Tools\amd64\Oscdimg",
+            "${env:ProgramFiles(x86)}\Windows Kits\8.1\Assessment and Deployment Kit\Deployment Tools\amd64\Oscdimg",
+            "${env:ProgramFiles}\Windows Kits\8.1\Assessment and Deployment Kit\Deployment Tools\amd64\Oscdimg"
+        )
+        
+        foreach ($path in $adkPaths) {
+            if (Test-Path $path) {
+                $env:Path += ";$path"
+                Write-ColorOutput "Added to PATH: $path" "Cyan"
+            }
+        }
+        
+        # Refresh environment variables
         $env:Path = [System.Environment]::GetEnvironmentVariable('Path','Machine') + ';' + `
                     [System.Environment]::GetEnvironmentVariable('Path','User')
         return
