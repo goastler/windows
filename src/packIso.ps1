@@ -138,80 +138,80 @@ function Install-WindowsADK {
     throw "Windows ADK installation failed"
 }
 
-# function Extract-IsoContents {
-#     param(
-#         [string]$IsoPath,
-#         [string]$ExtractPath
-#     )
+function Extract-IsoContents {
+    param(
+        [string]$IsoPath,
+        [string]$ExtractPath
+    )
     
-#     Write-ColorOutput "Mounting ISO: $IsoPath" "Yellow"
-#     $mountResult = Mount-DiskImage -ImagePath $IsoPath -PassThru
-#     $driveLetter = ($mountResult | Get-Volume).DriveLetter
+    Write-ColorOutput "Mounting ISO: $IsoPath" "Yellow"
+    $mountResult = Mount-DiskImage -ImagePath $IsoPath -PassThru
+    $driveLetter = ($mountResult | Get-Volume).DriveLetter
     
-#     if (-not $driveLetter) {
-#         throw "Failed to mount ISO or get drive letter"
-#     }
+    if (-not $driveLetter) {
+        throw "Failed to mount ISO or get drive letter"
+    }
     
-#     $mountedPath = "${driveLetter}:\"
-#     Write-ColorOutput "ISO mounted at: $mountedPath" "Green"
+    $mountedPath = "${driveLetter}:\"
+    Write-ColorOutput "ISO mounted at: $mountedPath" "Green"
     
-#     try {
-#         Write-ColorOutput "Extracting ISO contents to: $ExtractPath" "Yellow"
+    try {
+        Write-ColorOutput "Extracting ISO contents to: $ExtractPath" "Yellow"
         
-#         if (Test-Path $ExtractPath) {
-#             Remove-Item $ExtractPath -Recurse -Force
-#         }
-#         New-Item -ItemType Directory -Path $ExtractPath -Force | Out-Null
+        if (Test-Path $ExtractPath) {
+            Remove-Item $ExtractPath -Recurse -Force
+        }
+        New-Item -ItemType Directory -Path $ExtractPath -Force | Out-Null
         
-#         robocopy $mountedPath $ExtractPath /E /COPY:DAT /R:3 /W:10 /NFL /NDL /NJH /NJS /nc /ns /np
+        robocopy $mountedPath $ExtractPath /E /COPY:DAT /R:3 /W:10 /NFL /NDL /NJH /NJS /nc /ns /np
         
-#         if ($LASTEXITCODE -gt 7) {
-#             throw "Failed to extract ISO contents. Robocopy exit code: $LASTEXITCODE"
-#         }
+        if ($LASTEXITCODE -gt 7) {
+            throw "Failed to extract ISO contents. Robocopy exit code: $LASTEXITCODE"
+        }
         
-#         Write-ColorOutput "ISO contents extracted successfully" "Green"
-#     } finally {
-#         Write-ColorOutput "Dismounting ISO..." "Yellow"
-#         Dismount-DiskImage -ImagePath $IsoPath
-#         Write-ColorOutput "ISO dismounted" "Green"
-#     }
-# }
+        Write-ColorOutput "ISO contents extracted successfully" "Green"
+    } finally {
+        Write-ColorOutput "Dismounting ISO..." "Yellow"
+        Dismount-DiskImage -ImagePath $IsoPath
+        Write-ColorOutput "ISO dismounted" "Green"
+    }
+}
 
-# function Add-AutounattendXml {
-#     param(
-#         [string]$ExtractPath,
-#         [string]$AutounattendXmlPath
-#     )
-#     Write-ColorOutput "Adding autounattend.xml to ISO contents..." "Yellow"
-#     $destinationPath = Join-Path $ExtractPath "autounattend.xml"
-#     Copy-Item $AutounattendXmlPath $destinationPath -Force
-#     Write-ColorOutput "autounattend.xml added to: $destinationPath" "Green"
-# }
+function Add-AutounattendXml {
+    param(
+        [string]$ExtractPath,
+        [string]$AutounattendXmlPath
+    )
+    Write-ColorOutput "Adding autounattend.xml to ISO contents..." "Yellow"
+    $destinationPath = Join-Path $ExtractPath "autounattend.xml"
+    Copy-Item $AutounattendXmlPath $destinationPath -Force
+    Write-ColorOutput "autounattend.xml added to: $destinationPath" "Green"
+}
 
-# function New-IsoFromDirectory {
-#     param(
-#         [string]$SourcePath,
-#         [string]$OutputPath,
-#         [string]$OscdimgPath
-#     )
-#     Write-ColorOutput "Creating new ISO from directory: $SourcePath" "Yellow"
-#     $arguments = @(
-#         "-m"
-#         "-o"
-#         "-u2"
-#         "-udfver102"
-#         "-l"
-#         "Windows"
-#         "`"$SourcePath`""
-#         "`"$OutputPath`""
-#     )
-#     Write-ColorOutput "Running oscdimg with arguments: $($arguments -join ' ')" "Cyan"
-#     $process = Start-Process -FilePath $OscdimgPath -ArgumentList $arguments -Wait -PassThru -NoNewWindow
-#     if ($process.ExitCode -ne 0) {
-#         throw "oscdimg failed with exit code: $($process.ExitCode)"
-#     }
-#     Write-ColorOutput "ISO created successfully: $OutputPath" "Green"
-# }
+function New-IsoFromDirectory {
+    param(
+        [string]$SourcePath,
+        [string]$OutputPath,
+        [string]$OscdimgPath
+    )
+    Write-ColorOutput "Creating new ISO from directory: $SourcePath" "Yellow"
+    $arguments = @(
+        "-m"
+        "-o"
+        "-u2"
+        "-udfver102"
+        "-l"
+        "Windows"
+        "`"$SourcePath`""
+        "`"$OutputPath`""
+    )
+    Write-ColorOutput "Running oscdimg with arguments: $($arguments -join ' ')" "Cyan"
+    $process = Start-Process -FilePath $OscdimgPath -ArgumentList $arguments -Wait -PassThru -NoNewWindow
+    if ($process.ExitCode -ne 0) {
+        throw "oscdimg failed with exit code: $($process.ExitCode)"
+    }
+    Write-ColorOutput "ISO created successfully: $OutputPath" "Green"
+}
 
 function Remove-WorkingDirectory {
     param([string]$Path)
@@ -241,32 +241,32 @@ try {
     
     Test-RequiredTools
     
-    # Write-ColorOutput "Validating input files..." "Yellow"
-    # if (-not (Test-Path $InputIso -PathType Leaf)) {
-    #     throw "Input ISO file not found: $InputIso"
-    # }
-    # if (-not (Test-Path $AutounattendXml -PathType Leaf)) {
-    #     throw "Autounattend XML file not found: $AutounattendXml"
-    # }
-    # Write-ColorOutput "Input files validated" "Green"
+    Write-ColorOutput "Validating input files..." "Yellow"
+    if (-not (Test-Path $InputIso -PathType Leaf)) {
+        throw "Input ISO file not found: $InputIso"
+    }
+    if (-not (Test-Path $AutounattendXml -PathType Leaf)) {
+        throw "Autounattend XML file not found: $AutounattendXml"
+    }
+    Write-ColorOutput "Input files validated" "Green"
     
-    # if (Test-Path $OutputIso) {
-    #     Write-ColorOutput "Output ISO already exists. Removing..." "Yellow"
-    #     Remove-Item $OutputIso -Force
-    # }
+    if (Test-Path $OutputIso) {
+        Write-ColorOutput "Output ISO already exists. Removing..." "Yellow"
+        Remove-Item $OutputIso -Force
+    }
     
-    # Extract-IsoContents -IsoPath $InputIso -ExtractPath $WorkingDirectory
-    # Add-AutounattendXml -ExtractPath $WorkingDirectory -AutounattendXmlPath $AutounattendXml
-    # New-IsoFromDirectory -SourcePath $WorkingDirectory -OutputPath $OutputIso -OscdimgPath $script:oscdimgPath
+    Extract-IsoContents -IsoPath $InputIso -ExtractPath $WorkingDirectory
+    Add-AutounattendXml -ExtractPath $WorkingDirectory -AutounattendXmlPath $AutounattendXml
+    New-IsoFromDirectory -SourcePath $WorkingDirectory -OutputPath $OutputIso -OscdimgPath $script:oscdimgPath
     
-    # if (Test-Path $OutputIso) {
-    #     $fileSize = (Get-Item $OutputIso).Length
-    #     $fileSizeGB = [math]::Round($fileSize / 1GB, 2)
-    #     Write-ColorOutput "Output ISO created successfully!" "Green"
-    #     Write-ColorOutput "File size: $fileSizeGB GB" "Green"
-    # } else {
-    #     throw "Output ISO was not created successfully"
-    # }
+    if (Test-Path $OutputIso) {
+        $fileSize = (Get-Item $OutputIso).Length
+        $fileSizeGB = [math]::Round($fileSize / 1GB, 2)
+        Write-ColorOutput "Output ISO created successfully!" "Green"
+        Write-ColorOutput "File size: $fileSizeGB GB" "Green"
+    } else {
+        throw "Output ISO was not created successfully"
+    }
 } catch {
     Write-ColorOutput "Error: $($_.Exception.Message)" "Red"
     exit 1
