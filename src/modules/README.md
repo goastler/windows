@@ -50,10 +50,17 @@ The main script (`packIso-Modular.ps1`) automatically loads all modules using do
 ```powershell
 # Load modules
 . (Join-Path $modulePath "Common.ps1")
-. (Join-Path $modulePath "Tools.ps1")
 . (Join-Path $modulePath "ISO.ps1")
 . (Join-Path $modulePath "WIM.ps1")
 . (Join-Path $modulePath "VirtIO.ps1")
+
+# Load tools modules
+$toolsPath = Join-Path $modulePath "tools"
+. (Join-Path $toolsPath "Chocolatey.ps1")
+. (Join-Path $toolsPath "WindowsADK.ps1")
+. (Join-Path $toolsPath "OSCDIMG.ps1")
+. (Join-Path $toolsPath "DISM.ps1")
+. (Join-Path $toolsPath "ToolsOrchestrator.ps1")
 ```
 
 ## Benefits of Modular Architecture

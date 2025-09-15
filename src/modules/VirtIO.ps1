@@ -5,11 +5,11 @@ $commonPath = Join-Path $PSScriptRoot "Common.ps1"
 . $commonPath
 
 # Load DISM module dependency
-$toolsPath = Join-Path (Split-Path $PSScriptRoot -Parent) "tools"
+$toolsPath = Join-Path $PSScriptRoot "tools"
 . (Join-Path $toolsPath "DISM.ps1")
 
 # Load WIM module dependency
-$wimPath = Join-Path (Split-Path $PSScriptRoot) "WIM.ps1"
+$wimPath = Join-Path $PSScriptRoot "WIM.ps1"
 . $wimPath
 
 function Get-VirtioDownloadUrl {
