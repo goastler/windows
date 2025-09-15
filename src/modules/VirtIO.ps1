@@ -300,6 +300,11 @@ function Inject-VirtioDriversIntoBootWim {
         Write-ColorOutput "Using drivers from: $windowsDriverPath" -Color "Green" -Indent 2
         Write-ColorOutput "Architecture: $Arch" -Color "Cyan" -Indent 2
         Write-ColorOutput "Version: $Version" -Color "Cyan" -Indent 2         
+        # Check for administrator privileges
+        Write-ColorOutput "Checking administrator privileges..." -Color "Cyan" -Indent 2
+        Assert-Administrator -ErrorMessage "Administrator privileges are required to mount and modify WIM files. Please run PowerShell as Administrator."
+        Write-ColorOutput "Administrator privileges confirmed" -Color "Green" -Indent 2
+        
         # Get DISM path
         $dismPath = Get-DismPath
         
@@ -401,8 +406,33 @@ function Inject-VirtioDriversIntoInstallWim {
         Write-ColorOutput "Using drivers from: $windowsDriverPath" -Color "Green" -Indent 2
         Write-ColorOutput "Architecture: $Arch" -Color "Cyan" -Indent 2
         Write-ColorOutput "Version: $Version" -Color "Cyan" -Indent 2         
+        # Check for administrator privileges
+        Write-ColorOutput "Checking administrator privileges..." -Color "Cyan" -Indent 2
+        Assert-Administrator -ErrorMessage "Administrator privileges are required to mount and modify WIM files. Please run PowerShell as Administrator."
+        Write-ColorOutput "Administrator privileges confirmed" -Color "Green" -Indent 2
+        
         # Get DISM path
         $dismPath = Get-DismPath
+        
+        # Check WIM file permissions
+        $wimFileInfo = Get-Item $WimPath -ErrorAction Stop
+        Write-ColorOutput "WIM file: $($wimFileInfo.FullName)" -Color "Cyan" -Indent 2
+        Write-ColorOutput "WIM file size: $([math]::Round($wimFileInfo.Length / 1GB, 2)) GB" -Color "Cyan" -Indent 2
+        Write-ColorOutput "WIM file read-only: $($wimFileInfo.IsReadOnly)" -Color "Cyan" -Indent 2
+        
+        # Remove read-only attribute if present
+        if ($wimFileInfo.IsReadOnly) {
+            Write-ColorOutput "Removing read-only attribute from WIM file..." -Color "Yellow" -Indent 2
+            Set-ItemProperty -Path $WimPath -Name IsReadOnly -Value $false
+            Write-ColorOutput "Read-only attribute removed" -Color "Green" -Indent 2
+        }
+        
+        # Check mount directory permissions
+        Write-ColorOutput "Mount directory: $mountDir" -Color "Cyan" -Indent 2
+        if (Test-Path $mountDir) {
+            $mountDirInfo = Get-Item $mountDir
+            Write-ColorOutput "Mount directory exists: $($mountDirInfo.Exists)" -Color "Cyan" -Indent 2
+        }
         
         # Mount the specific install.wim index
         Write-ColorOutput "Mounting install.wim index $ImageIndex..." -Color "Yellow" -Indent 2

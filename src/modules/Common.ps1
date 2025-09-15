@@ -46,6 +46,16 @@ function Test-Administrator {
     return $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 }
 
+function Assert-Administrator {
+    param(
+        [string]$ErrorMessage = "Administrator privileges are required. Please run PowerShell as Administrator."
+    )
+    
+    if (-not (Test-Administrator)) {
+        throw $ErrorMessage
+    }
+}
+
 function Invoke-WebRequestWithCleanup {
     param(
         [Parameter(Mandatory = $true)]
