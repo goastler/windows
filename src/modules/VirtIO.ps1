@@ -244,7 +244,7 @@ function Add-VirtioDrivers {
         
         Write-ColorOutput "VirtIO drivers extracted to: $virtioDir" -Color "Green" -Indent 1         
         # Log the driver structure for debugging
-        $driverDirs = Get-ChildItem -Path $virtioDir -Directory | Select-Object -ExpandProperty Name
+        $driverDirs = Get-ChildItem -Path $virtioDir | Where-Object { $_.PSIsContainer } | Select-Object -ExpandProperty Name
         Write-ColorOutput "Available driver directories: $($driverDirs -join ', ')" -Color "Cyan" -Indent 1         
         # Process each WIM image individually
         foreach ($wimInfo in $WimInfos) {
