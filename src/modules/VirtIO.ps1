@@ -121,8 +121,7 @@ function Add-VirtioDriversToWim {
     $imageIndex = $WimInfo.Index
     $imageName = $WimInfo.Name
     
-    Write-ColorOutput "Processing $wimType image: $imageName" -Color "Yellow" -Indent 1
-    
+    Write-ColorOutput "Processing $wimType image: $imageName" -Color "Yellow" -Indent 1     
     # Validate Windows 11 architecture compatibility
     if ($version -eq "w11" -and $arch -eq "x86") {
         Write-ColorOutput "Skipping Windows 11 x86 image (not supported)" -Color "Yellow" -Indent 2
@@ -148,8 +147,7 @@ function Add-VirtioDriversToWim {
         return
     }
     
-    Write-ColorOutput "Adding VirtIO drivers (Arch: $arch, Version: $version)" -Color "Green" -Indent 2
-    
+    Write-ColorOutput "Adding VirtIO drivers (Arch: $arch, Version: $version)" -Color "Green" -Indent 2     
     try {
         if ($wimType -eq "boot") {
             Inject-VirtioDriversIntoBootWim -WimPath $wimPath -VirtioDir $VirtioDir -Arch $arch -Version $version -ImageIndex $imageIndex
@@ -172,8 +170,7 @@ function Add-VirtioDrivers {
     
     try {
         # Get WIM information for all WIM files in the ISO
-        Write-ColorOutput "Analyzing WIM files..." -Color "Yellow" -Indent 1
-        $WimInfos = Get-AllWimInfo -ExtractPath $ExtractPath
+        Write-ColorOutput "Analyzing WIM files..." -Color "Yellow" -Indent 1         $WimInfos = Get-AllWimInfo -ExtractPath $ExtractPath
         
         # Download VirtIO drivers
         $virtioIsoPath = Get-VirtioDrivers -Version $VirtioVersion -CacheDirectory $VirtioCacheDirectory
@@ -181,12 +178,10 @@ function Add-VirtioDrivers {
         # Extract VirtIO drivers to a temporary directory
         $virtioDir = Extract-VirtioDrivers -VirtioIsoPath $virtioIsoPath -ExtractPath $ExtractPath
         
-        Write-ColorOutput "VirtIO drivers extracted to: $virtioDir" -Color "Green" -Indent 1
-        
+        Write-ColorOutput "VirtIO drivers extracted to: $virtioDir" -Color "Green" -Indent 1         
         # Log the driver structure for debugging
         $driverDirs = Get-ChildItem -Path $virtioDir -Directory | Select-Object -ExpandProperty Name
-        Write-ColorOutput "Available driver directories: $($driverDirs -join ', ')" -Color "Cyan" -Indent 1
-        
+        Write-ColorOutput "Available driver directories: $($driverDirs -join ', ')" -Color "Cyan" -Indent 1         
         # Process each WIM image individually
         foreach ($wimInfo in $WimInfos) {
             Add-VirtioDriversToWim -WimInfo $wimInfo -VirtioDir $virtioDir -VirtioVersion $VirtioVersion
@@ -206,8 +201,7 @@ function Inject-VirtioDriversIntoBootWim {
         [int]$ImageIndex
     )
     
-    Write-ColorOutput "=== Injecting VirtIO Drivers into boot.wim (Index: $ImageIndex) ===" -Color "Cyan" -Indent 1
-    
+    Write-ColorOutput "=== Injecting VirtIO Drivers into boot.wim (Index: $ImageIndex) ===" -Color "Cyan" -Indent 1     
     $mountDir = Join-Path (Split-Path $WimPath -Parent) "boot_mount_$ImageIndex"
     
     if (-not (Test-Path $WimPath)) {
@@ -234,16 +228,12 @@ function Inject-VirtioDriversIntoBootWim {
             throw "VirtIO drivers not found for Windows version: $Version at: $windowsDriverPath"
         }
         
-        Write-ColorOutput "Using drivers from: $windowsDriverPath" -Color "Green" -Indent 2
-        Write-ColorOutput "Architecture: $Arch" -Color "Cyan" -Indent 2
-        Write-ColorOutput "Version: $Version" -Color "Cyan" -Indent 2
-        
+        Write-ColorOutput "Using drivers from: $windowsDriverPath" -Color "Green" -Indent 2         Write-ColorOutput "Architecture: $Arch" -Color "Cyan" -Indent 2         Write-ColorOutput "Version: $Version" -Color "Cyan" -Indent 2         
         # Get DISM path
         $dismPath = Get-DismPath
         
         # Mount the specific boot.wim index
-        Write-ColorOutput "Mounting boot.wim index $ImageIndex..." -Color "Yellow" -Indent 2
-        $result = Start-Process -FilePath $dismPath -ArgumentList @(
+        Write-ColorOutput "Mounting boot.wim index $ImageIndex..." -Color "Yellow" -Indent 2         $result = Start-Process -FilePath $dismPath -ArgumentList @(
             "/Mount-Wim",
             "/WimFile:`"$WimPath`"",
             "/Index:$ImageIndex",
@@ -254,11 +244,9 @@ function Inject-VirtioDriversIntoBootWim {
             throw "Failed to mount boot.wim index $ImageIndex (exit code: $($result.ExitCode))"
         }
         
-        Write-ColorOutput "Successfully mounted boot.wim index $ImageIndex" -Color "Green" -Indent 2
-        
+        Write-ColorOutput "Successfully mounted boot.wim index $ImageIndex" -Color "Green" -Indent 2         
         # Add drivers to the mounted image
-        Write-ColorOutput "Adding VirtIO drivers to boot.wim..." -Color "Yellow" -Indent 2
-        $result = Start-Process -FilePath $dismPath -ArgumentList @(
+        Write-ColorOutput "Adding VirtIO drivers to boot.wim..." -Color "Yellow" -Indent 2         $result = Start-Process -FilePath $dismPath -ArgumentList @(
             "/Image:`"$mountDir`"",
             "/Add-Driver",
             "/Driver:`"$windowsDriverPath`"",
@@ -272,8 +260,7 @@ function Inject-VirtioDriversIntoBootWim {
         }
         
         # Unmount and commit changes
-        Write-ColorOutput "Unmounting boot.wim..." -Color "Yellow" -Indent 2
-        $result = Start-Process -FilePath $dismPath -ArgumentList @(
+        Write-ColorOutput "Unmounting boot.wim..." -Color "Yellow" -Indent 2         $result = Start-Process -FilePath $dismPath -ArgumentList @(
             "/Unmount-Wim",
             "/MountDir:`"$mountDir`"",
             "/Commit"
@@ -308,8 +295,7 @@ function Inject-VirtioDriversIntoInstallWim {
         [int]$ImageIndex
     )
     
-    Write-ColorOutput "=== Injecting VirtIO Drivers into install.wim (Index: $ImageIndex) ===" -Color "Cyan" -Indent 1
-    
+    Write-ColorOutput "=== Injecting VirtIO Drivers into install.wim (Index: $ImageIndex) ===" -Color "Cyan" -Indent 1     
     $mountDir = Join-Path (Split-Path $WimPath -Parent) "install_mount_$ImageIndex"
     
     if (-not (Test-Path $WimPath)) {
@@ -337,16 +323,12 @@ function Inject-VirtioDriversIntoInstallWim {
             throw "VirtIO drivers not found for Windows version: $Version at: $windowsDriverPath"
         }
         
-        Write-ColorOutput "Using drivers from: $windowsDriverPath" -Color "Green" -Indent 2
-        Write-ColorOutput "Architecture: $Arch" -Color "Cyan" -Indent 2
-        Write-ColorOutput "Version: $Version" -Color "Cyan" -Indent 2
-        
+        Write-ColorOutput "Using drivers from: $windowsDriverPath" -Color "Green" -Indent 2         Write-ColorOutput "Architecture: $Arch" -Color "Cyan" -Indent 2         Write-ColorOutput "Version: $Version" -Color "Cyan" -Indent 2         
         # Get DISM path
         $dismPath = Get-DismPath
         
         # Mount the specific install.wim index
-        Write-ColorOutput "Mounting install.wim index $ImageIndex..." -Color "Yellow" -Indent 2
-        $result = Start-Process -FilePath $dismPath -ArgumentList @(
+        Write-ColorOutput "Mounting install.wim index $ImageIndex..." -Color "Yellow" -Indent 2         $result = Start-Process -FilePath $dismPath -ArgumentList @(
             "/Mount-Wim",
             "/WimFile:`"$WimPath`"",
             "/Index:$ImageIndex",
@@ -357,11 +339,9 @@ function Inject-VirtioDriversIntoInstallWim {
             throw "Failed to mount install.wim index $ImageIndex (exit code: $($result.ExitCode))"
         }
         
-        Write-ColorOutput "Successfully mounted install.wim index $ImageIndex" -Color "Green" -Indent 2
-        
+        Write-ColorOutput "Successfully mounted install.wim index $ImageIndex" -Color "Green" -Indent 2         
         # Add drivers to the mounted image
-        Write-ColorOutput "Adding VirtIO drivers to install.wim..." -Color "Yellow" -Indent 2
-        $result = Start-Process -FilePath $dismPath -ArgumentList @(
+        Write-ColorOutput "Adding VirtIO drivers to install.wim..." -Color "Yellow" -Indent 2         $result = Start-Process -FilePath $dismPath -ArgumentList @(
             "/Image:`"$mountDir`"",
             "/Add-Driver",
             "/Driver:`"$windowsDriverPath`"",
@@ -375,8 +355,7 @@ function Inject-VirtioDriversIntoInstallWim {
         }
         
         # Unmount and commit changes
-        Write-ColorOutput "Unmounting install.wim..." -Color "Yellow" -Indent 2
-        $result = Start-Process -FilePath $dismPath -ArgumentList @(
+        Write-ColorOutput "Unmounting install.wim..." -Color "Yellow" -Indent 2         $result = Start-Process -FilePath $dismPath -ArgumentList @(
             "/Unmount-Wim",
             "/MountDir:`"$mountDir`"",
             "/Commit"

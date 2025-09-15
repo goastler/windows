@@ -39,7 +39,7 @@ function Get-WimImageInfo {
     )
     
     try {
-        Write-ColorOutput "Getting WIM image information from: $WimPath" -Color "Yellow" -CurrentIndent 0 -InheritedIndent $InheritedIndent
+        Write-ColorOutput "Getting WIM image information from: $WimPath" -Color "Yellow" -Indent 0 -InheritedIndent $InheritedIndent
         
         # Use DISM to get image information
         $result = Start-Process -FilePath $dismPath -ArgumentList @(
@@ -140,7 +140,7 @@ function Get-AllWimInfo {
         [int]$InheritedIndent = 0
     )
     
-    Write-ColorOutput "=== Analyzing All WIM Files ===" -Color "Cyan" -CurrentIndent 0 -InheritedIndent $InheritedIndent
+    Write-ColorOutput "=== Analyzing All WIM Files ===" -Color "Cyan" -Indent 0 -InheritedIndent $InheritedIndent
     
     $wims = @()
     $installWimPath = Join-Path $ExtractPath "sources\install.wim"
@@ -148,7 +148,7 @@ function Get-AllWimInfo {
     
     # Analyze install.wim if it exists
     if (Test-Path $installWimPath) {
-        Write-ColorOutput "Analyzing install.wim..." -Color "Yellow" -CurrentIndent 1 -InheritedIndent $InheritedIndent
+        Write-ColorOutput "Analyzing install.wim..." -Color "Yellow" -Indent 1 -InheritedIndent $InheritedIndent
         $installWimInfo = Get-WimImageInfo -WimPath $installWimPath -DismPath (Get-DismPath) -InheritedIndent ($InheritedIndent + 1)
         
         if ($installWimInfo) {
@@ -164,14 +164,14 @@ function Get-AllWimInfo {
                 }
                 
                 $wims += $wimInfo
-                Write-ColorOutput "Found install image: $($image.Name) (Arch: $($image.Architecture), Version: $($image.Version))" -Color "Green" -CurrentIndent 2 -InheritedIndent $InheritedIndent
+                Write-ColorOutput "Found install image: $($image.Name) (Arch: $($image.Architecture), Version: $($image.Version))" -Color "Green" -Indent 2 -InheritedIndent $InheritedIndent
             }
         }
     }
     
     # Analyze boot.wim if it exists
     if (Test-Path $bootWimPath) {
-        Write-ColorOutput "Analyzing boot.wim..." -Color "Yellow" -CurrentIndent 1 -InheritedIndent $InheritedIndent
+        Write-ColorOutput "Analyzing boot.wim..." -Color "Yellow" -Indent 1 -InheritedIndent $InheritedIndent
         $bootWimInfo = Get-WimImageInfo -WimPath $bootWimPath -DismPath (Get-DismPath) -InheritedIndent ($InheritedIndent + 1)
         
         if ($bootWimInfo) {
@@ -187,7 +187,7 @@ function Get-AllWimInfo {
                 }
                 
                 $wims += $wimInfo
-                Write-ColorOutput "Found boot image: $($image.Name) (Arch: $($image.Architecture), Version: $($image.Version))" -Color "Green" -CurrentIndent 2 -InheritedIndent $InheritedIndent
+                Write-ColorOutput "Found boot image: $($image.Name) (Arch: $($image.Architecture), Version: $($image.Version))" -Color "Green" -Indent 2 -InheritedIndent $InheritedIndent
             }
         }
     }
@@ -196,7 +196,7 @@ function Get-AllWimInfo {
         throw "No WIM files found in the ISO"
     }
     
-    Write-ColorOutput "Found $($wims.Count) WIM image(s) total" -Color "Green" -CurrentIndent 0 -InheritedIndent $InheritedIndent
+    Write-ColorOutput "Found $($wims.Count) WIM image(s) total" -Color "Green" -Indent 0 -InheritedIndent $InheritedIndent
     return $wims
 }
 

@@ -19,11 +19,9 @@ function Extract-IsoContents {
     }
     
     $mountedPath = "${driveLetter}:\"
-    Write-ColorOutput "ISO mounted at: $mountedPath" -Color "Green" -Indent 1
-    
+    Write-ColorOutput "ISO mounted at: $mountedPath" -Color "Green" -Indent 1     
     try {
-        Write-ColorOutput "Extracting ISO contents to: $ExtractPath" -Color "Yellow" -Indent 1
-        
+        Write-ColorOutput "Extracting ISO contents to: $ExtractPath" -Color "Yellow" -Indent 1         
         if (Test-Path $ExtractPath) {
             Remove-Item $ExtractPath -Recurse -Force
         }
@@ -94,8 +92,7 @@ function New-IsoFromDirectory {
     $etfsbootPath  = "$absSrc\boot\etfsboot.com"
     $efisysPath    = "$absSrc\efi\microsoft\boot\efisys.bin"
 
-    Write-ColorOutput "Using source directly: $absSrc" -Color "Cyan" -Indent 1
-
+    Write-ColorOutput "Using source directly: $absSrc" -Color "Cyan" -Indent 1 
     $arguments = @(
         "-m"
         "-u2"
@@ -107,8 +104,7 @@ function New-IsoFromDirectory {
 
     Write-ColorOutput "Current working directory: $(Get-Location)" -Color "Cyan" -Indent 1
     Write-ColorOutput "Running oscdimg with arguments: $($arguments -join ' ')" -Color "Cyan" -Indent 1
-    Write-ColorOutput "Full command: & `"$OscdimgPath`" $($arguments -join ' ')" -Color "Cyan" -Indent 1
-    
+    Write-ColorOutput "Full command: & `"$OscdimgPath`" $($arguments -join ' ')" -Color "Cyan" -Indent 1     
     & $OscdimgPath $arguments
     if ($LASTEXITCODE -ne 0) { throw "oscdimg failed with exit code: $LASTEXITCODE" }
 

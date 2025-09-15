@@ -12,7 +12,7 @@ function Write-ColorOutput {
         
         [Parameter(Mandatory = $false)]
         [ValidateRange(0, 20)]
-        [int]$CurrentIndent = 0,
+        [int]$Indent = 0,
         
         [Parameter(Mandatory = $false)]
         [ValidateRange(0, 20)]
@@ -25,11 +25,11 @@ function Write-ColorOutput {
     }
     
     # Calculate total indentation (inherited + current)
-    $totalIndent = $InheritedIndent + $CurrentIndent
+    $totalIndent = $InheritedIndent + $Indent
     
     # Validate total indentation doesn't exceed reasonable limits
     if ($totalIndent -gt 40) {
-        throw "Total indentation ($totalIndent) exceeds maximum allowed (40). CurrentIndent: $CurrentIndent, InheritedIndent: $InheritedIndent"
+        throw "Total indentation ($totalIndent) exceeds maximum allowed (40). Indent: $Indent, InheritedIndent: $InheritedIndent"
     }
     
     # Create indentation string (2 spaces per indent level)
@@ -79,8 +79,7 @@ function Invoke-WebRequestWithCleanup {
         [int]$ProgressId = 3
     )
     
-    Write-ColorOutput "Downloading $Description from: $Uri" -Color "White" -CurrentIndent 0 -InheritedIndent 0
-    
+    Write-ColorOutput "Downloading $Description from: $Uri" -Color "White"     
     $webRequest = $null
     try {
         # Create a web client for progress tracking
@@ -103,7 +102,7 @@ function Invoke-WebRequestWithCleanup {
             $totalBytes = $response.ContentLength
             $response.Close()
         } catch {
-            Write-ColorOutput "Could not determine file size, progress tracking may be limited" -Color "Yellow" -CurrentIndent 0 -InheritedIndent 0
+            Write-ColorOutput "Could not determine file size, progress tracking may be limited" -Color "Yellow"
         }
         
         # Start download with progress tracking
@@ -135,7 +134,7 @@ function Invoke-WebRequestWithCleanup {
         
         Write-Progress -Activity "Downloading $Description" -Completed -Id $ProgressId
         Write-Host "" # Clear the progress line
-        Write-ColorOutput "$Description downloaded successfully" -Color "Green" -CurrentIndent 0 -InheritedIndent 0
+        Write-ColorOutput "$Description downloaded successfully" -Color "Green"
     }
     finally {
         # Clean up event subscription
@@ -187,10 +186,10 @@ function Remove-WorkingDirectory {
         [string]$Path
     )
     if (-not $KeepWorkingDirectory -and (Test-Path $Path)) {
-        Write-ColorOutput "Cleaning up working directory: $Path" -Color "Yellow" -CurrentIndent 0 -InheritedIndent 0
+        Write-ColorOutput "Cleaning up working directory: $Path" -Color "Yellow"
         Remove-Item $Path -Recurse -Force
-        Write-ColorOutput "Working directory cleaned up" -Color "Green" -CurrentIndent 0 -InheritedIndent 0
+        Write-ColorOutput "Working directory cleaned up" -Color "Green"
     } elseif ($KeepWorkingDirectory) {
-        Write-ColorOutput "Keeping working directory: $Path" -Color "Cyan" -CurrentIndent 0 -InheritedIndent 0
+        Write-ColorOutput "Keeping working directory: $Path" -Color "Cyan"
     }
 }
