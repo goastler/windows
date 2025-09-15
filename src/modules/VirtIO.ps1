@@ -264,6 +264,7 @@ function Inject-VirtioDriversIntoBootWim {
         [int]$ImageIndex
     )
     
+    Write-Host ""
     Write-ColorOutput "=== Injecting VirtIO Drivers into boot.wim (Index: $ImageIndex) ===" -Color "Cyan" -Indent 1     
     $mountDir = Join-Path (Split-Path $WimPath -Parent) "boot_mount_$ImageIndex"
     
@@ -363,6 +364,7 @@ function Inject-VirtioDriversIntoInstallWim {
         [int]$ImageIndex
     )
     
+    Write-Host ""
     Write-ColorOutput "=== Injecting VirtIO Drivers into install.wim (Index: $ImageIndex) ===" -Color "Cyan" -Indent 1     
     $mountDir = Join-Path (Split-Path $WimPath -Parent) "install_mount_$ImageIndex"
     

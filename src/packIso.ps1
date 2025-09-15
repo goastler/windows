@@ -335,6 +335,7 @@ function Install-Chocolatey {
 }
 
 function Install-WindowsADK {
+    Write-Host ""
     Write-ColorOutput "=== Windows ADK Installation ===" "Cyan"
 
     Install-Chocolatey
@@ -691,6 +692,7 @@ function Inject-VirtioDriversIntoBootWim {
         [int]$ImageIndex
     )
     
+    Write-Host ""
     Write-ColorOutput "=== Injecting VirtIO Drivers into boot.wim (Index: $ImageIndex) ===" "Cyan" -Indent 1
     
     $mountDir = Join-Path (Split-Path $WimPath -Parent) "boot_mount_$ImageIndex"
@@ -797,6 +799,7 @@ function Inject-VirtioDriversIntoInstallWim {
         [int]$ImageIndex
     )
     
+    Write-Host ""
     Write-ColorOutput "=== Injecting VirtIO Drivers into install.wim (Index: $ImageIndex) ===" "Cyan" -Indent 1
     
     $mountDir = Join-Path (Split-Path $WimPath -Parent) "install_mount_$ImageIndex"

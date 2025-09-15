@@ -8,6 +8,7 @@ $commonPath = Join-Path (Split-Path $PSScriptRoot -Parent) "Common.ps1"
 . (Join-Path $PSScriptRoot "Chocolatey.ps1")
 
 function Install-WindowsADK {
+    Write-Host ""
     Write-ColorOutput "=== Windows ADK Installation ===" -Color "Cyan"
 
     Install-Chocolatey

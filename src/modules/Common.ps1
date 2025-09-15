@@ -3,7 +3,6 @@
 function Write-ColorOutput {
     param(
         [Parameter(Mandatory = $true)]
-        [ValidateNotNullOrEmpty()]
         [string]$Message,
         
         [Parameter(Mandatory = $false)]

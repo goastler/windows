@@ -29,10 +29,19 @@ function Get-WimImageArchitecture {
         if ($result.ExitCode -eq 0) {
             $archInfo = Get-Content "temp_arch_info.txt" -ErrorAction SilentlyContinue
             
+            # Check if DISM output is empty
+            if (-not $archInfo -or ($archInfo | Where-Object { $_.Trim() -ne "" }).Count -eq 0) {
+                Write-ColorOutput "Warning: DISM returned empty output for image index $ImageIndex" -Color "Yellow" -Indent 2
+                Remove-Item "temp_arch_info.txt" -ErrorAction SilentlyContinue
+                return "amd64"  # Default fallback
+            }
+            
             # Debug: Show the architecture-specific DISM output
             Write-ColorOutput "DISM architecture output for index $($ImageIndex):" -Color "Cyan" -Indent 2
             foreach ($line in $archInfo) {
-                Write-ColorOutput "  $line" -Color "Gray" -Indent 0 -InheritedIndent 2
+                if ($line.Trim() -ne "") {
+                    Write-ColorOutput "  $line" -Color "Gray" -Indent 0 -InheritedIndent 2
+                }
             }
             Write-Host ""
             
@@ -104,11 +113,21 @@ function Get-WimImageInfo {
         # Parse the output to extract image information
         $wimInfo = Get-Content "temp_wim_info.txt" -ErrorAction SilentlyContinue
         
+        # Check if DISM output is empty or contains only whitespace
+        if (-not $wimInfo -or ($wimInfo | Where-Object { $_.Trim() -ne "" }).Count -eq 0) {
+            Write-ColorOutput "Warning: DISM returned empty output for WIM file: $WimPath" -Color "Yellow" -Indent 1 -InheritedIndent $InheritedIndent
+            Write-ColorOutput "This may indicate the WIM file is corrupted or inaccessible" -Color "Yellow" -Indent 1 -InheritedIndent $InheritedIndent
+            Remove-Item "temp_wim_info.txt" -ErrorAction SilentlyContinue
+            return @()
+        }
+        
         # Debug: Log the raw DISM output for troubleshooting
         Write-ColorOutput "Raw DISM output from temp_wim_info.txt:" -Color "Cyan" -Indent 1 -InheritedIndent $InheritedIndent
         Write-Host ""
         foreach ($line in $wimInfo) {
-            Write-ColorOutput "  $line" -Color "Gray" -Indent 0 -InheritedIndent ($InheritedIndent + 1)
+            if ($line.Trim() -ne "") {
+                Write-ColorOutput "  $line" -Color "Gray" -Indent 0 -InheritedIndent ($InheritedIndent + 1)
+            }
         }
         Write-Host ""
         

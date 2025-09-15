@@ -133,6 +133,7 @@ $modulePath = Join-Path $PSScriptRoot "modules"
 # Import Common.ps1 first (contains Write-ColorOutput)
 . (Join-Path $modulePath "Common.ps1")
 
+Write-Host ""
 Write-ColorOutput "=== Importing Modules ===" -Color "Cyan"
 Write-ColorOutput "Importing Tools and Prerequisites..." -Color "Yellow" -Indent 1
 $toolsPath = Join-Path $modulePath "tools"
@@ -154,6 +155,7 @@ Write-ColorOutput "Importing VirtIO Drivers..." -Color "Yellow" -Indent 1
 Write-ColorOutput "All modules imported successfully" -Color "Green"
 
 # Resolve all paths to absolute paths
+Write-Host ""
 Write-ColorOutput "=== Resolving Paths ===" -Color "Cyan" 
 # Resolve InputIso
 $InputIso = if ([System.IO.Path]::IsPathRooted($InputIso)) {
