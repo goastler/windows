@@ -30,11 +30,8 @@ Handles ISO file operations:
 
 ### WIM.ps1
 Manages WIM file analysis and information extraction:
-- `Get-WimImageInfo` - Gets detailed information about WIM images
-- `Get-WimArchitecture` - Determines architecture from WIM files
-- `Get-WimVersion` - Determines Windows version from WIM files
+- `Get-WimImageInfo` - Gets detailed information about WIM images (including architecture and version)
 - `Get-AllWimInfo` - Analyzes all WIM files in the ISO
-- `Get-WimInfo` - Legacy function for backward compatibility
 
 ### VirtIO.ps1
 Handles VirtIO driver management:

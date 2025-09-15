@@ -171,11 +171,6 @@ function Add-VirtioDrivers {
         [string]$VirtioCacheDirectory
     )
     
-    if (-not $IncludeVirtioDrivers) {
-        Write-ColorOutput "VirtIO drivers not requested, skipping..." -Color "Cyan"
-        return
-    }
-    
     Write-ColorOutput "=== Adding VirtIO Drivers ===" -Color "Cyan"
     
     try {

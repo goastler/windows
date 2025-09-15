@@ -55,7 +55,10 @@ param(
     [string]$VirtioVersion = "stable",
 
     [Parameter(Mandatory = $false)]
-    [string]$VirtioCacheDirectory = (Join-Path $env:TEMP "virtio-cache")
+    [string]$VirtioCacheDirectory = (Join-Path $env:TEMP "virtio-cache"),
+
+    [Parameter(Mandatory = $false)]
+    [switch]$OverwriteOutputIso
 
 )
 
@@ -106,7 +109,6 @@ try {
     if ($IncludeVirtioDrivers) {
         Write-ColorOutput "VirtIO Version: $VirtioVersion" -Color "White"
         Write-ColorOutput "VirtIO Cache Directory: $VirtioCacheDirectory" -Color "White"
-        Write-ColorOutput "Processing Mode: Per-WIM (architecture and version inferred from each WIM)" -Color "White"
     }
     
     Test-RequiredTools
@@ -144,8 +146,14 @@ try {
     Write-ColorOutput "Input files validated" -Color "Green"
     
     if (Test-Path $resolvedOutputIso) {
-        Write-ColorOutput "Output ISO already exists. Removing..." -Color "Yellow"
-        Remove-Item $resolvedOutputIso -Force
+        if ($OverwriteOutputIso) {
+            Write-ColorOutput "Output ISO already exists. Overwriting..." -Color "Yellow"
+            Remove-Item $resolvedOutputIso -Force
+        } else {
+            Write-ColorOutput "ERROR: Output ISO already exists: $resolvedOutputIso" -Color "Red"
+            Write-ColorOutput "Use -OverwriteOutputIso parameter to overwrite the existing file." -Color "Red"
+            throw "Output ISO file already exists. Use -OverwriteOutputIso to overwrite."
+        }
     }
     
     # Extract ISO contents
