@@ -436,12 +436,14 @@ function Inject-VirtioDriversIntoInstallWim {
         
         # Mount the specific install.wim index
         Write-ColorOutput "Mounting install.wim index $ImageIndex..." -Color "Yellow" -Indent 2
+        Write-ColorOutput "DEBUG: About to start DISM mount process..." -Color "Magenta" -Indent 2
         $result = Start-Process -FilePath $dismPath -ArgumentList @(
             "/Mount-Wim",
             "/WimFile:`"$WimPath`"",
             "/Index:$ImageIndex",
             "/MountDir:`"$mountDir`""
-        ) -Wait -PassThru -NoNewWindow
+        ) -Wait -PassThru
+        Write-ColorOutput "DEBUG: DISM mount process completed with exit code: $($result.ExitCode)" -Color "Magenta" -Indent 2
         
         if ($result.ExitCode -ne 0) {
             throw "Failed to mount install.wim index $ImageIndex (exit code: $($result.ExitCode))"
