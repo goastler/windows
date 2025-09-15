@@ -5,7 +5,11 @@
 
 param(
     [Parameter(Mandatory = $true)]
+    [ValidateNotNullOrEmpty()]
     [ValidateScript({
+        if ($_ -notmatch '^[a-zA-Z]:\\' -and $_ -notmatch '^\\\\') {
+            throw "Input ISO path must be absolute (drive letter or UNC path): $_"
+        }
         if (-not (Test-Path $_ -PathType Leaf)) {
             throw "Input ISO file does not exist: $_"
         }
@@ -17,7 +21,11 @@ param(
     [string]$InputIso,
 
     [Parameter(Mandatory = $true)]
+    [ValidateNotNullOrEmpty()]
     [ValidateScript({
+        if ($_ -notmatch '^[a-zA-Z]:\\' -and $_ -notmatch '^\\\\') {
+            throw "Output ISO path must be absolute (drive letter or UNC path): $_"
+        }
         $parentDir = Split-Path $_ -Parent
         if (-not (Test-Path $parentDir -PathType Container)) {
             throw "Output directory does not exist: $parentDir"
@@ -30,18 +38,36 @@ param(
     [string]$OutputIso,
 
     [Parameter(Mandatory = $false)]
+    [ValidateNotNullOrEmpty()]
     [ValidateScript({
         if (-not (Test-Path $_ -PathType Leaf)) {
             throw "Autounattend XML file does not exist: $_"
+        }
+        if ($_ -notmatch '\.xml$') {
+            throw "Autounattend file must have .xml extension: $_"
         }
         $true
     })]
     [string]$AutounattendXml = (Join-Path $PSScriptRoot "autounattend.xml"),
 
     [Parameter(Mandatory = $false)]
+    [ValidateNotNullOrEmpty()]
+    [ValidateScript({
+        if ($_ -notmatch '^[a-zA-Z]:\\' -and $_ -notmatch '^\\\\') {
+            throw "OEM directory path must be absolute (drive letter or UNC path): $_"
+        }
+        $true
+    })]
     [string]$OemDirectory = (Join-Path (Split-Path $PSScriptRoot -Parent) '$OEM$'),
 
     [Parameter(Mandatory = $false)]
+    [ValidateNotNullOrEmpty()]
+    [ValidateScript({
+        if ($_ -notmatch '^[a-zA-Z]:\\' -and $_ -notmatch '^\\\\') {
+            throw "Working directory path must be absolute (drive letter or UNC path): $_"
+        }
+        $true
+    })]
     [string]$WorkingDirectory = "C:\WinIsoRepack_$(Get-Date -Format 'yyyyMMdd_HHmmss')",
 
     [Parameter(Mandatory = $false)]
@@ -55,6 +81,13 @@ param(
     [string]$VirtioVersion = "stable",
 
     [Parameter(Mandatory = $false)]
+    [ValidateNotNullOrEmpty()]
+    [ValidateScript({
+        if ($_ -notmatch '^[a-zA-Z]:\\' -and $_ -notmatch '^\\\\') {
+            throw "VirtIO cache directory path must be absolute (drive letter or UNC path): $_"
+        }
+        $true
+    })]
     [string]$VirtioCacheDirectory = (Join-Path $env:TEMP "virtio-cache"),
 
     [Parameter(Mandatory = $false)]
@@ -95,8 +128,7 @@ try {
     Write-ColorOutput "Checking administrator privileges..." -Color "Yellow"
     
     if (-not (Test-Administrator)) {
-        Write-ColorOutput "ERROR: This script must be run as Administrator!" -Color "Red"
-        throw "Administrator privileges required."
+        throw "This script must be run as Administrator!"
     }
     
     Write-ColorOutput "Administrator privileges confirmed" -Color "Green"
@@ -150,9 +182,7 @@ try {
             Write-ColorOutput "Output ISO already exists. Overwriting..." -Color "Yellow"
             Remove-Item $resolvedOutputIso -Force
         } else {
-            Write-ColorOutput "ERROR: Output ISO already exists: $resolvedOutputIso" -Color "Red"
-            Write-ColorOutput "Use -OverwriteOutputIso parameter to overwrite the existing file." -Color "Red"
-            throw "Output ISO file already exists. Use -OverwriteOutputIso to overwrite."
+            throw "Output ISO file already exists: $resolvedOutputIso. Use -OverwriteOutputIso parameter to overwrite the existing file."
         }
     }
     

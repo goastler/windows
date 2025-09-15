@@ -53,8 +53,7 @@ function Get-VirtioDrivers {
         Write-ColorOutput "VirtIO drivers downloaded successfully" -Color "Green" -Indent 1
         return $localPath
     } catch {
-        Write-ColorOutput "Failed to download VirtIO drivers: $($_.Exception.Message)" -Color "Red"
-        throw
+        throw "Failed to download VirtIO drivers: $($_.Exception.Message)"
     }
 }
 
@@ -104,8 +103,7 @@ function Extract-VirtioDrivers {
         
         return $virtioDir
     } catch {
-        Write-ColorOutput "Failed to extract VirtIO drivers: $($_.Exception.Message)" -Color "Red"
-        throw
+        throw "Failed to extract VirtIO drivers: $($_.Exception.Message)"
     }
 }
 
@@ -159,8 +157,7 @@ function Add-VirtioDriversToWim {
             Inject-VirtioDriversIntoInstallWim -WimPath $wimPath -VirtioDir $VirtioDir -Arch $arch -Version $version -ImageIndex $imageIndex
         }
     } catch {
-        Write-ColorOutput "Failed to add VirtIO drivers to $wimType image: $($_.Exception.Message)" -Color "Red" -Indent 2
-        throw
+        throw "Failed to add VirtIO drivers to $wimType image: $($_.Exception.Message)"
     }
 }
 
@@ -196,8 +193,7 @@ function Add-VirtioDrivers {
         }
         
     } catch {
-        Write-ColorOutput "Failed to add VirtIO drivers: $($_.Exception.Message)" -Color "Red"
-        throw
+        throw "Failed to add VirtIO drivers: $($_.Exception.Message)"
     }
 }
 
@@ -229,15 +225,13 @@ function Inject-VirtioDriversIntoBootWim {
         $driverPath = Join-Path $VirtioDir $Arch
         
         if (-not (Test-Path $driverPath)) {
-            Write-ColorOutput "Error: No drivers found for architecture $Arch at: $driverPath" -Color "Red" -Indent 2
-            throw "VirtIO drivers not found for architecture: $Arch"
+            throw "VirtIO drivers not found for architecture: $Arch at: $driverPath"
         }
         
         # Find the specified Windows version drivers
         $windowsDriverPath = Join-Path $driverPath $Version
         if (-not (Test-Path $windowsDriverPath)) {
-            Write-ColorOutput "Error: No drivers found for Windows version $Version at: $windowsDriverPath" -Color "Red" -Indent 2
-            throw "VirtIO drivers not found for Windows version: $Version"
+            throw "VirtIO drivers not found for Windows version: $Version at: $windowsDriverPath"
         }
         
         Write-ColorOutput "Using drivers from: $windowsDriverPath" -Color "Green" -Indent 2
@@ -257,8 +251,7 @@ function Inject-VirtioDriversIntoBootWim {
         ) -Wait -PassThru -NoNewWindow
         
         if ($result.ExitCode -ne 0) {
-            Write-ColorOutput "Failed to mount boot.wim index $ImageIndex (exit code: $($result.ExitCode))" -Color "Red" -Indent 2
-            throw "Failed to mount boot.wim index $ImageIndex"
+            throw "Failed to mount boot.wim index $ImageIndex (exit code: $($result.ExitCode))"
         }
         
         Write-ColorOutput "Successfully mounted boot.wim index $ImageIndex" -Color "Green" -Indent 2
@@ -275,8 +268,7 @@ function Inject-VirtioDriversIntoBootWim {
         if ($result.ExitCode -eq 0) {
             Write-ColorOutput "Successfully added VirtIO drivers to boot.wim" -Color "Green" -Indent 2
         } else {
-            Write-ColorOutput "Failed to add drivers to boot.wim (exit code: $($result.ExitCode))" -Color "Red" -Indent 2
-            throw "Failed to add VirtIO drivers to boot.wim. DISM exit code: $($result.ExitCode)"
+            throw "Failed to add VirtIO drivers to boot.wim (exit code: $($result.ExitCode))"
         }
         
         # Unmount and commit changes
@@ -290,13 +282,11 @@ function Inject-VirtioDriversIntoBootWim {
         if ($result.ExitCode -eq 0) {
             Write-ColorOutput "Successfully unmounted and committed boot.wim changes" -Color "Green" -Indent 2
         } else {
-            Write-ColorOutput "Failed to unmount boot.wim (exit code: $($result.ExitCode))" -Color "Red" -Indent 2
-            throw "Failed to unmount boot.wim. DISM exit code: $($result.ExitCode). WIM may be left in inconsistent state."
+            throw "Failed to unmount boot.wim (exit code: $($result.ExitCode)). WIM may be left in inconsistent state."
         }
         
     } catch {
-        Write-ColorOutput "Error injecting drivers into boot.wim: $($_.Exception.Message)" -Color "Red" -Indent 2
-        throw
+        throw "Error injecting drivers into boot.wim: $($_.Exception.Message)"
     } finally {
         # Cleanup mount directory
         if (Test-Path $mountDir) {
@@ -338,15 +328,13 @@ function Inject-VirtioDriversIntoInstallWim {
         $driverPath = Join-Path $VirtioDir $Arch
         
         if (-not (Test-Path $driverPath)) {
-            Write-ColorOutput "Error: No drivers found for architecture $Arch at: $driverPath" -Color "Red" -Indent 2
-            throw "VirtIO drivers not found for architecture: $Arch"
+            throw "VirtIO drivers not found for architecture: $Arch at: $driverPath"
         }
         
         # Find the specified Windows version drivers
         $windowsDriverPath = Join-Path $driverPath $Version
         if (-not (Test-Path $windowsDriverPath)) {
-            Write-ColorOutput "Error: No drivers found for Windows version $Version at: $windowsDriverPath" -Color "Red" -Indent 2
-            throw "VirtIO drivers not found for Windows version: $Version"
+            throw "VirtIO drivers not found for Windows version: $Version at: $windowsDriverPath"
         }
         
         Write-ColorOutput "Using drivers from: $windowsDriverPath" -Color "Green" -Indent 2
@@ -366,8 +354,7 @@ function Inject-VirtioDriversIntoInstallWim {
         ) -Wait -PassThru -NoNewWindow
         
         if ($result.ExitCode -ne 0) {
-            Write-ColorOutput "Failed to mount install.wim index $ImageIndex (exit code: $($result.ExitCode))" -Color "Red" -Indent 2
-            throw "Failed to mount install.wim index $ImageIndex"
+            throw "Failed to mount install.wim index $ImageIndex (exit code: $($result.ExitCode))"
         }
         
         Write-ColorOutput "Successfully mounted install.wim index $ImageIndex" -Color "Green" -Indent 2
@@ -384,8 +371,7 @@ function Inject-VirtioDriversIntoInstallWim {
         if ($result.ExitCode -eq 0) {
             Write-ColorOutput "Successfully added VirtIO drivers to install.wim" -Color "Green" -Indent 2
         } else {
-            Write-ColorOutput "Failed to add drivers to install.wim (exit code: $($result.ExitCode))" -Color "Red" -Indent 2
-            throw "Failed to add VirtIO drivers to install.wim. DISM exit code: $($result.ExitCode)"
+            throw "Failed to add VirtIO drivers to install.wim (exit code: $($result.ExitCode))"
         }
         
         # Unmount and commit changes
@@ -399,13 +385,11 @@ function Inject-VirtioDriversIntoInstallWim {
         if ($result.ExitCode -eq 0) {
             Write-ColorOutput "Successfully unmounted and committed install.wim changes" -Color "Green" -Indent 2
         } else {
-            Write-ColorOutput "Failed to unmount install.wim (exit code: $($result.ExitCode))" -Color "Red" -Indent 2
-            throw "Failed to unmount install.wim. DISM exit code: $($result.ExitCode). WIM may be left in inconsistent state."
+            throw "Failed to unmount install.wim (exit code: $($result.ExitCode)). WIM may be left in inconsistent state."
         }
         
     } catch {
-        Write-ColorOutput "Error injecting drivers into install.wim: $($_.Exception.Message)" -Color "Red" -Indent 2
-        throw
+        throw "Error injecting drivers into install.wim: $($_.Exception.Message)"
     } finally {
         # Cleanup mount directory
         if (Test-Path $mountDir) {

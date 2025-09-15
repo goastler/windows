@@ -90,10 +90,7 @@ function Test-DismAvailability {
     }
     
     # If we get here, DISM is not available
-    Write-ColorOutput "ERROR: DISM is not available and could not be installed automatically." -Color "Red"
-    Write-ColorOutput "DISM is required for VirtIO driver integration." -Color "Red"
-    Write-ColorOutput "Please ensure you are running on Windows 7 or later, or install Windows ADK manually." -Color "Red"
-    throw "DISM is not available. Required for VirtIO driver integration."
+    throw "DISM is not available and could not be installed automatically. DISM is required for VirtIO driver integration. Please ensure you are running on Windows 7 or later, or install Windows ADK manually."
 }
 
 function Get-DismPath {

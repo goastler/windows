@@ -2,13 +2,38 @@
 
 function Write-ColorOutput {
     param(
+        [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
         [string]$Message,
+        
+        [Parameter(Mandatory = $false)]
+        [ValidateSet("Black", "DarkBlue", "DarkGreen", "DarkCyan", "DarkRed", "DarkMagenta", "DarkYellow", "Gray", "DarkGray", "Blue", "Green", "Cyan", "Red", "Magenta", "Yellow", "White")]
         [string]$Color = "White",
-        [int]$Indent = 0
+        
+        [Parameter(Mandatory = $false)]
+        [ValidateRange(0, 20)]
+        [int]$CurrentIndent = 0,
+        
+        [Parameter(Mandatory = $false)]
+        [ValidateRange(0, 20)]
+        [int]$InheritedIndent = 0
     )
     
+    # Additional validation for edge cases
+    if ($Message.Trim().Length -eq 0) {
+        throw "Message cannot be empty or contain only whitespace"
+    }
+    
+    # Calculate total indentation (inherited + current)
+    $totalIndent = $InheritedIndent + $CurrentIndent
+    
+    # Validate total indentation doesn't exceed reasonable limits
+    if ($totalIndent -gt 40) {
+        throw "Total indentation ($totalIndent) exceeds maximum allowed (40). CurrentIndent: $CurrentIndent, InheritedIndent: $InheritedIndent"
+    }
+    
     # Create indentation string (2 spaces per indent level)
-    $indentString = "  " * $Indent
+    $indentString = "  " * $totalIndent
     
     # Combine indentation with message
     $indentedMessage = $indentString + $Message
@@ -24,13 +49,37 @@ function Test-Administrator {
 
 function Invoke-WebRequestWithCleanup {
     param(
+        [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
+        [ValidateScript({
+            if ($_ -notmatch '^https?://') {
+                throw "URI must be a valid HTTP or HTTPS URL"
+            }
+            $true
+        })]
         [string]$Uri,
+        
+        [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
+        [ValidateScript({
+            $parentDir = Split-Path $_ -Parent
+            if (-not (Test-Path $parentDir -PathType Container)) {
+                throw "Output directory does not exist: $parentDir"
+            }
+            $true
+        })]
         [string]$OutFile,
+        
+        [Parameter(Mandatory = $false)]
+        [ValidateNotNullOrEmpty()]
         [string]$Description = "file",
+        
+        [Parameter(Mandatory = $false)]
+        [ValidateRange(1, 10)]
         [int]$ProgressId = 3
     )
     
-    Write-ColorOutput "Downloading $Description from: $Uri" -Color "White"
+    Write-ColorOutput "Downloading $Description from: $Uri" -Color "White" -CurrentIndent 0 -InheritedIndent 0
     
     $webRequest = $null
     try {
@@ -54,7 +103,7 @@ function Invoke-WebRequestWithCleanup {
             $totalBytes = $response.ContentLength
             $response.Close()
         } catch {
-            Write-ColorOutput "Could not determine file size, progress tracking may be limited" -Color "Yellow"
+            Write-ColorOutput "Could not determine file size, progress tracking may be limited" -Color "Yellow" -CurrentIndent 0 -InheritedIndent 0
         }
         
         # Start download with progress tracking
@@ -86,7 +135,7 @@ function Invoke-WebRequestWithCleanup {
         
         Write-Progress -Activity "Downloading $Description" -Completed -Id $ProgressId
         Write-Host "" # Clear the progress line
-        Write-ColorOutput "$Description downloaded successfully" -Color "Green"
+        Write-ColorOutput "$Description downloaded successfully" -Color "Green" -CurrentIndent 0 -InheritedIndent 0
     }
     finally {
         # Clean up event subscription
@@ -126,12 +175,22 @@ function Invoke-WebRequestWithCleanup {
 }
 
 function Remove-WorkingDirectory {
-    param([string]$Path)
+    param(
+        [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
+        [ValidateScript({
+            if ($_ -notmatch '^[a-zA-Z]:\\' -and $_ -notmatch '^\\\\') {
+                throw "Path must be a valid absolute path (drive letter or UNC path)"
+            }
+            $true
+        })]
+        [string]$Path
+    )
     if (-not $KeepWorkingDirectory -and (Test-Path $Path)) {
-        Write-ColorOutput "Cleaning up working directory: $Path" -Color "Yellow"
+        Write-ColorOutput "Cleaning up working directory: $Path" -Color "Yellow" -CurrentIndent 0 -InheritedIndent 0
         Remove-Item $Path -Recurse -Force
-        Write-ColorOutput "Working directory cleaned up" -Color "Green"
+        Write-ColorOutput "Working directory cleaned up" -Color "Green" -CurrentIndent 0 -InheritedIndent 0
     } elseif ($KeepWorkingDirectory) {
-        Write-ColorOutput "Keeping working directory: $Path" -Color "Cyan"
+        Write-ColorOutput "Keeping working directory: $Path" -Color "Cyan" -CurrentIndent 0 -InheritedIndent 0
     }
 }
