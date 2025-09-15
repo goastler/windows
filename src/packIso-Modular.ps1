@@ -7,14 +7,18 @@ param(
     [Parameter(Mandatory = $true)]
     [ValidateNotNullOrEmpty()]
     [ValidateScript({
-        if ($_ -notmatch '^[a-zA-Z]:\\' -and $_ -notmatch '^\\\\') {
-            throw "Input ISO path must be absolute (drive letter or UNC path): $_"
+        # Resolve to absolute path
+        $resolvedPath = if ([System.IO.Path]::IsPathRooted($_)) {
+            $_
+        } else {
+            Join-Path (Get-Location) $_
         }
-        if (-not (Test-Path $_ -PathType Leaf)) {
-            throw "Input ISO file does not exist: $_"
+        
+        if (-not (Test-Path $resolvedPath -PathType Leaf)) {
+            throw "Input ISO file does not exist: $resolvedPath (resolved from: $_)"
         }
-        if ($_ -notmatch '\.iso$') {
-            throw "Input file must have .iso extension: $_"
+        if ($resolvedPath -notmatch '\.iso$') {
+            throw "Input file must have .iso extension: $resolvedPath"
         }
         $true
     })]
@@ -23,15 +27,19 @@ param(
     [Parameter(Mandatory = $true)]
     [ValidateNotNullOrEmpty()]
     [ValidateScript({
-        if ($_ -notmatch '^[a-zA-Z]:\\' -and $_ -notmatch '^\\\\') {
-            throw "Output ISO path must be absolute (drive letter or UNC path): $_"
+        # Resolve to absolute path
+        $resolvedPath = if ([System.IO.Path]::IsPathRooted($_)) {
+            $_
+        } else {
+            Join-Path (Get-Location) $_
         }
-        $parentDir = Split-Path $_ -Parent
+        
+        $parentDir = Split-Path $resolvedPath -Parent
         if (-not (Test-Path $parentDir -PathType Container)) {
-            throw "Output directory does not exist: $parentDir"
+            throw "Output directory does not exist: $parentDir (resolved from: $_)"
         }
-        if ($_ -notmatch '\.iso$') {
-            throw "Output file must have .iso extension: $_"
+        if ($resolvedPath -notmatch '\.iso$') {
+            throw "Output file must have .iso extension: $resolvedPath"
         }
         $true
     })]
@@ -40,11 +48,18 @@ param(
     [Parameter(Mandatory = $false)]
     [ValidateNotNullOrEmpty()]
     [ValidateScript({
-        if (-not (Test-Path $_ -PathType Leaf)) {
-            throw "Autounattend XML file does not exist: $_"
+        # Resolve to absolute path
+        $resolvedPath = if ([System.IO.Path]::IsPathRooted($_)) {
+            $_
+        } else {
+            Join-Path (Get-Location) $_
         }
-        if ($_ -notmatch '\.xml$') {
-            throw "Autounattend file must have .xml extension: $_"
+        
+        if (-not (Test-Path $resolvedPath -PathType Leaf)) {
+            throw "Autounattend XML file does not exist: $resolvedPath (resolved from: $_)"
+        }
+        if ($resolvedPath -notmatch '\.xml$') {
+            throw "Autounattend file must have .xml extension: $resolvedPath"
         }
         $true
     })]
@@ -53,9 +68,14 @@ param(
     [Parameter(Mandatory = $false)]
     [ValidateNotNullOrEmpty()]
     [ValidateScript({
-        if ($_ -notmatch '^[a-zA-Z]:\\' -and $_ -notmatch '^\\\\') {
-            throw "OEM directory path must be absolute (drive letter or UNC path): $_"
+        # Resolve to absolute path
+        $resolvedPath = if ([System.IO.Path]::IsPathRooted($_)) {
+            $_
+        } else {
+            Join-Path (Get-Location) $_
         }
+        
+        # Note: We don't check if directory exists here as it might be created during processing
         $true
     })]
     [string]$OemDirectory = (Join-Path (Split-Path $PSScriptRoot -Parent) '$OEM$'),
@@ -63,9 +83,14 @@ param(
     [Parameter(Mandatory = $false)]
     [ValidateNotNullOrEmpty()]
     [ValidateScript({
-        if ($_ -notmatch '^[a-zA-Z]:\\' -and $_ -notmatch '^\\\\') {
-            throw "Working directory path must be absolute (drive letter or UNC path): $_"
+        # Resolve to absolute path
+        $resolvedPath = if ([System.IO.Path]::IsPathRooted($_)) {
+            $_
+        } else {
+            Join-Path (Get-Location) $_
         }
+        
+        # Note: We don't check if directory exists here as it will be created during processing
         $true
     })]
     [string]$WorkingDirectory = "C:\WinIsoRepack_$(Get-Date -Format 'yyyyMMdd_HHmmss')",
@@ -83,9 +108,14 @@ param(
     [Parameter(Mandatory = $false)]
     [ValidateNotNullOrEmpty()]
     [ValidateScript({
-        if ($_ -notmatch '^[a-zA-Z]:\\' -and $_ -notmatch '^\\\\') {
-            throw "VirtIO cache directory path must be absolute (drive letter or UNC path): $_"
+        # Resolve to absolute path
+        $resolvedPath = if ([System.IO.Path]::IsPathRooted($_)) {
+            $_
+        } else {
+            Join-Path (Get-Location) $_
         }
+        
+        # Note: We don't check if directory exists here as it will be created during processing
         $true
     })]
     [string]$VirtioCacheDirectory = (Join-Path $env:TEMP "virtio-cache"),
@@ -97,14 +127,71 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+# Resolve all paths to absolute paths
+Write-ColorOutput "=== Resolving Paths ===" -Color "Cyan" -CurrentIndent 0 -InheritedIndent 0
+
+# Resolve InputIso
+$InputIso = if ([System.IO.Path]::IsPathRooted($InputIso)) {
+    $InputIso
+} else {
+    $resolved = Join-Path (Get-Location) $InputIso
+    Write-ColorOutput "Resolved InputIso: $InputIso -> $resolved" -Color "Cyan" -CurrentIndent 1 -InheritedIndent 0
+    $resolved
+}
+
+# Resolve OutputIso
+$OutputIso = if ([System.IO.Path]::IsPathRooted($OutputIso)) {
+    $OutputIso
+} else {
+    $resolved = Join-Path (Get-Location) $OutputIso
+    Write-ColorOutput "Resolved OutputIso: $OutputIso -> $resolved" -Color "Cyan" -CurrentIndent 1 -InheritedIndent 0
+    $resolved
+}
+
+# Resolve AutounattendXml
+$AutounattendXml = if ([System.IO.Path]::IsPathRooted($AutounattendXml)) {
+    $AutounattendXml
+} else {
+    $resolved = Join-Path (Get-Location) $AutounattendXml
+    Write-ColorOutput "Resolved AutounattendXml: $AutounattendXml -> $resolved" -Color "Cyan" -CurrentIndent 1 -InheritedIndent 0
+    $resolved
+}
+
+# Resolve OemDirectory
+$OemDirectory = if ([System.IO.Path]::IsPathRooted($OemDirectory)) {
+    $OemDirectory
+} else {
+    $resolved = Join-Path (Get-Location) $OemDirectory
+    Write-ColorOutput "Resolved OemDirectory: $OemDirectory -> $resolved" -Color "Cyan" -CurrentIndent 1 -InheritedIndent 0
+    $resolved
+}
+
+# Resolve WorkingDirectory
+$WorkingDirectory = if ([System.IO.Path]::IsPathRooted($WorkingDirectory)) {
+    $WorkingDirectory
+} else {
+    $resolved = Join-Path (Get-Location) $WorkingDirectory
+    Write-ColorOutput "Resolved WorkingDirectory: $WorkingDirectory -> $resolved" -Color "Cyan" -CurrentIndent 1 -InheritedIndent 0
+    $resolved
+}
+
+# Resolve VirtioCacheDirectory
+$VirtioCacheDirectory = if ([System.IO.Path]::IsPathRooted($VirtioCacheDirectory)) {
+    $VirtioCacheDirectory
+} else {
+    $resolved = Join-Path (Get-Location) $VirtioCacheDirectory
+    Write-ColorOutput "Resolved VirtioCacheDirectory: $VirtioCacheDirectory -> $resolved" -Color "Cyan" -CurrentIndent 1 -InheritedIndent 0
+    $resolved
+}
+
 # Dot source all modules
 $modulePath = Join-Path $PSScriptRoot "modules"
 
-Write-ColorOutput "=== Loading Modules ===" -Color "Cyan"
-Write-ColorOutput "Loading Common utilities..." -Color "Yellow" -Indent 1
+Write-ColorOutput "=== Importing Modules ===" -Color "Cyan"
+Write-ColorOutput "Importing Common utilities..." -Color "Yellow" -CurrentIndent 1 -InheritedIndent 0
 . (Join-Path $modulePath "Common.ps1")
 
-Write-ColorOutput "Loading Tools and Prerequisites..." -Color "Yellow" -Indent 1
+Write-ColorOutput "Importing Tools and Prerequisites..." -Color "Yellow" -CurrentIndent 1 -InheritedIndent 0
 $toolsPath = Join-Path $modulePath "tools"
 . (Join-Path $toolsPath "Chocolatey.ps1")
 . (Join-Path $toolsPath "WindowsADK.ps1")
@@ -112,16 +199,16 @@ $toolsPath = Join-Path $modulePath "tools"
 . (Join-Path $toolsPath "DISM.ps1")
 . (Join-Path $toolsPath "ToolsOrchestrator.ps1")
 
-Write-ColorOutput "Loading ISO Operations..." -Color "Yellow" -Indent 1
+Write-ColorOutput "Importing ISO Operations..." -Color "Yellow" -CurrentIndent 1 -InheritedIndent 0
 . (Join-Path $modulePath "ISO.ps1")
 
-Write-ColorOutput "Loading WIM Analysis..." -Color "Yellow" -Indent 1
+Write-ColorOutput "Importing WIM Analysis..." -Color "Yellow" -CurrentIndent 1 -InheritedIndent 0
 . (Join-Path $modulePath "WIM.ps1")
 
-Write-ColorOutput "Loading VirtIO Drivers..." -Color "Yellow" -Indent 1
+Write-ColorOutput "Importing VirtIO Drivers..." -Color "Yellow" -CurrentIndent 1 -InheritedIndent 0
 . (Join-Path $modulePath "VirtIO.ps1")
 
-Write-ColorOutput "All modules loaded successfully" -Color "Green"
+Write-ColorOutput "All modules imported successfully" -Color "Green"
 
 try {
     Write-ColorOutput "=== Windows ISO Repack Script ===" -Color "Cyan"
@@ -147,27 +234,9 @@ try {
     
     Write-ColorOutput "Validating input files..." -Color "Yellow"
     
-    # Resolve and validate ISO paths
-    try {
-        $resolvedInputIso = Resolve-Path $InputIso -ErrorAction Stop
-        Write-ColorOutput "Resolved input ISO path: $resolvedInputIso" -Color "Cyan"
-    } catch {
-        throw "Cannot resolve input ISO file path: $InputIso. Error: $($_.Exception.Message)"
-    }
-    
-    try {
-        $resolvedOutputIso = Resolve-Path $OutputIso -ErrorAction SilentlyContinue
-        if (-not $resolvedOutputIso) {
-            # If path doesn't exist, resolve the parent directory and create the full path
-            $outputDir = Split-Path $OutputIso -Parent
-            $outputFile = Split-Path $OutputIso -Leaf
-            $resolvedOutputDir = Resolve-Path $outputDir -ErrorAction Stop
-            $resolvedOutputIso = Join-Path $resolvedOutputDir $outputFile
-        }
-        Write-ColorOutput "Resolved output ISO path: $resolvedOutputIso" -Color "Cyan"
-    } catch {
-        throw "Cannot resolve output ISO file path: $OutputIso. Error: $($_.Exception.Message)"
-    }
+    # Paths are already resolved to absolute paths at the beginning of the script
+    $resolvedInputIso = $InputIso
+    $resolvedOutputIso = $OutputIso
     
     if (-not (Test-Path $resolvedInputIso -PathType Leaf)) {
         throw "Input ISO file not found: $resolvedInputIso"
@@ -211,7 +280,7 @@ try {
         $fileSize = (Get-Item $resolvedOutputIso).Length
         $fileSizeGB = [math]::Round($fileSize / 1GB, 2)
         Write-ColorOutput "Output ISO created successfully!" -Color "Green"
-        Write-ColorOutput "File size: $fileSizeGB GB" -Color "Green" -Indent 1
+        Write-ColorOutput "File size: $fileSizeGB GB" -Color "Green" -CurrentIndent 1 -InheritedIndent 0
     } else {
         throw "Output ISO was not created successfully"
     }
