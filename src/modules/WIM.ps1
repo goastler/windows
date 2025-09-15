@@ -1,7 +1,7 @@
 # WIM analysis and information extraction for Windows ISO repack script
 
 # Load Common utilities
-$commonPath = Join-Path (Split-Path $PSScriptRoot) "Common.ps1"
+$commonPath = Join-Path $PSScriptRoot "Common.ps1"
 . $commonPath
 
 # Load DISM module dependency

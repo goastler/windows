@@ -1,7 +1,7 @@
 # ISO operations for Windows ISO repack script
 
 # Load Common utilities
-$commonPath = Join-Path (Split-Path $PSScriptRoot) "Common.ps1"
+$commonPath = Join-Path $PSScriptRoot "Common.ps1"
 . $commonPath
 
 function Extract-IsoContents {
