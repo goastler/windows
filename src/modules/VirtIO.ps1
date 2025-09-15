@@ -156,6 +156,8 @@ function Extract-VirtioDrivers {
             }
         }
         
+        Write-ColorOutput "DEBUG: virtioDir before return: '$virtioDir'" -Color "Magenta" -Indent 2
+        Write-ColorOutput "DEBUG: mountResult: '$mountResult'" -Color "Magenta" -Indent 2
         return $virtioDir
     } catch {
         # Cleanup on error
