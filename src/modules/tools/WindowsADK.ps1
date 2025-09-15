@@ -16,7 +16,7 @@ function Install-WindowsADK {
 
     $result = Start-Process -FilePath "choco" -ArgumentList @("install","windows-adk","-y") -Wait -PassThru -NoNewWindow
     if ($result.ExitCode -eq 0) {
-        Write-ColorOutput "[OK] Windows ADK installed successfully via Chocolatey!" -Color "Green"
+        Write-ColorOutput "Windows ADK installed via Chocolatey" -Color "Green"
         
         # Add ADK paths to current session PATH
         $adkPaths = @(

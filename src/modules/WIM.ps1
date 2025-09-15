@@ -8,6 +8,56 @@ $commonPath = Join-Path $PSScriptRoot "Common.ps1"
 $toolsPath = Join-Path $PSScriptRoot "tools"
 . (Join-Path $toolsPath "DISM.ps1")
 
+function Get-WimImageArchitecture {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$WimPath,
+        [Parameter(Mandatory = $true)]
+        [int]$ImageIndex,
+        [Parameter(Mandatory = $true)]
+        [string]$DismPath
+    )
+    
+    try {
+        # Try to get architecture using DISM /Get-WimInfo with specific index
+        $result = Start-Process -FilePath $DismPath -ArgumentList @(
+            "/Get-WimInfo",
+            "/WimFile:`"$WimPath`"",
+            "/Index:$ImageIndex"
+        ) -Wait -PassThru -NoNewWindow -RedirectStandardOutput "temp_arch_info.txt"
+        
+        if ($result.ExitCode -eq 0) {
+            $archInfo = Get-Content "temp_arch_info.txt" -ErrorAction SilentlyContinue
+            
+            # Debug: Show the architecture-specific DISM output
+            Write-ColorOutput "DISM architecture output for index $ImageIndex:" -Color "Cyan" -Indent 2
+            foreach ($line in $archInfo) {
+                Write-ColorOutput "  $line" -Color "Gray" -Indent 0 -InheritedIndent 2
+            }
+            Write-Host ""
+            
+            # Clean up the temporary file
+            Remove-Item "temp_arch_info.txt" -ErrorAction SilentlyContinue
+            
+            foreach ($line in $archInfo) {
+                if ($line -match "Architecture\s*:\s*(.+)") {
+                    $arch = $matches[1].Trim().ToLower()
+                    switch ($arch) {
+                        "x64" { return "amd64" }
+                        "x86" { return "x86" }
+                        "arm64" { return "arm64" }
+                        default { return "amd64" }
+                    }
+                }
+            }
+        }
+    } catch {
+        # Ignore errors and return default
+    }
+    
+    return "amd64"  # Default fallback
+}
+
 function Get-WimImageInfo {
     param(
         [Parameter(Mandatory = $true)]
@@ -53,6 +103,16 @@ function Get-WimImageInfo {
         
         # Parse the output to extract image information
         $wimInfo = Get-Content "temp_wim_info.txt" -ErrorAction SilentlyContinue
+        
+        # Debug: Log the raw DISM output for troubleshooting
+        Write-ColorOutput "Raw DISM output from temp_wim_info.txt:" -Color "Cyan" -Indent 1 -InheritedIndent $InheritedIndent
+        Write-Host ""
+        foreach ($line in $wimInfo) {
+            Write-ColorOutput "  $line" -Color "Gray" -Indent 0 -InheritedIndent ($InheritedIndent + 1)
+        }
+        Write-Host ""
+        
+        # Clean up the temporary file
         Remove-Item "temp_wim_info.txt" -ErrorAction SilentlyContinue
         
         $images = @()
@@ -99,7 +159,8 @@ function Get-WimImageInfo {
                     "x86" { $arch = "x86" }
                     "arm64" { $arch = "arm64" }
                     default {
-                        throw "Unknown or unsupported architecture detected: $arch"
+                        Write-ColorOutput "Warning: Unknown architecture detected: $arch, defaulting to amd64" -Color "Yellow" -Indent 1 -InheritedIndent $InheritedIndent
+                        $arch = "amd64"
                     }
                 }
                 
@@ -112,6 +173,51 @@ function Get-WimImageInfo {
         
         if ($currentImage) {
             $images += $currentImage
+        }
+        
+        # Post-process images to add fallback architecture detection
+        foreach ($image in $images) {
+            if (-not $image.Architecture) {
+                Write-ColorOutput "No architecture found for image $($image.Index), attempting fallback detection..." -Color "Yellow" -Indent 1 -InheritedIndent $InheritedIndent
+                
+                # Try to get architecture using specific index method
+                $detectedArch = Get-WimImageArchitecture -WimPath $WimPath -ImageIndex $image.Index -DismPath $DismPath
+                
+                if ($detectedArch -ne "amd64" -or $image.Architecture) {
+                    Write-ColorOutput "Architecture detected via DISM: $detectedArch" -Color "Green" -Indent 1 -InheritedIndent $InheritedIndent
+                } else {
+                    # Try to detect architecture from image name or description
+                    Write-ColorOutput "DISM method failed, trying name/description analysis..." -Color "Yellow" -Indent 1 -InheritedIndent $InheritedIndent
+                    
+                    # Check name for architecture hints
+                    if ($image.Name -match "x64|64-bit|amd64") {
+                        $detectedArch = "amd64"
+                    } elseif ($image.Name -match "x86|32-bit") {
+                        $detectedArch = "x86"
+                    } elseif ($image.Name -match "arm64|arm") {
+                        $detectedArch = "arm64"
+                    }
+                    
+                    # Check description for architecture hints
+                    if (-not $detectedArch -and $image.Description) {
+                        if ($image.Description -match "x64|64-bit|amd64") {
+                            $detectedArch = "amd64"
+                        } elseif ($image.Description -match "x86|32-bit") {
+                            $detectedArch = "x86"
+                        } elseif ($image.Description -match "arm64|arm") {
+                            $detectedArch = "arm64"
+                        }
+                    }
+                    
+                    if ($detectedArch -ne "amd64") {
+                        Write-ColorOutput "Architecture detected from name/description: $detectedArch" -Color "Green" -Indent 1 -InheritedIndent $InheritedIndent
+                    } else {
+                        Write-ColorOutput "Could not detect architecture, defaulting to amd64" -Color "Yellow" -Indent 1 -InheritedIndent $InheritedIndent
+                    }
+                }
+                
+                $image.Architecture = $detectedArch
+            }
         }
         
         return $images
@@ -142,6 +248,7 @@ function Get-AllWimInfo {
     
     Write-ColorOutput "=== Analyzing All WIM Files ===" -Color "Cyan" -Indent 0 -InheritedIndent $InheritedIndent
     
+    Write-Host ""
     $wims = @()
     $installWimPath = Join-Path $ExtractPath "sources\install.wim"
     $bootWimPath = Join-Path $ExtractPath "sources\boot.wim"
@@ -192,6 +299,7 @@ function Get-AllWimInfo {
         }
     }
     
+    Write-Host ""
     if ($wims.Count -eq 0) {
         throw "No WIM files found in the ISO"
     }

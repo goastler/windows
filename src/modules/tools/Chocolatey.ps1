@@ -10,7 +10,7 @@ function Test-Chocolatey {
 
 function Install-Chocolatey {
     if (Test-Chocolatey) {
-        Write-ColorOutput "[OK] Chocolatey already installed!" -Color "Green"
+        Write-ColorOutput "Chocolatey already installed" -Color "Green"
         return
     }
 
@@ -23,7 +23,7 @@ function Install-Chocolatey {
     Start-Sleep -Seconds 1
 
     if (Test-Chocolatey) {
-        Write-ColorOutput "[OK] Chocolatey installed successfully!" -Color "Green"
+        Write-ColorOutput "Chocolatey installed" -Color "Green"
         return
     } else {
         throw "Chocolatey installation failed to become available on PATH."            

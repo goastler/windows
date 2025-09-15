@@ -31,6 +31,7 @@ function Get-VirtioDrivers {
     
     Write-ColorOutput "=== VirtIO Drivers Download ===" -Color "Cyan"
     
+    Write-Host ""
     # Create cache directory if it doesn't exist
     if (-not (Test-Path $CacheDirectory)) {
         New-Item -ItemType Directory -Path $CacheDirectory -Force | Out-Null
@@ -44,14 +45,30 @@ function Get-VirtioDrivers {
     # Check if we already have the file
     if (Test-Path $localPath) {
         Write-ColorOutput "VirtIO drivers already cached: $localPath" -Color "Green" -Indent 1
-        return $localPath
+        # Return absolute path for consistency
+        return (Resolve-Path $localPath -ErrorAction Stop)
     }
     
     try {
         # Use Invoke-WebRequestWithCleanup for better progress tracking and resource cleanup
         Invoke-WebRequestWithCleanup -Uri $downloadUrl -OutFile $localPath -Description "VirtIO drivers ($Version)" -ProgressId 3
-        Write-ColorOutput "VirtIO drivers downloaded successfully" -Color "Green" -Indent 1
-        return $localPath
+        
+        # Verify the downloaded file exists and has content
+        if (-not (Test-Path $localPath -PathType Leaf)) {
+            throw "Downloaded VirtIO ISO file not found: $localPath"
+        }
+        
+        $fileSize = (Get-Item $localPath).Length
+        if ($fileSize -eq 0) {
+            throw "Downloaded VirtIO ISO file is empty: $localPath"
+        }
+        
+        Write-ColorOutput "VirtIO drivers downloaded" -Color "Green" -Indent 1
+        Write-ColorOutput "File size: $([math]::Round($fileSize / 1MB, 2)) MB" -Color "Cyan" -Indent 2
+        
+        Write-Host ""
+        # Return absolute path
+        return (Resolve-Path $localPath -ErrorAction Stop)
     } catch {
         throw "Failed to download VirtIO drivers: $($_.Exception.Message)"
     }
@@ -65,6 +82,15 @@ function Extract-VirtioDrivers {
     
     Write-ColorOutput "Extracting VirtIO drivers from: $VirtioIsoPath" -Color "Yellow"
     
+    Write-Host ""
+    # Validate ISO file path
+    if (-not (Test-Path $VirtioIsoPath -PathType Leaf)) {
+        throw "VirtIO ISO file not found: $VirtioIsoPath"
+    }
+    
+    # Get absolute path to avoid path issues
+    $VirtioIsoPath = Resolve-Path $VirtioIsoPath -ErrorAction Stop
+    
     # Create virtio directory in the ISO extract path
     $virtioDir = Join-Path $ExtractPath "virtio"
     if (Test-Path $virtioDir) {
@@ -72,37 +98,75 @@ function Extract-VirtioDrivers {
     }
     New-Item -ItemType Directory -Path $virtioDir -Force | Out-Null
     
+    $mounted = $false
+    $mountResult = $null
+    
     try {
-        # Mount the VirtIO ISO
-        Write-ColorOutput "Mounting VirtIO ISO..." -Color "Yellow"
-        $mountResult = Mount-DiskImage -ImagePath $VirtioIsoPath -PassThru
-        $driveLetter = ($mountResult | Get-Volume).DriveLetter
+        # Check if ISO is already mounted
+        $existingMount = Get-DiskImage -ImagePath $VirtioIsoPath -ErrorAction SilentlyContinue
+        if ($existingMount -and $existingMount.Attached) {
+            Write-ColorOutput "VirtIO ISO already mounted, using existing mount" -Color "Yellow"
+            $mountResult = $existingMount
+            $mounted = $true
+        } else {
+            # Mount the VirtIO ISO
+            Write-ColorOutput "Mounting VirtIO ISO..." -Color "Yellow"
+            $mountResult = Mount-DiskImage -ImagePath $VirtioIsoPath -PassThru -ErrorAction Stop
+            $mounted = $true
+        }
+        
+        # Get drive letter with better error handling
+        $volume = $mountResult | Get-Volume -ErrorAction Stop
+        $driveLetter = $volume.DriveLetter
         
         if (-not $driveLetter) {
-            throw "Failed to mount VirtIO ISO or get drive letter"
+            throw "Failed to get drive letter for mounted VirtIO ISO"
         }
         
         $mountedPath = "${driveLetter}:\"
         Write-ColorOutput "VirtIO ISO mounted at: $mountedPath" -Color "Green"
         
+        # Verify the mounted path is accessible
+        if (-not (Test-Path $mountedPath)) {
+            throw "Mounted VirtIO ISO path is not accessible: $mountedPath"
+        }
+        
         try {
             # Copy all contents from VirtIO ISO to the virtio directory
             Write-ColorOutput "Copying VirtIO drivers to: $virtioDir" -Color "Yellow"
-            robocopy $mountedPath $virtioDir /E /COPY:DT /R:3 /W:10 /NFL /NDL /NJH /NJS /nc /ns /np
+            $robocopyResult = robocopy $mountedPath $virtioDir /E /COPY:DT /R:3 /W:10 /NFL /NDL /NJH /NJS /nc /ns /np
             
             if ($LASTEXITCODE -gt 7) {
                 throw "Failed to copy VirtIO drivers. Robocopy exit code: $LASTEXITCODE"
             }
             
-            Write-ColorOutput "VirtIO drivers extracted successfully" -Color "Green"
+            Write-ColorOutput "VirtIO drivers extracted" -Color "Green"
+            
+            Write-Host ""
         } finally {
-            Write-ColorOutput "Dismounting VirtIO ISO..." -Color "Yellow"
-            Dismount-DiskImage -ImagePath $VirtioIsoPath
-            Write-ColorOutput "VirtIO ISO dismounted" -Color "Green"
+            # Only dismount if we mounted it ourselves
+            if ($mounted -and $mountResult) {
+                try {
+                    Write-ColorOutput "Dismounting VirtIO ISO..." -Color "Yellow"
+                    Dismount-DiskImage -ImagePath $VirtioIsoPath -ErrorAction Stop
+                    Write-ColorOutput "VirtIO ISO dismounted" -Color "Green"
+                } catch {
+                    Write-ColorOutput "Warning: Failed to dismount VirtIO ISO: $($_.Exception.Message)" -Color "Yellow"
+                }
+            }
         }
         
         return $virtioDir
     } catch {
+        # Cleanup on error
+        if ($mounted -and $mountResult) {
+            try {
+                Write-ColorOutput "Cleaning up failed mount..." -Color "Yellow"
+                Dismount-DiskImage -ImagePath $VirtioIsoPath -ErrorAction SilentlyContinue
+            } catch {
+                # Ignore cleanup errors
+            }
+        }
         throw "Failed to extract VirtIO drivers: $($_.Exception.Message)"
     }
 }
@@ -165,8 +229,6 @@ function Add-VirtioDrivers {
         [string]$VirtioVersion,
         [string]$VirtioCacheDirectory
     )
-    
-    Write-ColorOutput "=== Adding VirtIO Drivers ===" -Color "Cyan"
     
     try {
         # Get WIM information for all WIM files in the ISO

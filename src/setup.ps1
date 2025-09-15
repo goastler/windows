@@ -424,7 +424,7 @@ function Install-ChocolateyAndPackages {
     # Clean up
     $chocoCacheCleanupResult = Invoke-CommandWithExitCode -Command "choco cache remove --expired -y" -Description "clean up Chocolatey cache"
 
-    Write-Log "Chocolatey installation and package setup completed!"
+    Write-Log "Chocolatey installation and package setup completed"
 }
 
 function Configure-WindowsUpdates {
@@ -716,7 +716,7 @@ function Install-Office {
         }
         Write-Log "Office installation completed successfully"
 
-        Write-Log "Office installation process completed!"
+        Write-Log "Office installation process completed"
     }
     finally {
         # Clean up temporary directory
@@ -817,7 +817,7 @@ function Setup-BgInfo {
     Start-ScheduledTask -TaskName $taskName
     Write-Log "BgInfo scheduled task triggered successfully"
 
-    Write-Log "BgInfo setup completed!"
+    Write-Log "BgInfo setup completed"
 }
 
 function Install-MicrosoftActivationScripts {
@@ -858,7 +858,7 @@ function Install-MicrosoftActivationScripts {
         Write-Log "Running Microsoft Activation Scripts with /Ohook parameter..."
         $masOhookResult = Invoke-CommandWithExitCode -Command "`"$masFullPath`" /Ohook" -Description "run MAS with /Ohook parameter"
 
-        Write-Log "Microsoft Activation Scripts setup completed!"
+        Write-Log "Microsoft Activation Scripts setup completed"
     }
     finally {
         # Clean up the downloaded MAS file

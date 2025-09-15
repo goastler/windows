@@ -314,7 +314,7 @@ function Test-Chocolatey {
 function Install-Chocolatey {
 
     if (Test-Chocolatey) {
-        Write-ColorOutput "[OK] Chocolatey already installed!" "Green"
+        Write-ColorOutput "Chocolatey already installed" "Green"
         return
     }
 
@@ -327,7 +327,7 @@ function Install-Chocolatey {
     Start-Sleep -Seconds 1
 
     if (Test-Chocolatey) {
-        Write-ColorOutput "[OK] Chocolatey installed successfully!" "Green"
+        Write-ColorOutput "Chocolatey installed" "Green"
         return
     } else {
         throw "Chocolatey installation failed to become available on PATH."            
@@ -343,7 +343,7 @@ function Install-WindowsADK {
 
     $result = Start-Process -FilePath "choco" -ArgumentList @("install","windows-adk","-y") -Wait -PassThru -NoNewWindow
     if ($result.ExitCode -eq 0) {
-        Write-ColorOutput "[OK] Windows ADK installed successfully via Chocolatey!" "Green"
+        Write-ColorOutput "Windows ADK installed via Chocolatey" "Green"
         
         # Add ADK paths to current session PATH
         $adkPaths = @(
@@ -1299,7 +1299,7 @@ try {
     if (Test-Path $resolvedOutputIso) {
         $fileSize = (Get-Item $resolvedOutputIso).Length
         $fileSizeGB = [math]::Round($fileSize / 1GB, 2)
-        Write-ColorOutput "Output ISO created successfully!" "Green"
+        Write-ColorOutput "Output ISO created" "Green"
         Write-ColorOutput "File size: $fileSizeGB GB" "Green" -Indent 1
     } else {
         throw "Output ISO was not created successfully"
@@ -1311,4 +1311,4 @@ try {
     Remove-WorkingDirectory -Path $WorkingDirectory
 }
 
-Write-ColorOutput "=== Script completed successfully! ===" "Green"
+Write-ColorOutput "=== Script completed ===" "Green"

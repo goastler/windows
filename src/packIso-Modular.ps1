@@ -229,6 +229,7 @@ try {
         Write-ColorOutput "VirtIO Cache Directory: $VirtioCacheDirectory" -Color "White"
     }
     
+    Write-Host ""
     Test-RequiredTools
     
     Write-ColorOutput "Validating input files..." -Color "Yellow"
@@ -245,6 +246,7 @@ try {
     }
     Write-ColorOutput "Input files validated" -Color "Green"
     
+    Write-Host ""
     if (Test-Path $resolvedOutputIso) {
         if ($OverwriteOutputIso) {
             Write-ColorOutput "Output ISO already exists. Overwriting..." -Color "Yellow"
@@ -254,15 +256,18 @@ try {
         }
     }
     
+    Write-Host ""
     # Extract ISO contents
     Write-ColorOutput "=== Extracting ISO Contents ===" -Color "Cyan"
     Extract-IsoContents -IsoPath $resolvedInputIso -ExtractPath $WorkingDirectory
     
+    Write-Host ""
     # Add autounattend.xml and OEM directory
     Write-ColorOutput "=== Adding Configuration Files ===" -Color "Cyan"
     Add-AutounattendXml -ExtractPath $WorkingDirectory -AutounattendXmlPath $AutounattendXml
     Add-OemDirectory -ExtractPath $WorkingDirectory -OemSourcePath $OemDirectory
     
+    Write-Host ""
     # Add VirtIO drivers to WIM files
     if ($IncludeVirtioDrivers) {
         Write-ColorOutput "=== Adding VirtIO Drivers ===" -Color "Cyan"
@@ -271,6 +276,7 @@ try {
         Write-ColorOutput "=== Skipping VirtIO Drivers (not requested) ===" -Color "Cyan"
     }
     
+    Write-Host ""
     # Create new ISO
     Write-ColorOutput "=== Creating New ISO ===" -Color "Cyan"
     New-IsoFromDirectory -SourcePath $WorkingDirectory -OutputPath $resolvedOutputIso -OscdimgPath $script:oscdimgPath
@@ -278,11 +284,13 @@ try {
     if (Test-Path $resolvedOutputIso) {
         $fileSize = (Get-Item $resolvedOutputIso).Length
         $fileSizeGB = [math]::Round($fileSize / 1GB, 2)
-        Write-ColorOutput "Output ISO created successfully!" -Color "Green"
+        Write-ColorOutput "Output ISO created" -Color "Green"
         Write-ColorOutput "File size: $fileSizeGB GB" -Color "Green" -Indent 1
     } else {
         throw "Output ISO was not created successfully"
     }
+    
+    Write-Host ""
 } catch {
     Write-ColorOutput "Error: $($_.Exception.Message)" -Color "Red"
     exit 1
@@ -290,4 +298,5 @@ try {
     Remove-WorkingDirectory -Path $WorkingDirectory
 }
 
-Write-ColorOutput "=== Script completed successfully! ===" -Color "Green"
+Write-Host ""
+Write-ColorOutput "=== Script completed ===" -Color "Green"

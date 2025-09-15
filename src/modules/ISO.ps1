@@ -11,6 +11,7 @@ function Extract-IsoContents {
     )
     
     Write-ColorOutput "Mounting ISO: $IsoPath" -Color "Yellow"
+    
     $mountResult = Mount-DiskImage -ImagePath $IsoPath -PassThru
     $driveLetter = ($mountResult | Get-Volume).DriveLetter
     
@@ -19,7 +20,9 @@ function Extract-IsoContents {
     }
     
     $mountedPath = "${driveLetter}:\"
-    Write-ColorOutput "ISO mounted at: $mountedPath" -Color "Green" -Indent 1     
+    Write-ColorOutput "ISO mounted at: $mountedPath" -Color "Green" -Indent 1
+    
+    Write-Host ""
     try {
         Write-ColorOutput "Extracting ISO contents to: $ExtractPath" -Color "Yellow" -Indent 1         
         if (Test-Path $ExtractPath) {
@@ -34,6 +37,8 @@ function Extract-IsoContents {
         }
 
         Write-ColorOutput "ISO contents extracted successfully" -Color "Green" -Indent 1
+        
+        Write-Host ""
     } finally {
         Write-ColorOutput "Dismounting ISO..." -Color "Yellow" -Indent 1
         Dismount-DiskImage -ImagePath $IsoPath
