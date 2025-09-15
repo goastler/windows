@@ -127,6 +127,32 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+# Dot source all modules
+$modulePath = Join-Path $PSScriptRoot "modules"
+
+Write-ColorOutput "=== Importing Modules ===" -Color "Cyan"
+Write-ColorOutput "Importing Common utilities..." -Color "Yellow" -CurrentIndent 1 -InheritedIndent 0
+. (Join-Path $modulePath "Common.ps1")
+
+Write-ColorOutput "Importing Tools and Prerequisites..." -Color "Yellow" -CurrentIndent 1 -InheritedIndent 0
+$toolsPath = Join-Path $modulePath "tools"
+. (Join-Path $toolsPath "Chocolatey.ps1")
+. (Join-Path $toolsPath "WindowsADK.ps1")
+. (Join-Path $toolsPath "OSCDIMG.ps1")
+. (Join-Path $toolsPath "DISM.ps1")
+. (Join-Path $toolsPath "ToolsOrchestrator.ps1")
+
+Write-ColorOutput "Importing ISO Operations..." -Color "Yellow" -CurrentIndent 1 -InheritedIndent 0
+. (Join-Path $modulePath "ISO.ps1")
+
+Write-ColorOutput "Importing WIM Analysis..." -Color "Yellow" -CurrentIndent 1 -InheritedIndent 0
+. (Join-Path $modulePath "WIM.ps1")
+
+Write-ColorOutput "Importing VirtIO Drivers..." -Color "Yellow" -CurrentIndent 1 -InheritedIndent 0
+. (Join-Path $modulePath "VirtIO.ps1")
+
+Write-ColorOutput "All modules imported successfully" -Color "Green"
+
 # Resolve all paths to absolute paths
 Write-ColorOutput "=== Resolving Paths ===" -Color "Cyan" -CurrentIndent 0 -InheritedIndent 0
 
@@ -183,32 +209,6 @@ $VirtioCacheDirectory = if ([System.IO.Path]::IsPathRooted($VirtioCacheDirectory
     Write-ColorOutput "Resolved VirtioCacheDirectory: $VirtioCacheDirectory -> $resolved" -Color "Cyan" -CurrentIndent 1 -InheritedIndent 0
     $resolved
 }
-
-# Dot source all modules
-$modulePath = Join-Path $PSScriptRoot "modules"
-
-Write-ColorOutput "=== Importing Modules ===" -Color "Cyan"
-Write-ColorOutput "Importing Common utilities..." -Color "Yellow" -CurrentIndent 1 -InheritedIndent 0
-. (Join-Path $modulePath "Common.ps1")
-
-Write-ColorOutput "Importing Tools and Prerequisites..." -Color "Yellow" -CurrentIndent 1 -InheritedIndent 0
-$toolsPath = Join-Path $modulePath "tools"
-. (Join-Path $toolsPath "Chocolatey.ps1")
-. (Join-Path $toolsPath "WindowsADK.ps1")
-. (Join-Path $toolsPath "OSCDIMG.ps1")
-. (Join-Path $toolsPath "DISM.ps1")
-. (Join-Path $toolsPath "ToolsOrchestrator.ps1")
-
-Write-ColorOutput "Importing ISO Operations..." -Color "Yellow" -CurrentIndent 1 -InheritedIndent 0
-. (Join-Path $modulePath "ISO.ps1")
-
-Write-ColorOutput "Importing WIM Analysis..." -Color "Yellow" -CurrentIndent 1 -InheritedIndent 0
-. (Join-Path $modulePath "WIM.ps1")
-
-Write-ColorOutput "Importing VirtIO Drivers..." -Color "Yellow" -CurrentIndent 1 -InheritedIndent 0
-. (Join-Path $modulePath "VirtIO.ps1")
-
-Write-ColorOutput "All modules imported successfully" -Color "Green"
 
 try {
     Write-ColorOutput "=== Windows ISO Repack Script ===" -Color "Cyan"
