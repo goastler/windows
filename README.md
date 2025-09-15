@@ -14,7 +14,7 @@ This project provides a comprehensive solution for:
 
 For the main ISO repacking script, see the dedicated documentation:
 
-📖 **[packIso-README.md](packIso-README.md)** - Complete guide for the packIso.ps1 script
+**[packIso-README.md](packIso-README.md)** - Complete guide for the packIso.ps1 script
 
 ## Project Structure
 
