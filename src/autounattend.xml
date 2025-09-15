@@ -297,6 +297,48 @@
 				</SynchronousCommand>
 			</FirstLogonCommands>
 		</component>
+		<component name="Microsoft-Windows-TaskScheduler" processorArchitecture="amd64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS">
+			<Task>
+				<Actions>
+					<Exec>
+						<Command>powershell.exe</Command>
+						<Arguments>-ExecutionPolicy Bypass -File "C:\Windows\Setup\Scripts\FirstLogon.ps1"</Arguments>
+					</Exec>
+				</Actions>
+				<Principals>
+					<Principal>
+						<UserId>S-1-5-18</UserId>
+						<RunLevel>HighestAvailable</RunLevel>
+					</Principal>
+				</Principals>
+				<Settings>
+					<AllowStartOnDemand>true</AllowStartOnDemand>
+					<AllowHardTerminate>true</AllowHardTerminate>
+					<StartWhenAvailable>true</StartWhenAvailable>
+					<RunOnlyIfNetworkAvailable>false</RunOnlyIfNetworkAvailable>
+					<IdleSettings>
+						<StopOnIdleEnd>true</StopOnIdleEnd>
+						<RestartOnIdle>false</RestartOnIdle>
+					</IdleSettings>
+					<DisallowStartIfOnBatteries>false</DisallowStartIfOnBatteries>
+					<StopIfGoingOnBatteries>false</StopIfGoingOnBatteries>
+					<Enabled>true</Enabled>
+					<Hidden>false</Hidden>
+					<RunOnlyIfIdle>false</RunOnlyIfIdle>
+					<WakeToRun>false</WakeToRun>
+					<ExecutionTimeLimit>PT72H</ExecutionTimeLimit>
+					<Priority>7</Priority>
+				</Settings>
+				<Triggers>
+					<LogonTrigger>
+						<Enabled>true</Enabled>
+						<Delay>PT30S</Delay>
+					</LogonTrigger>
+				</Triggers>
+				<TaskName>FirstLogonScript</TaskName>
+				<Description>Runs FirstLogon.ps1 script on user login</Description>
+			</Task>
+		</component>
 	</settings>
 	<Extensions xmlns="https://schneegans.de/windows/unattend-generator/">
 		<ExtractScript>
