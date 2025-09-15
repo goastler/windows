@@ -130,10 +130,10 @@ $ErrorActionPreference = "Stop"
 # Dot source all modules
 $modulePath = Join-Path $PSScriptRoot "modules"
 
-Write-ColorOutput "=== Importing Modules ===" -Color "Cyan"
-Write-ColorOutput "Importing Common utilities..." -Color "Yellow" -CurrentIndent 1 -InheritedIndent 0
+# Import Common.ps1 first (contains Write-ColorOutput)
 . (Join-Path $modulePath "Common.ps1")
 
+Write-ColorOutput "=== Importing Modules ===" -Color "Cyan" -CurrentIndent 0 -InheritedIndent 0
 Write-ColorOutput "Importing Tools and Prerequisites..." -Color "Yellow" -CurrentIndent 1 -InheritedIndent 0
 $toolsPath = Join-Path $modulePath "tools"
 . (Join-Path $toolsPath "Chocolatey.ps1")
