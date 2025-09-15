@@ -30,3 +30,5 @@ try {
 } catch {
     Write-Error "Failed to run setup.ps1: $($_.Exception.Message)"
 }
+
+Pause

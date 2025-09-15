@@ -10,3 +10,6 @@
 - redo readmes
 - use profiled pwsh in sched task
 - make progress cmdlets use many stages for updates
+
+
+-WindowStyle Normal -NoProfile

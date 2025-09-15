@@ -79,6 +79,109 @@ if ($IncludeVirtioDrivers) {
     }
 }
 
+function Invoke-WebRequestWithCleanup {
+    param(
+        [string]$Uri,
+        [string]$OutFile,
+        [string]$Description = "download file",
+        [int]$ProgressId = 3
+    )
+    
+    Write-Log "Downloading $Description from: $Uri"
+    
+    $webRequest = $null
+    try {
+        # Create a web client for progress tracking
+        $webClient = New-Object System.Net.WebClient
+        
+        # Set up progress tracking
+        $totalBytes = 0
+        $downloadedBytes = 0
+        
+        # Register for download progress
+        Register-ObjectEvent -InputObject $webClient -EventName "DownloadProgressChanged" -Action {
+            $global:downloadProgress = $Event.SourceEventArgs
+        } | Out-Null
+        
+        # Get file size first
+        try {
+            $headRequest = [System.Net.WebRequest]::Create($Uri)
+            $headRequest.Method = "HEAD"
+            $response = $headRequest.GetResponse()
+            $totalBytes = $response.ContentLength
+            $response.Close()
+        } catch {
+            Write-Log "Could not determine file size, progress tracking may be limited"
+        }
+        
+        # Start download with progress tracking
+        $downloadTask = $webClient.DownloadFileTaskAsync($Uri, $OutFile)
+        
+        # Monitor progress
+        while (-not $downloadTask.IsCompleted) {
+            Start-Sleep -Milliseconds 100
+            
+            if ($global:downloadProgress) {
+                $percentComplete = if ($totalBytes -gt 0) {
+                    [math]::Round(($global:downloadProgress.BytesReceived / $totalBytes) * 100)
+                } else {
+                    [math]::Round(($global:downloadProgress.BytesReceived / ($global:downloadProgress.BytesReceived + 1)) * 100)
+                }
+                
+                $downloadedMB = [math]::Round($global:downloadProgress.BytesReceived / 1MB, 2)
+                $totalMB = if ($totalBytes -gt 0) { [math]::Round($totalBytes / 1MB, 2) } else { "Unknown" }
+                
+                Write-ProgressWithPercentage -Activity "Downloading $Description" -Status "Downloaded $downloadedMB MB of $totalMB MB" -PercentComplete $percentComplete -Id $ProgressId
+            }
+        }
+        
+        # Wait for completion and handle any exceptions
+        $downloadTask.Wait()
+        if ($downloadTask.Exception) {
+            throw $downloadTask.Exception
+        }
+        
+        Write-Progress -Activity "Downloading $Description" -Completed -Id $ProgressId
+        Write-Host "" # Clear the progress line
+        Write-Log "$Description downloaded successfully"
+    }
+    finally {
+        # Clean up event subscription
+        try {
+            Get-EventSubscriber | Where-Object { $_.SourceObject -eq $webClient } | Unregister-Event
+        } catch {
+            # Ignore cleanup errors
+        }
+        
+        # Properly dispose of web client
+        if ($webClient) {
+            try {
+                $webClient.Dispose()
+            }
+            catch {
+                # Ignore disposal errors
+            }
+        }
+        
+        # Properly dispose of web request object
+        if ($webRequest) {
+            try {
+                $webRequest.Dispose()
+            }
+            catch {
+                # Ignore disposal errors
+            }
+        }
+        
+        # Force garbage collection to ensure resources are released
+        [System.GC]::Collect()
+        [System.GC]::WaitForPendingFinalizers()
+        
+        # Brief pause to ensure file handles are released
+        Start-Sleep -Seconds 1
+    }
+}
+
 function Write-ColorOutput {
     param(
         [string]$Message,
@@ -432,13 +535,9 @@ function Get-VirtioDrivers {
         return $localPath
     }
     
-    Write-ColorOutput "Downloading VirtIO drivers from: $downloadUrl" "Yellow"
-    Write-ColorOutput "Saving to: $localPath" "Yellow"
-    
     try {
-        # Use Invoke-WebRequest with progress
-        $webClient = New-Object System.Net.WebClient
-        $webClient.DownloadFile($downloadUrl, $localPath)
+        # Use Invoke-WebRequestWithCleanup for better progress tracking and resource cleanup
+        Invoke-WebRequestWithCleanup -Uri $downloadUrl -OutFile $localPath -Description "VirtIO drivers ($Version)" -ProgressId 3
         Write-ColorOutput "VirtIO drivers downloaded successfully" "Green"
         return $localPath
     } catch {
