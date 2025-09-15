@@ -165,8 +165,12 @@ function Write-ColorOutput {
     param(
         [string]$Message,
         [string]$Color = "White",
+        [string]$Colour = $null,
         [int]$Indent = 0
     )
+    
+    # Use Colour parameter if provided, otherwise use Color parameter
+    $actualColor = if ($Colour) { $Colour } else { $Color }
     
     # Create indentation string (2 spaces per indent level)
     $indentString = "  " * $Indent
@@ -174,7 +178,7 @@ function Write-ColorOutput {
     # Combine indentation with message
     $indentedMessage = $indentString + $Message
     
-    Write-Host $indentedMessage -ForegroundColor $Color
+    Write-Host $indentedMessage -ForegroundColor $actualColor
 }
 
 function Test-Administrator {
