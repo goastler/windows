@@ -176,54 +176,33 @@ function Get-WimImageInfo {
                         $currentImage.Version = "w10"
                     }
                 }
-            } elseif ($line -match "Architecture\s*:\s*(.+)") {
-                $arch = $matches[1].Trim()
-                
-                # Map DISM architecture names to our expected values
-                switch ($arch.ToLower()) {
-                    "x64" { $arch = "amd64" }
-                    "x86" { $arch = "x86" }
-                    "arm64" { $arch = "arm64" }
-                    default {
-                        Write-ColorOutput "Warning: Unknown architecture detected: $arch, defaulting to amd64" -Color "Yellow" -Indent 1 -InheritedIndent $InheritedIndent
-                        $arch = "amd64"
-                    }
-                }
-                
-                # Set architecture for current image if we have one
-                if ($currentImage) {
-                    $currentImage.Architecture = $arch
-                }
-            }
         }
         
         if ($currentImage) {
             $images += $currentImage
         }
         
-        # Post-process images to add fallback architecture detection
+        # Post-process images to add architecture detection
         foreach ($image in $images) {
-            if (-not $image.Architecture) {
-                Write-ColorOutput "No architecture found for image $($image.Index), attempting fallback detection..." -Color "Yellow" -Indent 1 -InheritedIndent $InheritedIndent
-                
-                # Get architecture using DISM
-                $imageDetails = Get-WimImageDetails -WimPath $WimPath -ImageIndex $image.Index -DismPath $DismPath -ShowDebugOutput $true -InheritedIndent $InheritedIndent
-                
-                if ($imageDetails.ParsedData.ContainsKey("Architecture")) {
-                    $arch = $imageDetails.ParsedData["Architecture"].ToLower()
-                    switch ($arch) {
-                        "x64" { $detectedArch = "amd64" }
-                        "x86" { $detectedArch = "x86" }
-                        "arm64" { $detectedArch = "arm64" }
-                        default { 
-                            throw "Unknown architecture '$arch' found in DISM output for image index $($image.Index). Expected: x64, x86, or arm64"
-                        }
+            Write-ColorOutput "Getting architecture for image $($image.Index)..." -Color "Yellow" -Indent 1 -InheritedIndent $InheritedIndent
+            
+            # Get architecture using DISM
+            $imageDetails = Get-WimImageDetails -WimPath $WimPath -ImageIndex $image.Index -DismPath $DismPath -ShowDebugOutput $true -InheritedIndent $InheritedIndent
+            
+            if ($imageDetails.ParsedData.ContainsKey("Architecture")) {
+                $arch = $imageDetails.ParsedData["Architecture"].ToLower()
+                switch ($arch) {
+                    "x64" { $detectedArch = "amd64" }
+                    "x86" { $detectedArch = "x86" }
+                    "arm64" { $detectedArch = "arm64" }
+                    default { 
+                        throw "Unknown architecture '$arch' found in DISM output for image index $($image.Index). Expected: x64, x86, or arm64"
                     }
-                    Write-ColorOutput "Architecture detected via DISM: $detectedArch" -Color "Green" -Indent 1 -InheritedIndent $InheritedIndent
-                    $image.Architecture = $detectedArch
-                } else {
-                    throw "Architecture information not found in DISM output for image index $($image.Index)"
                 }
+                Write-ColorOutput "Architecture detected via DISM: $detectedArch" -Color "Green" -Indent 1 -InheritedIndent $InheritedIndent
+                $image.Architecture = $detectedArch
+            } else {
+                throw "Architecture information not found in DISM output for image index $($image.Index)"
             }
         }
         

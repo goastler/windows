@@ -232,6 +232,7 @@ function Add-VirtioDrivers {
     
     try {
         # Get WIM information for all WIM files in the ISO
+        Write-Host ""
         Write-ColorOutput "Analyzing WIM files..." -Color "Yellow" -Indent 1
         $WimInfos = Get-AllWimInfo -ExtractPath $ExtractPath
         
