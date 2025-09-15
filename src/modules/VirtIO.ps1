@@ -111,7 +111,8 @@ function Extract-VirtioDrivers {
         } else {
             # Mount the VirtIO ISO
             Write-ColorOutput "Mounting VirtIO ISO..." -Color "Yellow"
-            $mountResult = Mount-DiskImage -ImagePath $VirtioIsoPath -PassThru -ErrorAction Stop
+            $mountResult = Mount-DiskImage -ImagePath $VirtioIsoPath -PassThru -ErrorAction Stop | Out-Null
+            $mountResult = Get-DiskImage -ImagePath $VirtioIsoPath -ErrorAction Stop
             $mounted = $true
         }
         
@@ -162,6 +163,7 @@ function Extract-VirtioDrivers {
         # Suppress any implicit output from mountResult
         $null = $mountResult
         
+        Write-ColorOutput "DEBUG: About to return: '$virtioDir'" -Color "Magenta" -Indent 2
         return $virtioDir
     } catch {
         # Cleanup on error

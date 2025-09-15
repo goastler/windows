@@ -9,5 +9,4 @@
 - use profiled pwsh in sched task
 - make progress cmdlets use many stages for updates
 - move over to using psm1 modules
-
--WindowStyle Normal -NoProfile
+- fix git history
