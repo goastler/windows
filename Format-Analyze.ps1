@@ -73,72 +73,13 @@ function Remove-SpecialCharacters {
         [string]$Content
     )
     
-    # Define common special character replacements
+    # Only replace common problematic characters that are actually used in scripts
     $replacements = @{
         '✓' = '[OK]'
         '✗' = '[ERROR]'
         '✘' = '[ERROR]'
         '⚠' = '[WARNING]'
         'ℹ' = '[INFO]'
-        '→' = '->'
-        '←' = '<-'
-        '↑' = '^'
-        '↓' = 'v'
-        '«' = '<<'
-        '»' = '>>'
-        '–' = '-'
-        '—' = '--'
-        '…' = '...'
-        '°' = 'deg'
-        '©' = '(c)'
-        '®' = '(R)'
-        '™' = '(TM)'
-        '€' = 'EUR'
-        '£' = 'GBP'
-        '¥' = 'JPY'
-        '§' = 'S'
-        '¶' = 'P'
-        '†' = '+'
-        '‡' = '++'
-        '•' = '*'
-        '◦' = 'o'
-        '▪' = '#'
-        '▫' = '#'
-        '‣' = '>'
-        '‒' = '-'
-        '―' = '--'
-        '‗' = '_'
-        '‾' = '^'
-        '‿' = '~'
-        '⁀' = '~'
-        '⁁' = '^'
-        '⁂' = '***'
-        '⁅' = '['
-        '⁆' = ']'
-        '⁇' = '??'
-        '⁈' = '?!'
-        '⁉' = '!?'
-        '⁊' = '&'
-        '⁋' = 'P'
-        '⁌' = '<'
-        '⁍' = '>'
-        '⁎' = '*'
-        '⁏' = ';'
-        '⁐' = 'P'
-        '⁑' = '**'
-        '⁒' = '%'
-        '⁓' = '~'
-        '⁔' = '^'
-        '⁕' = '*'
-        '⁖' = '***'
-        '⁗' = '****'
-        '⁘' = '....'
-        '⁙' = '.....'
-        '⁚' = '::'
-        '⁛' = ':::'
-        '⁜' = '::::'
-        '⁝' = ':::::'
-        '⁞' = '::::::'
     }
     
     # Apply replacements
@@ -147,15 +88,9 @@ function Remove-SpecialCharacters {
         $cleanContent = $cleanContent -replace [regex]::Escape($special), $replacements[$special]
     }
     
-    # Remove specific control characters while preserving line breaks and tabs
-    $cleanContent = $cleanContent -replace '\x00', ''  # Remove null bytes
-    $cleanContent = $cleanContent -replace '[\x01-\x08]', ''  # Remove control chars except tab
-    $cleanContent = $cleanContent -replace '[\x0B-\x0C]', ''  # Remove vertical tab and form feed
-    $cleanContent = $cleanContent -replace '[\x0E-\x1F]', ''  # Remove other control chars
-    $cleanContent = $cleanContent -replace '[\x7F-\x9F]', ''  # Remove DEL and extended control chars
-    
-    # Remove any remaining non-printable characters except newlines, carriage returns, and tabs
-    $cleanContent = [regex]::Replace($cleanContent, '[^\x09\x0A\x0D\x20-\x7E]', '')
+    # Only remove null bytes and other truly problematic control characters
+    # Preserve all whitespace including line breaks, tabs, and spaces
+    $cleanContent = $cleanContent -replace '\x00', ''  # Remove null bytes only
     
     return $cleanContent
 }
@@ -165,15 +100,20 @@ function Test-SpecialCharacters {
         [string]$Content
     )
     
-    # Check for non-ASCII characters
-    $hasSpecialChars = [regex]::IsMatch($Content, '[^\x20-\x7E]')
+    # Check for problematic characters: null bytes and common Unicode symbols that cause issues
+    $problematicChars = @('✓', '✗', '✘', '⚠', 'ℹ', '\x00')
+    $foundChars = @()
     
-    if ($hasSpecialChars) {
-        # Find and report specific special characters
-        $specialChars = [regex]::Matches($Content, '[^\x20-\x7E]') | ForEach-Object { $_.Value } | Sort-Object -Unique
+    foreach ($char in $problematicChars) {
+        if ($Content.Contains($char)) {
+            $foundChars += $char
+        }
+    }
+    
+    if ($foundChars.Count -gt 0) {
         return @{
             HasSpecialChars = $true
-            SpecialChars = $specialChars
+            SpecialChars = $foundChars
         }
     }
     
