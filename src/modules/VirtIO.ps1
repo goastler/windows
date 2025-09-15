@@ -310,45 +310,34 @@ function Inject-VirtioDriversIntoBootWim {
         
         # Mount the specific boot.wim index
         Write-ColorOutput "Mounting boot.wim index $ImageIndex..." -Color "Yellow" -Indent 2
-        $result = Start-Process -FilePath $dismPath -ArgumentList @(
-            "/Mount-Wim",
-            "/WimFile:`"$WimPath`"",
-            "/Index:$ImageIndex",
-            "/MountDir:`"$mountDir`""
-        ) -Wait -PassThru -NoNewWindow
+        # Mount the WIM file using direct execution
+        & $dismPath /Mount-Wim /WimFile:$WimPath /Index:$ImageIndex /MountDir:$mountDir
         
-        if ($result.ExitCode -ne 0) {
-            throw "Failed to mount boot.wim index $ImageIndex (exit code: $($result.ExitCode))"
+        if ($LASTEXITCODE -ne 0) {
+            throw "Failed to mount boot.wim index $ImageIndex (exit code: $LASTEXITCODE)"
         }
         
         Write-ColorOutput "Successfully mounted boot.wim index $ImageIndex" -Color "Green" -Indent 2         
         # Add drivers to the mounted image
         Write-ColorOutput "Adding VirtIO drivers to boot.wim..." -Color "Yellow" -Indent 2
-        $result = Start-Process -FilePath $dismPath -ArgumentList @(
-            "/Image:`"$mountDir`"",
-            "/Add-Driver",
-            "/Driver:`"$windowsDriverPath`"",
-            "/Recurse"
-        ) -Wait -PassThru -NoNewWindow
+        # Add drivers using direct execution
+        & $dismPath /Image:$mountDir /Add-Driver /Driver:$windowsDriverPath /Recurse
         
-        if ($result.ExitCode -eq 0) {
+        if ($LASTEXITCODE -eq 0) {
             Write-ColorOutput "Successfully added VirtIO drivers to boot.wim" -Color "Green" -Indent 2
         } else {
-            throw "Failed to add VirtIO drivers to boot.wim (exit code: $($result.ExitCode))"
+            throw "Failed to add VirtIO drivers to boot.wim (exit code: $LASTEXITCODE)"
         }
         
         # Unmount and commit changes
         Write-ColorOutput "Unmounting boot.wim..." -Color "Yellow" -Indent 2
-        $result = Start-Process -FilePath $dismPath -ArgumentList @(
-            "/Unmount-Wim",
-            "/MountDir:`"$mountDir`"",
-            "/Commit"
-        ) -Wait -PassThru -NoNewWindow
+        # Unmount and commit changes using direct execution
+        & $dismPath /Unmount-Wim /MountDir:$mountDir /Commit
         
-        if ($result.ExitCode -eq 0) {
+        if ($LASTEXITCODE -eq 0) {
             Write-ColorOutput "Successfully unmounted and committed boot.wim changes" -Color "Green" -Indent 2
         } else {
-            throw "Failed to unmount boot.wim (exit code: $($result.ExitCode)). WIM may be left in inconsistent state."
+            throw "Failed to unmount boot.wim (exit code: $LASTEXITCODE). WIM may be left in inconsistent state."
         }
         
     } catch {
@@ -436,47 +425,34 @@ function Inject-VirtioDriversIntoInstallWim {
         
         # Mount the specific install.wim index
         Write-ColorOutput "Mounting install.wim index $ImageIndex..." -Color "Yellow" -Indent 2
-        Write-ColorOutput "DEBUG: About to start DISM mount process..." -Color "Magenta" -Indent 2
-        $result = Start-Process -FilePath $dismPath -ArgumentList @(
-            "/Mount-Wim",
-            "/WimFile:`"$WimPath`"",
-            "/Index:$ImageIndex",
-            "/MountDir:`"$mountDir`""
-        ) -Wait -PassThru
-        Write-ColorOutput "DEBUG: DISM mount process completed with exit code: $($result.ExitCode)" -Color "Magenta" -Indent 2
+        # Mount the WIM file using direct execution
+        & $dismPath /Mount-Wim /WimFile:$WimPath /Index:$ImageIndex /MountDir:$mountDir
         
-        if ($result.ExitCode -ne 0) {
-            throw "Failed to mount install.wim index $ImageIndex (exit code: $($result.ExitCode))"
+        if ($LASTEXITCODE -ne 0) {
+            throw "Failed to mount install.wim index $ImageIndex (exit code: $LASTEXITCODE)"
         }
         
         Write-ColorOutput "Successfully mounted install.wim index $ImageIndex" -Color "Green" -Indent 2         
         # Add drivers to the mounted image
         Write-ColorOutput "Adding VirtIO drivers to install.wim..." -Color "Yellow" -Indent 2
-        $result = Start-Process -FilePath $dismPath -ArgumentList @(
-            "/Image:`"$mountDir`"",
-            "/Add-Driver",
-            "/Driver:`"$windowsDriverPath`"",
-            "/Recurse"
-        ) -Wait -PassThru -NoNewWindow
+        # Add drivers using direct execution
+        & $dismPath /Image:$mountDir /Add-Driver /Driver:$windowsDriverPath /Recurse
         
-        if ($result.ExitCode -eq 0) {
+        if ($LASTEXITCODE -eq 0) {
             Write-ColorOutput "Successfully added VirtIO drivers to install.wim" -Color "Green" -Indent 2
         } else {
-            throw "Failed to add VirtIO drivers to install.wim (exit code: $($result.ExitCode))"
+            throw "Failed to add VirtIO drivers to install.wim (exit code: $LASTEXITCODE)"
         }
         
         # Unmount and commit changes
         Write-ColorOutput "Unmounting install.wim..." -Color "Yellow" -Indent 2
-        $result = Start-Process -FilePath $dismPath -ArgumentList @(
-            "/Unmount-Wim",
-            "/MountDir:`"$mountDir`"",
-            "/Commit"
-        ) -Wait -PassThru -NoNewWindow
+        # Unmount and commit changes using direct execution
+        & $dismPath /Unmount-Wim /MountDir:$mountDir /Commit
         
-        if ($result.ExitCode -eq 0) {
+        if ($LASTEXITCODE -eq 0) {
             Write-ColorOutput "Successfully unmounted and committed install.wim changes" -Color "Green" -Indent 2
         } else {
-            throw "Failed to unmount install.wim (exit code: $($result.ExitCode)). WIM may be left in inconsistent state."
+            throw "Failed to unmount install.wim (exit code: $LASTEXITCODE). WIM may be left in inconsistent state."
         }
         
     } catch {
