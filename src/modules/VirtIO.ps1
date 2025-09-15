@@ -152,7 +152,7 @@ function Extract-VirtioDrivers {
             if ($mounted -and $mountResult) {
                 try {
                     Write-ColorOutput "Dismounting VirtIO ISO..." -Color "Yellow"
-                    Dismount-DiskImage -ImagePath $VirtioIsoPath -ErrorAction Stop
+                    Dismount-DiskImage -ImagePath $VirtioIsoPath -ErrorAction Stop | Out-Null
                     Write-ColorOutput "VirtIO ISO dismounted" -Color "Green"
                 } catch {
                     Write-ColorOutput "Warning: Failed to dismount VirtIO ISO: $($_.Exception.Message)" -Color "Yellow"
@@ -160,17 +160,13 @@ function Extract-VirtioDrivers {
             }
         }
         
-        Write-ColorOutput "DEBUG: virtioDir before return: '$virtioDir'" -Color "Magenta" -Indent 2
-        Write-ColorOutput "DEBUG: mountResult: '$mountResult'" -Color "Magenta" -Indent 2
-        
-        # Return only the virtio directory path, suppressing all other output
         return $virtioDir
     } catch {
         # Cleanup on error
         if ($mounted -and $mountResult) {
             try {
                 Write-ColorOutput "Cleaning up failed mount..." -Color "Yellow"
-                Dismount-DiskImage -ImagePath $VirtioIsoPath -ErrorAction SilentlyContinue
+                Dismount-DiskImage -ImagePath $VirtioIsoPath -ErrorAction SilentlyContinue | Out-Null
             } catch {
                 # Ignore cleanup errors
             }
