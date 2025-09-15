@@ -52,32 +52,11 @@ param(
     [string]$VirtioVersion = "stable",
 
     [Parameter(Mandatory = $false)]
-    [string]$VirtioCacheDirectory = (Join-Path $env:TEMP "virtio-cache"),
-
-    [Parameter(Mandatory = $true)]
-    [ValidateSet("amd64", "x86", "arm64")]
-    [string]$Arch,
-
-    [Parameter(Mandatory = $true)]
-    [ValidateSet("w10", "w11")]
-    [string]$Version
+    [string]$VirtioCacheDirectory = (Join-Path $env:TEMP "virtio-cache")
 
 )
 
 $ErrorActionPreference = "Stop"
-
-# Validate Windows 11 architecture compatibility
-if ($Version -eq "w11" -and $Arch -eq "x86") {
-    throw "Windows 11 does not support x86 architecture. Windows 11 only supports amd64 and arm64 architectures. Please use Version 'w10' for x86 architecture or change Arch to 'amd64' or 'arm64' for Windows 11."
-}
-
-# Validate VirtIO driver parameters
-if ($IncludeVirtioDrivers) {
-    # Validate VirtIO driver availability for ARM64 (only when VirtIO drivers are requested)
-    if ($Arch -eq "arm64") {
-        throw "VirtIO drivers are not available for ARM64 architecture. VirtIO drivers are only available for x86 and amd64 architectures. Please change Arch to 'x86' or 'amd64'."
-    }
-}
 
 function Invoke-WebRequestWithCleanup {
     param(
@@ -601,7 +580,9 @@ function Add-VirtioDrivers {
     param(
         [string]$ExtractPath,
         [string]$VirtioVersion,
-        [string]$VirtioCacheDirectory
+        [string]$VirtioCacheDirectory,
+        [string]$Arch,
+        [string]$Version
     )
     
     if (-not $IncludeVirtioDrivers) {
@@ -979,6 +960,174 @@ function Get-DismPath {
     throw "DISM not found. Please ensure DISM is available on the system."
 }
 
+function Get-WimArchitecture {
+    param(
+        [string]$WimPath
+    )
+    
+    Write-ColorOutput "Inferring architecture from WIM: $WimPath" "Yellow"
+    
+    try {
+        $dismPath = Get-DismPath
+        
+        # Get WIM information using DISM
+        $result = Start-Process -FilePath $dismPath -ArgumentList @(
+            "/Get-WimInfo",
+            "/WimFile:`"$WimPath`""
+        ) -Wait -PassThru -NoNewWindow -RedirectStandardOutput "temp_arch_info.txt"
+        
+        if ($result.ExitCode -ne 0) {
+            Write-ColorOutput "Failed to get WIM architecture info (exit code: $($result.ExitCode))" "Yellow"
+            return $null
+        }
+        
+        # Parse the output to extract architecture information
+        $wimInfo = Get-Content "temp_arch_info.txt" -ErrorAction SilentlyContinue
+        Remove-Item "temp_arch_info.txt" -ErrorAction SilentlyContinue
+        
+        foreach ($line in $wimInfo) {
+            if ($line -match "Architecture\s*:\s*(.+)") {
+                $arch = $matches[1].Trim()
+                Write-ColorOutput "Detected architecture: $arch" "Green"
+                
+                # Map DISM architecture names to our expected values
+                switch ($arch.ToLower()) {
+                    "x64" { return "amd64" }
+                    "x86" { return "x86" }
+                    "arm64" { return "arm64" }
+                    default {
+                        Write-ColorOutput "Unknown architecture: $arch" "Yellow"
+                        return $null
+                    }
+                }
+            }
+        }
+        
+        Write-ColorOutput "Could not determine architecture from WIM" "Yellow"
+        return $null
+        
+    } catch {
+        Write-ColorOutput "Error inferring architecture from WIM: $($_.Exception.Message)" "Red"
+        return $null
+    }
+}
+
+function Get-WimVersion {
+    param(
+        [string]$WimPath
+    )
+    
+    Write-ColorOutput "Inferring Windows version from WIM: $WimPath" "Yellow"
+    
+    try {
+        $dismPath = Get-DismPath
+        
+        # Get WIM information using DISM
+        $result = Start-Process -FilePath $dismPath -ArgumentList @(
+            "/Get-WimInfo",
+            "/WimFile:`"$WimPath`""
+        ) -Wait -PassThru -NoNewWindow -RedirectStandardOutput "temp_version_info.txt"
+        
+        if ($result.ExitCode -ne 0) {
+            Write-ColorOutput "Failed to get WIM version info (exit code: $($result.ExitCode))" "Yellow"
+            return $null
+        }
+        
+        # Parse the output to extract version information
+        $wimInfo = Get-Content "temp_version_info.txt" -ErrorAction SilentlyContinue
+        Remove-Item "temp_version_info.txt" -ErrorAction SilentlyContinue
+        
+        foreach ($line in $wimInfo) {
+            if ($line -match "Name\s*:\s*(.+)") {
+                $name = $matches[1].Trim()
+                Write-ColorOutput "Detected image name: $name" "Green"
+                
+                # Check for Windows 11 indicators
+                if ($name -match "Windows 11" -or $name -match "Windows 1[1-9]") {
+                    Write-ColorOutput "Detected Windows version: w11" "Green"
+                    return "w11"
+                }
+                # Check for Windows 10 indicators
+                elseif ($name -match "Windows 10") {
+                    Write-ColorOutput "Detected Windows version: w10" "Green"
+                    return "w10"
+                }
+            }
+            elseif ($line -match "Description\s*:\s*(.+)") {
+                $description = $matches[1].Trim()
+                Write-ColorOutput "Detected image description: $description" "Green"
+                
+                # Check for Windows 11 indicators in description
+                if ($description -match "Windows 11" -or $description -match "Windows 1[1-9]") {
+                    Write-ColorOutput "Detected Windows version: w11" "Green"
+                    return "w11"
+                }
+                # Check for Windows 10 indicators in description
+                elseif ($description -match "Windows 10") {
+                    Write-ColorOutput "Detected Windows version: w10" "Green"
+                    return "w10"
+                }
+            }
+        }
+        
+        Write-ColorOutput "Could not determine Windows version from WIM" "Yellow"
+        return $null
+        
+    } catch {
+        Write-ColorOutput "Error inferring Windows version from WIM: $($_.Exception.Message)" "Red"
+        return $null
+    }
+}
+
+function Get-WimInfo {
+    param(
+        [string]$ExtractPath
+    )
+    
+    Write-ColorOutput "=== Inferring WIM Information ===" "Cyan"
+    
+    # Try to get info from install.wim first (more reliable)
+    $installWimPath = Join-Path $ExtractPath "sources\install.wim"
+    $bootWimPath = Join-Path $ExtractPath "sources\boot.wim"
+    
+    $arch = $null
+    $version = $null
+    
+    # Try install.wim first
+    if (Test-Path $installWimPath) {
+        Write-ColorOutput "Analyzing install.wim..." "Yellow"
+        $arch = Get-WimArchitecture -WimPath $installWimPath
+        $version = Get-WimVersion -WimPath $installWimPath
+    }
+    
+    # If we couldn't get info from install.wim, try boot.wim
+    if (-not $arch -and (Test-Path $bootWimPath)) {
+        Write-ColorOutput "Analyzing boot.wim..." "Yellow"
+        $arch = Get-WimArchitecture -WimPath $bootWimPath
+    }
+    
+    if (-not $version -and (Test-Path $bootWimPath)) {
+        Write-ColorOutput "Analyzing boot.wim for version..." "Yellow"
+        $version = Get-WimVersion -WimPath $bootWimPath
+    }
+    
+    if (-not $arch) {
+        throw "Could not determine architecture from WIM files"
+    }
+    
+    if (-not $version) {
+        throw "Could not determine Windows version from WIM files"
+    }
+    
+    Write-ColorOutput "Inferred architecture: $arch" "Green"
+    Write-ColorOutput "Inferred version: $version" "Green"
+    
+    return @{
+        Architecture = $arch
+        Version = $version
+    }
+}
+
 
 try {
     Write-ColorOutput "=== Windows ISO Repack Script ===" "Cyan"
@@ -999,8 +1148,8 @@ try {
     if ($IncludeVirtioDrivers) {
         Write-ColorOutput "VirtIO Version: $VirtioVersion" "White"
         Write-ColorOutput "VirtIO Cache Directory: $VirtioCacheDirectory" "White"
-        Write-ColorOutput "Architecture: $Arch" "White"
-        Write-ColorOutput "Version: $Version" "White"
+        Write-ColorOutput "Architecture: (will be inferred from WIM)" "White"
+        Write-ColorOutput "Version: (will be inferred from WIM)" "White"
     }
     
     Test-RequiredTools
@@ -1043,9 +1192,28 @@ try {
     }
     
     Extract-IsoContents -IsoPath $resolvedInputIso -ExtractPath $WorkingDirectory
+    
+    # Infer architecture and version from WIM files
+    $wimInfo = Get-WimInfo -ExtractPath $WorkingDirectory
+    $Arch = $wimInfo.Architecture
+    $Version = $wimInfo.Version
+    
+    # Validate Windows 11 architecture compatibility
+    if ($Version -eq "w11" -and $Arch -eq "x86") {
+        throw "Windows 11 does not support x86 architecture. Windows 11 only supports amd64 and arm64 architectures."
+    }
+    
+    # Validate VirtIO driver parameters
+    if ($IncludeVirtioDrivers) {
+        # Validate VirtIO driver availability for ARM64 (only when VirtIO drivers are requested)
+        if ($Arch -eq "arm64") {
+            throw "VirtIO drivers are not available for ARM64 architecture. VirtIO drivers are only available for x86 and amd64 architectures."
+        }
+    }
+    
     Add-AutounattendXml -ExtractPath $WorkingDirectory -AutounattendXmlPath $AutounattendXml
     Add-OemDirectory -ExtractPath $WorkingDirectory -OemSourcePath $OemDirectory
-    Add-VirtioDrivers -ExtractPath $WorkingDirectory -VirtioVersion $VirtioVersion -VirtioCacheDirectory $VirtioCacheDirectory
+    Add-VirtioDrivers -ExtractPath $WorkingDirectory -VirtioVersion $VirtioVersion -VirtioCacheDirectory $VirtioCacheDirectory -Arch $Arch -Version $Version
     New-IsoFromDirectory -SourcePath $WorkingDirectory -OutputPath $resolvedOutputIso -OscdimgPath $script:oscdimgPath
     
     if (Test-Path $resolvedOutputIso) {
