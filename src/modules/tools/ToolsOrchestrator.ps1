@@ -11,7 +11,7 @@ $commonPath = Join-Path (Split-Path $PSScriptRoot -Parent) "Common.ps1"
 . (Join-Path $PSScriptRoot "DISM.ps1")
 
 function Test-RequiredTools {
-    Write-ColorOutput "Installing Windows ADK via Chocolatey..." "Yellow"
+    Write-ColorOutput "Installing Windows ADK via Chocolatey..." -Color "Yellow"
     
     # Always install Windows ADK via Chocolatey (it won't reinstall if already present)
     Install-WindowsADK

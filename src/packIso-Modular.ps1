@@ -64,11 +64,11 @@ $ErrorActionPreference = "Stop"
 # Dot source all modules
 $modulePath = Join-Path $PSScriptRoot "modules"
 
-Write-ColorOutput "=== Loading Modules ===" "Cyan"
-Write-ColorOutput "Loading Common utilities..." "Yellow" -Indent 1
+Write-ColorOutput "=== Loading Modules ===" -Color "Cyan"
+Write-ColorOutput "Loading Common utilities..." -Color "Yellow" -Indent 1
 . (Join-Path $modulePath "Common.ps1")
 
-Write-ColorOutput "Loading Tools and Prerequisites..." "Yellow" -Indent 1
+Write-ColorOutput "Loading Tools and Prerequisites..." -Color "Yellow" -Indent 1
 $toolsPath = Join-Path $modulePath "tools"
 . (Join-Path $toolsPath "Chocolatey.ps1")
 . (Join-Path $toolsPath "WindowsADK.ps1")
@@ -76,47 +76,47 @@ $toolsPath = Join-Path $modulePath "tools"
 . (Join-Path $toolsPath "DISM.ps1")
 . (Join-Path $toolsPath "ToolsOrchestrator.ps1")
 
-Write-ColorOutput "Loading ISO Operations..." "Yellow" -Indent 1
+Write-ColorOutput "Loading ISO Operations..." -Color "Yellow" -Indent 1
 . (Join-Path $modulePath "ISO.ps1")
 
-Write-ColorOutput "Loading WIM Analysis..." "Yellow" -Indent 1
+Write-ColorOutput "Loading WIM Analysis..." -Color "Yellow" -Indent 1
 . (Join-Path $modulePath "WIM.ps1")
 
-Write-ColorOutput "Loading VirtIO Drivers..." "Yellow" -Indent 1
+Write-ColorOutput "Loading VirtIO Drivers..." -Color "Yellow" -Indent 1
 . (Join-Path $modulePath "VirtIO.ps1")
 
-Write-ColorOutput "All modules loaded successfully" "Green"
+Write-ColorOutput "All modules loaded successfully" -Color "Green"
 
 try {
-    Write-ColorOutput "=== Windows ISO Repack Script ===" "Cyan"
-    Write-ColorOutput "Checking administrator privileges..." "Yellow"
+    Write-ColorOutput "=== Windows ISO Repack Script ===" -Color "Cyan"
+    Write-ColorOutput "Checking administrator privileges..." -Color "Yellow"
     
     if (-not (Test-Administrator)) {
-        Write-ColorOutput "ERROR: This script must be run as Administrator!" "Red"
+        Write-ColorOutput "ERROR: This script must be run as Administrator!" -Color "Red"
         throw "Administrator privileges required."
     }
     
-    Write-ColorOutput "Administrator privileges confirmed" "Green"
-    Write-ColorOutput "Input ISO: $InputIso" "White"
-    Write-ColorOutput "Output ISO: $OutputIso" "White"
-    Write-ColorOutput "Autounattend XML: $AutounattendXml" "White"
-    Write-ColorOutput "OEM Directory: $OemDirectory" "White"
-    Write-ColorOutput "Working Directory: $WorkingDirectory" "White"
-    Write-ColorOutput "Include VirtIO Drivers: $IncludeVirtioDrivers" "White"
+    Write-ColorOutput "Administrator privileges confirmed" -Color "Green"
+    Write-ColorOutput "Input ISO: $InputIso" -Color "White"
+    Write-ColorOutput "Output ISO: $OutputIso" -Color "White"
+    Write-ColorOutput "Autounattend XML: $AutounattendXml" -Color "White"
+    Write-ColorOutput "OEM Directory: $OemDirectory" -Color "White"
+    Write-ColorOutput "Working Directory: $WorkingDirectory" -Color "White"
+    Write-ColorOutput "Include VirtIO Drivers: $IncludeVirtioDrivers" -Color "White"
     if ($IncludeVirtioDrivers) {
-        Write-ColorOutput "VirtIO Version: $VirtioVersion" "White"
-        Write-ColorOutput "VirtIO Cache Directory: $VirtioCacheDirectory" "White"
-        Write-ColorOutput "Processing Mode: Per-WIM (architecture and version inferred from each WIM)" "White"
+        Write-ColorOutput "VirtIO Version: $VirtioVersion" -Color "White"
+        Write-ColorOutput "VirtIO Cache Directory: $VirtioCacheDirectory" -Color "White"
+        Write-ColorOutput "Processing Mode: Per-WIM (architecture and version inferred from each WIM)" -Color "White"
     }
     
     Test-RequiredTools
     
-    Write-ColorOutput "Validating input files..." "Yellow"
+    Write-ColorOutput "Validating input files..." -Color "Yellow"
     
     # Resolve and validate ISO paths
     try {
         $resolvedInputIso = Resolve-Path $InputIso -ErrorAction Stop
-        Write-ColorOutput "Resolved input ISO path: $resolvedInputIso" "Cyan"
+        Write-ColorOutput "Resolved input ISO path: $resolvedInputIso" -Color "Cyan"
     } catch {
         throw "Cannot resolve input ISO file path: $InputIso. Error: $($_.Exception.Message)"
     }
@@ -130,7 +130,7 @@ try {
             $resolvedOutputDir = Resolve-Path $outputDir -ErrorAction Stop
             $resolvedOutputIso = Join-Path $resolvedOutputDir $outputFile
         }
-        Write-ColorOutput "Resolved output ISO path: $resolvedOutputIso" "Cyan"
+        Write-ColorOutput "Resolved output ISO path: $resolvedOutputIso" -Color "Cyan"
     } catch {
         throw "Cannot resolve output ISO file path: $OutputIso. Error: $($_.Exception.Message)"
     }
@@ -141,47 +141,47 @@ try {
     if (-not (Test-Path $AutounattendXml -PathType Leaf)) {
         throw "Autounattend XML file not found: $AutounattendXml"
     }
-    Write-ColorOutput "Input files validated" "Green"
+    Write-ColorOutput "Input files validated" -Color "Green"
     
     if (Test-Path $resolvedOutputIso) {
-        Write-ColorOutput "Output ISO already exists. Removing..." "Yellow"
+        Write-ColorOutput "Output ISO already exists. Removing..." -Color "Yellow"
         Remove-Item $resolvedOutputIso -Force
     }
     
-    # Step 1: Extract ISO contents
-    Write-ColorOutput "=== Step 1: Extracting ISO Contents ===" "Cyan"
+    # Extract ISO contents
+    Write-ColorOutput "=== Extracting ISO Contents ===" -Color "Cyan"
     Extract-IsoContents -IsoPath $resolvedInputIso -ExtractPath $WorkingDirectory
     
-    # Step 2: Add autounattend.xml and OEM directory
-    Write-ColorOutput "=== Step 2: Adding Configuration Files ===" "Cyan"
+    # Add autounattend.xml and OEM directory
+    Write-ColorOutput "=== Adding Configuration Files ===" -Color "Cyan"
     Add-AutounattendXml -ExtractPath $WorkingDirectory -AutounattendXmlPath $AutounattendXml
     Add-OemDirectory -ExtractPath $WorkingDirectory -OemSourcePath $OemDirectory
     
-    # Step 3: Add VirtIO drivers to WIM files
+    # Add VirtIO drivers to WIM files
     if ($IncludeVirtioDrivers) {
-        Write-ColorOutput "=== Step 3: Adding VirtIO Drivers ===" "Cyan"
+        Write-ColorOutput "=== Adding VirtIO Drivers ===" -Color "Cyan"
         Add-VirtioDrivers -ExtractPath $WorkingDirectory -VirtioVersion $VirtioVersion -VirtioCacheDirectory $VirtioCacheDirectory
     } else {
-        Write-ColorOutput "=== Step 3: Skipping VirtIO Drivers (not requested) ===" "Cyan"
+        Write-ColorOutput "=== Skipping VirtIO Drivers (not requested) ===" -Color "Cyan"
     }
     
-    # Step 4: Create new ISO
-    Write-ColorOutput "=== Step 4: Creating New ISO ===" "Cyan"
+    # Create new ISO
+    Write-ColorOutput "=== Creating New ISO ===" -Color "Cyan"
     New-IsoFromDirectory -SourcePath $WorkingDirectory -OutputPath $resolvedOutputIso -OscdimgPath $script:oscdimgPath
     
     if (Test-Path $resolvedOutputIso) {
         $fileSize = (Get-Item $resolvedOutputIso).Length
         $fileSizeGB = [math]::Round($fileSize / 1GB, 2)
-        Write-ColorOutput "Output ISO created successfully!" "Green"
-        Write-ColorOutput "File size: $fileSizeGB GB" "Green" -Indent 1
+        Write-ColorOutput "Output ISO created successfully!" -Color "Green"
+        Write-ColorOutput "File size: $fileSizeGB GB" -Color "Green" -Indent 1
     } else {
         throw "Output ISO was not created successfully"
     }
 } catch {
-    Write-ColorOutput "Error: $($_.Exception.Message)" "Red"
+    Write-ColorOutput "Error: $($_.Exception.Message)" -Color "Red"
     exit 1
 } finally {
     Remove-WorkingDirectory -Path $WorkingDirectory
 }
 
-Write-ColorOutput "=== Script completed successfully! ===" "Green"
+Write-ColorOutput "=== Script completed successfully! ===" -Color "Green"

@@ -8,12 +8,12 @@ $commonPath = Join-Path (Split-Path $PSScriptRoot -Parent) "Common.ps1"
 . (Join-Path $PSScriptRoot "Chocolatey.ps1")
 
 function Test-DismAvailability {
-    Write-ColorOutput "Checking DISM availability..." "Yellow"
+    Write-ColorOutput "Checking DISM availability..." -Color "Yellow"
     
     # Check if DISM is available in PATH
     $dismCommand = Get-Command "dism.exe" -ErrorAction SilentlyContinue
     if ($dismCommand) {
-        Write-ColorOutput "DISM found at: $($dismCommand.Source)" "Green" -Indent 1
+        Write-ColorOutput "DISM found at: $($dismCommand.Source)" -Color "Green" -Indent 1
         return
     }
     
@@ -25,24 +25,24 @@ function Test-DismAvailability {
     
     foreach ($path in $dismPaths) {
         if (Test-Path $path) {
-            Write-ColorOutput "DISM found at: $path" "Green" -Indent 1
+            Write-ColorOutput "DISM found at: $path" -Color "Green" -Indent 1
             # Add to PATH for current session if not already there
             $dismDir = Split-Path $path -Parent
             if ($env:Path -notlike "*$dismDir*") {
                 $env:Path += ";$dismDir"
-                Write-ColorOutput "Added DISM directory to PATH: $dismDir" "Cyan" -Indent 2
+                Write-ColorOutput "Added DISM directory to PATH: $dismDir" -Color "Cyan" -Indent 2
             }
             return
         }
     }
     
     # If DISM is not found, try to install it via Windows Features
-    Write-ColorOutput "DISM not found in standard locations. Attempting to enable via Windows Features..." "Yellow"
+    Write-ColorOutput "DISM not found in standard locations. Attempting to enable via Windows Features..." -Color "Yellow"
     try {
         # Try to enable DISM via DISM itself (ironic but sometimes works)
         $result = Start-Process -FilePath "dism.exe" -ArgumentList "/?" -Wait -PassThru -NoNewWindow -ErrorAction SilentlyContinue
         if ($result.ExitCode -eq 0) {
-            Write-ColorOutput "DISM is now available" "Green" -Indent 1
+            Write-ColorOutput "DISM is now available" -Color "Green" -Indent 1
             return
         }
     } catch {
@@ -51,28 +51,28 @@ function Test-DismAvailability {
     
     # Try to enable via PowerShell
     try {
-        Write-ColorOutput "Attempting to enable DISM via PowerShell..." "Yellow"
+        Write-ColorOutput "Attempting to enable DISM via PowerShell..." -Color "Yellow"
         Enable-WindowsOptionalFeature -Online -FeatureName "Deployment-Tools-Foundation" -NoRestart -ErrorAction SilentlyContinue | Out-Null
         Enable-WindowsOptionalFeature -Online -FeatureName "Deployment-Tools-Foundation-FoD" -NoRestart -ErrorAction SilentlyContinue | Out-Null
         
         # Check again
         $dismCommand = Get-Command "dism.exe" -ErrorAction SilentlyContinue
         if ($dismCommand) {
-            Write-ColorOutput "DISM enabled successfully at: $($dismCommand.Source)" "Green" -Indent 1
+            Write-ColorOutput "DISM enabled successfully at: $($dismCommand.Source)" -Color "Green" -Indent 1
             return
         }
     } catch {
-        Write-ColorOutput "Failed to enable DISM via PowerShell: $($_.Exception.Message)" "Yellow"
+        Write-ColorOutput "Failed to enable DISM via PowerShell: $($_.Exception.Message)" -Color "Yellow"
     }
     
     # Last resort: try to install via Chocolatey
     try {
-        Write-ColorOutput "Attempting to install DISM via Chocolatey..." "Yellow"
+        Write-ColorOutput "Attempting to install DISM via Chocolatey..." -Color "Yellow"
         Install-Chocolatey
         
         $result = Start-Process -FilePath "choco" -ArgumentList @("install", "windows-adk-deployment-tools", "-y") -Wait -PassThru -NoNewWindow
         if ($result.ExitCode -eq 0) {
-            Write-ColorOutput "Windows ADK Deployment Tools installed via Chocolatey" "Green"
+            Write-ColorOutput "Windows ADK Deployment Tools installed via Chocolatey" -Color "Green"
             
             # Refresh PATH
             $env:Path = [System.Environment]::GetEnvironmentVariable('Path','Machine') + ';' + `
@@ -81,18 +81,18 @@ function Test-DismAvailability {
             # Check again
             $dismCommand = Get-Command "dism.exe" -ErrorAction SilentlyContinue
             if ($dismCommand) {
-                Write-ColorOutput "DISM now available at: $($dismCommand.Source)" "Green" -Indent 1
+                Write-ColorOutput "DISM now available at: $($dismCommand.Source)" -Color "Green" -Indent 1
                 return
             }
         }
     } catch {
-        Write-ColorOutput "Failed to install DISM via Chocolatey: $($_.Exception.Message)" "Yellow"
+        Write-ColorOutput "Failed to install DISM via Chocolatey: $($_.Exception.Message)" -Color "Yellow"
     }
     
     # If we get here, DISM is not available
-    Write-ColorOutput "ERROR: DISM is not available and could not be installed automatically." "Red"
-    Write-ColorOutput "DISM is required for VirtIO driver integration." "Red"
-    Write-ColorOutput "Please ensure you are running on Windows 7 or later, or install Windows ADK manually." "Red"
+    Write-ColorOutput "ERROR: DISM is not available and could not be installed automatically." -Color "Red"
+    Write-ColorOutput "DISM is required for VirtIO driver integration." -Color "Red"
+    Write-ColorOutput "Please ensure you are running on Windows 7 or later, or install Windows ADK manually." -Color "Red"
     throw "DISM is not available. Required for VirtIO driver integration."
 }
 

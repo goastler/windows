@@ -10,11 +10,11 @@ function Test-Chocolatey {
 
 function Install-Chocolatey {
     if (Test-Chocolatey) {
-        Write-ColorOutput "[OK] Chocolatey already installed!" "Green"
+        Write-ColorOutput "[OK] Chocolatey already installed!" -Color "Green"
         return
     }
 
-    Write-ColorOutput "Installing Chocolatey package manager..." "Yellow"
+    Write-ColorOutput "Installing Chocolatey package manager..." -Color "Yellow"
     Set-ExecutionPolicy Bypass -Scope Process -Force
     [System.Net.ServicePointManager]::SecurityProtocol = `
         [System.Net.ServicePointManager]::SecurityProtocol -bor 3072
@@ -23,7 +23,7 @@ function Install-Chocolatey {
     Start-Sleep -Seconds 1
 
     if (Test-Chocolatey) {
-        Write-ColorOutput "[OK] Chocolatey installed successfully!" "Green"
+        Write-ColorOutput "[OK] Chocolatey installed successfully!" -Color "Green"
         return
     } else {
         throw "Chocolatey installation failed to become available on PATH."            

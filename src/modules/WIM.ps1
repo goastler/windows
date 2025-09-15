@@ -15,7 +15,7 @@ function Get-WimImageInfo {
     )
     
     try {
-        Write-ColorOutput "Getting WIM image information from: $WimPath" "Yellow"
+        Write-ColorOutput "Getting WIM image information from: $WimPath" -Color "Yellow"
         
         # Use DISM to get image information
         $result = Start-Process -FilePath $dismPath -ArgumentList @(
@@ -24,7 +24,7 @@ function Get-WimImageInfo {
         ) -Wait -PassThru -NoNewWindow -RedirectStandardOutput "temp_wim_info.txt"
         
         if ($result.ExitCode -ne 0) {
-            Write-ColorOutput "Failed to get WIM info (exit code: $($result.ExitCode))" "Red"
+            Write-ColorOutput "Failed to get WIM info (exit code: $($result.ExitCode))" -Color "Red"
             throw "Failed to get WIM image information. DISM exit code: $($result.ExitCode)"
         }
         
@@ -59,7 +59,7 @@ function Get-WimImageInfo {
         return $images
         
     } catch {
-        Write-ColorOutput "Error getting WIM image info: $($_.Exception.Message)" "Red"
+        Write-ColorOutput "Error getting WIM image info: $($_.Exception.Message)" -Color "Red"
         throw "Failed to get WIM image information: $($_.Exception.Message)"
     }
 }
@@ -69,7 +69,7 @@ function Get-WimArchitecture {
         [string]$WimPath
     )
     
-    Write-ColorOutput "Inferring architecture from WIM: $WimPath" "Yellow"
+    Write-ColorOutput "Inferring architecture from WIM: $WimPath" -Color "Yellow"
     
     try {
         $dismPath = Get-DismPath
@@ -81,7 +81,7 @@ function Get-WimArchitecture {
         ) -Wait -PassThru -NoNewWindow -RedirectStandardOutput "temp_arch_info.txt"
         
         if ($result.ExitCode -ne 0) {
-            Write-ColorOutput "Failed to get WIM architecture info (exit code: $($result.ExitCode))" "Red"
+            Write-ColorOutput "Failed to get WIM architecture info (exit code: $($result.ExitCode))" -Color "Red"
             throw "Failed to get WIM architecture information. DISM exit code: $($result.ExitCode)"
         }
         
@@ -92,7 +92,7 @@ function Get-WimArchitecture {
         foreach ($line in $wimInfo) {
             if ($line -match "Architecture\s*:\s*(.+)") {
                 $arch = $matches[1].Trim()
-                Write-ColorOutput "Detected architecture: $arch" "Green" -Indent 1
+                Write-ColorOutput "Detected architecture: $arch" -Color "Green" -Indent 1
                 
                 # Map DISM architecture names to our expected values
                 switch ($arch.ToLower()) {
@@ -100,18 +100,18 @@ function Get-WimArchitecture {
                     "x86" { return "x86" }
                     "arm64" { return "arm64" }
                     default {
-                        Write-ColorOutput "Unknown architecture: $arch" "Red"
+                        Write-ColorOutput "Unknown architecture: $arch" -Color "Red"
                         throw "Unknown or unsupported architecture detected: $arch"
                     }
                 }
             }
         }
         
-        Write-ColorOutput "Could not determine architecture from WIM" "Red"
+        Write-ColorOutput "Could not determine architecture from WIM" -Color "Red"
         throw "Failed to determine architecture from WIM file. No architecture information found in WIM metadata."
         
     } catch {
-        Write-ColorOutput "Error inferring architecture from WIM: $($_.Exception.Message)" "Red"
+        Write-ColorOutput "Error inferring architecture from WIM: $($_.Exception.Message)" -Color "Red"
         throw "Failed to infer architecture from WIM: $($_.Exception.Message)"
     }
 }
@@ -121,7 +121,7 @@ function Get-WimVersion {
         [string]$WimPath
     )
     
-    Write-ColorOutput "Inferring Windows version from WIM: $WimPath" "Yellow"
+    Write-ColorOutput "Inferring Windows version from WIM: $WimPath" -Color "Yellow"
     
     try {
         $dismPath = Get-DismPath
@@ -133,7 +133,7 @@ function Get-WimVersion {
         ) -Wait -PassThru -NoNewWindow -RedirectStandardOutput "temp_version_info.txt"
         
         if ($result.ExitCode -ne 0) {
-            Write-ColorOutput "Failed to get WIM version info (exit code: $($result.ExitCode))" "Red"
+            Write-ColorOutput "Failed to get WIM version info (exit code: $($result.ExitCode))" -Color "Red"
             throw "Failed to get WIM version information. DISM exit code: $($result.ExitCode)"
         }
         
@@ -144,41 +144,41 @@ function Get-WimVersion {
         foreach ($line in $wimInfo) {
             if ($line -match "Name\s*:\s*(.+)") {
                 $name = $matches[1].Trim()
-                Write-ColorOutput "Detected image name: $name" "Green" -Indent 1
+                Write-ColorOutput "Detected image name: $name" -Color "Green" -Indent 1
                 
                 # Check for Windows 11 indicators
                 if ($name -match "Windows 11" -or $name -match "Windows 1[1-9]") {
-                    Write-ColorOutput "Detected Windows version: w11" "Green" -Indent 2
+                    Write-ColorOutput "Detected Windows version: w11" -Color "Green" -Indent 2
                     return "w11"
                 }
                 # Check for Windows 10 indicators
                 elseif ($name -match "Windows 10") {
-                    Write-ColorOutput "Detected Windows version: w10" "Green" -Indent 2
+                    Write-ColorOutput "Detected Windows version: w10" -Color "Green" -Indent 2
                     return "w10"
                 }
             }
             elseif ($line -match "Description\s*:\s*(.+)") {
                 $description = $matches[1].Trim()
-                Write-ColorOutput "Detected image description: $description" "Green" -Indent 1
+                Write-ColorOutput "Detected image description: $description" -Color "Green" -Indent 1
                 
                 # Check for Windows 11 indicators in description
                 if ($description -match "Windows 11" -or $description -match "Windows 1[1-9]") {
-                    Write-ColorOutput "Detected Windows version: w11" "Green" -Indent 2
+                    Write-ColorOutput "Detected Windows version: w11" -Color "Green" -Indent 2
                     return "w11"
                 }
                 # Check for Windows 10 indicators in description
                 elseif ($description -match "Windows 10") {
-                    Write-ColorOutput "Detected Windows version: w10" "Green" -Indent 2
+                    Write-ColorOutput "Detected Windows version: w10" -Color "Green" -Indent 2
                     return "w10"
                 }
             }
         }
         
-        Write-ColorOutput "Could not determine Windows version from WIM" "Red"
+        Write-ColorOutput "Could not determine Windows version from WIM" -Color "Red"
         throw "Failed to determine Windows version from WIM file. No version information found in WIM metadata."
         
     } catch {
-        Write-ColorOutput "Error inferring Windows version from WIM: $($_.Exception.Message)" "Red"
+        Write-ColorOutput "Error inferring Windows version from WIM: $($_.Exception.Message)" -Color "Red"
         throw "Failed to infer Windows version from WIM: $($_.Exception.Message)"
     }
 }
@@ -188,7 +188,7 @@ function Get-AllWimInfo {
         [string]$ExtractPath
     )
     
-    Write-ColorOutput "=== Analyzing All WIM Files ===" "Cyan"
+    Write-ColorOutput "=== Analyzing All WIM Files ===" -Color "Cyan"
     
     $wims = @()
     $installWimPath = Join-Path $ExtractPath "sources\install.wim"
@@ -196,7 +196,7 @@ function Get-AllWimInfo {
     
     # Analyze install.wim if it exists
     if (Test-Path $installWimPath) {
-        Write-ColorOutput "Analyzing install.wim..." "Yellow" -Indent 1
+        Write-ColorOutput "Analyzing install.wim..." -Color "Yellow" -Indent 1
         $installWimInfo = Get-WimImageInfo -WimPath $installWimPath -DismPath (Get-DismPath)
         
         if ($installWimInfo) {
@@ -215,14 +215,14 @@ function Get-AllWimInfo {
                 }
                 
                 $wims += $wimInfo
-                Write-ColorOutput "Found install image: $($image.Name) (Arch: $arch, Version: $version)" "Green" -Indent 2
+                Write-ColorOutput "Found install image: $($image.Name) (Arch: $arch, Version: $version)" -Color "Green" -Indent 2
             }
         }
     }
     
     # Analyze boot.wim if it exists
     if (Test-Path $bootWimPath) {
-        Write-ColorOutput "Analyzing boot.wim..." "Yellow" -Indent 1
+        Write-ColorOutput "Analyzing boot.wim..." -Color "Yellow" -Indent 1
         $bootWimInfo = Get-WimImageInfo -WimPath $bootWimPath -DismPath (Get-DismPath)
         
         if ($bootWimInfo) {
@@ -241,7 +241,7 @@ function Get-AllWimInfo {
                 }
                 
                 $wims += $wimInfo
-                Write-ColorOutput "Found boot image: $($image.Name) (Arch: $arch, Version: $version)" "Green" -Indent 2
+                Write-ColorOutput "Found boot image: $($image.Name) (Arch: $arch, Version: $version)" -Color "Green" -Indent 2
             }
         }
     }
@@ -250,7 +250,7 @@ function Get-AllWimInfo {
         throw "No WIM files found in the ISO"
     }
     
-    Write-ColorOutput "Found $($wims.Count) WIM image(s) total" "Green"
+    Write-ColorOutput "Found $($wims.Count) WIM image(s) total" -Color "Green"
     return $wims
 }
 
@@ -259,7 +259,7 @@ function Get-WimInfo {
         [string]$ExtractPath
     )
     
-    Write-ColorOutput "=== Inferring WIM Information ===" "Cyan"
+    Write-ColorOutput "=== Inferring WIM Information ===" -Color "Cyan"
     
     # Try to get info from install.wim first (more reliable)
     $installWimPath = Join-Path $ExtractPath "sources\install.wim"
@@ -270,19 +270,19 @@ function Get-WimInfo {
     
     # Try install.wim first
     if (Test-Path $installWimPath) {
-        Write-ColorOutput "Analyzing install.wim..." "Yellow" -Indent 1
+        Write-ColorOutput "Analyzing install.wim..." -Color "Yellow" -Indent 1
         $arch = Get-WimArchitecture -WimPath $installWimPath
         $version = Get-WimVersion -WimPath $installWimPath
     }
     
     # If we couldn't get info from install.wim, try boot.wim
     if (-not $arch -and (Test-Path $bootWimPath)) {
-        Write-ColorOutput "Analyzing boot.wim..." "Yellow" -Indent 1
+        Write-ColorOutput "Analyzing boot.wim..." -Color "Yellow" -Indent 1
         $arch = Get-WimArchitecture -WimPath $bootWimPath
     }
     
     if (-not $version -and (Test-Path $bootWimPath)) {
-        Write-ColorOutput "Analyzing boot.wim for version..." "Yellow" -Indent 1
+        Write-ColorOutput "Analyzing boot.wim for version..." -Color "Yellow" -Indent 1
         $version = Get-WimVersion -WimPath $bootWimPath
     }
     
@@ -294,8 +294,8 @@ function Get-WimInfo {
         throw "Could not determine Windows version from WIM files"
     }
     
-    Write-ColorOutput "Inferred architecture: $arch" "Green"
-    Write-ColorOutput "Inferred version: $version" "Green"
+    Write-ColorOutput "Inferred architecture: $arch" -Color "Green"
+    Write-ColorOutput "Inferred version: $version" -Color "Green"
     
     return @{
         Architecture = $arch

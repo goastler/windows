@@ -8,15 +8,15 @@ $commonPath = Join-Path (Split-Path $PSScriptRoot -Parent) "Common.ps1"
 . (Join-Path $PSScriptRoot "Chocolatey.ps1")
 
 function Install-WindowsADK {
-    Write-ColorOutput "=== Windows ADK Installation ===" "Cyan"
+    Write-ColorOutput "=== Windows ADK Installation ===" -Color "Cyan"
 
     Install-Chocolatey
 
-    Write-ColorOutput "Installing Windows ADK via Chocolatey..." "Yellow"
+    Write-ColorOutput "Installing Windows ADK via Chocolatey..." -Color "Yellow"
 
     $result = Start-Process -FilePath "choco" -ArgumentList @("install","windows-adk","-y") -Wait -PassThru -NoNewWindow
     if ($result.ExitCode -eq 0) {
-        Write-ColorOutput "[OK] Windows ADK installed successfully via Chocolatey!" "Green"
+        Write-ColorOutput "[OK] Windows ADK installed successfully via Chocolatey!" -Color "Green"
         
         # Add ADK paths to current session PATH
         $adkPaths = @(
@@ -29,7 +29,7 @@ function Install-WindowsADK {
         foreach ($path in $adkPaths) {
             if (Test-Path $path) {
                 $env:Path += ";$path"
-                Write-ColorOutput "Added to PATH: $path" "Cyan" -Indent 1
+                Write-ColorOutput "Added to PATH: $path" -Color "Cyan" -Indent 1
             }
         }
         

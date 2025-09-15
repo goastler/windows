@@ -10,7 +10,7 @@ function Extract-IsoContents {
         [string]$ExtractPath
     )
     
-    Write-ColorOutput "Mounting ISO: $IsoPath" "Yellow"
+    Write-ColorOutput "Mounting ISO: $IsoPath" -Color "Yellow"
     $mountResult = Mount-DiskImage -ImagePath $IsoPath -PassThru
     $driveLetter = ($mountResult | Get-Volume).DriveLetter
     
@@ -19,10 +19,10 @@ function Extract-IsoContents {
     }
     
     $mountedPath = "${driveLetter}:\"
-    Write-ColorOutput "ISO mounted at: $mountedPath" "Green" -Indent 1
+    Write-ColorOutput "ISO mounted at: $mountedPath" -Color "Green" -Indent 1
     
     try {
-        Write-ColorOutput "Extracting ISO contents to: $ExtractPath" "Yellow" -Indent 1
+        Write-ColorOutput "Extracting ISO contents to: $ExtractPath" -Color "Yellow" -Indent 1
         
         if (Test-Path $ExtractPath) {
             Remove-Item $ExtractPath -Recurse -Force
@@ -35,11 +35,11 @@ function Extract-IsoContents {
             throw "Failed to extract ISO contents. Robocopy exit code: $LASTEXITCODE"
         }
 
-        Write-ColorOutput "ISO contents extracted successfully" "Green" -Indent 1
+        Write-ColorOutput "ISO contents extracted successfully" -Color "Green" -Indent 1
     } finally {
-        Write-ColorOutput "Dismounting ISO..." "Yellow" -Indent 1
+        Write-ColorOutput "Dismounting ISO..." -Color "Yellow" -Indent 1
         Dismount-DiskImage -ImagePath $IsoPath
-        Write-ColorOutput "ISO dismounted" "Green" -Indent 1
+        Write-ColorOutput "ISO dismounted" -Color "Green" -Indent 1
     }
 }
 
@@ -48,10 +48,10 @@ function Add-AutounattendXml {
         [string]$ExtractPath,
         [string]$AutounattendXmlPath
     )
-    Write-ColorOutput "Adding autounattend.xml to ISO contents..." "Yellow"
+    Write-ColorOutput "Adding autounattend.xml to ISO contents..." -Color "Yellow"
     $destinationPath = Join-Path $ExtractPath "autounattend.xml"
     Copy-Item $AutounattendXmlPath $destinationPath -Force
-    Write-ColorOutput "autounattend.xml added to: $destinationPath" "Green" -Indent 1
+    Write-ColorOutput "autounattend.xml added to: $destinationPath" -Color "Green" -Indent 1
 }
 
 function Add-OemDirectory {
@@ -59,10 +59,10 @@ function Add-OemDirectory {
         [string]$ExtractPath,
         [string]$OemSourcePath
     )
-    Write-ColorOutput "Adding $OEM$ directory to ISO contents..." "Yellow"
+    Write-ColorOutput "Adding $OEM$ directory to ISO contents..." -Color "Yellow"
     
     if (-not (Test-Path $OemSourcePath -PathType Container)) {
-        Write-ColorOutput "Warning: $OEM$ directory not found at: $OemSourcePath" "Yellow" -Indent 1
+        Write-ColorOutput "Warning: $OEM$ directory not found at: $OemSourcePath" -Color "Yellow" -Indent 1
         return
     }
     
@@ -75,7 +75,7 @@ function Add-OemDirectory {
     
     # Copy the entire $OEM$ directory structure
     Copy-Item $OemSourcePath $destinationPath -Recurse -Force
-    Write-ColorOutput "$OEM$ directory added to: $destinationPath" "Green" -Indent 1
+    Write-ColorOutput "$OEM$ directory added to: $destinationPath" -Color "Green" -Indent 1
 }
 
 function New-IsoFromDirectory {
@@ -84,7 +84,7 @@ function New-IsoFromDirectory {
         [string]$OutputPath,
         [string]$OscdimgPath
     )
-    Write-ColorOutput "Creating new ISO from directory: $SourcePath" "Yellow"
+    Write-ColorOutput "Creating new ISO from directory: $SourcePath" -Color "Yellow"
 
     # Resolve absolute paths
     $absSrc    = (Resolve-Path $SourcePath).ProviderPath
@@ -94,7 +94,7 @@ function New-IsoFromDirectory {
     $etfsbootPath  = "$absSrc\boot\etfsboot.com"
     $efisysPath    = "$absSrc\efi\microsoft\boot\efisys.bin"
 
-    Write-ColorOutput "Using source directly: $absSrc" "Cyan" -Indent 1
+    Write-ColorOutput "Using source directly: $absSrc" -Color "Cyan" -Indent 1
 
     $arguments = @(
         "-m"
@@ -105,12 +105,12 @@ function New-IsoFromDirectory {
         "`"$absOutIso`""
     )
 
-    Write-ColorOutput "Current working directory: $(Get-Location)" "Cyan" -Indent 1
-    Write-ColorOutput "Running oscdimg with arguments: $($arguments -join ' ')" "Cyan" -Indent 1
-    Write-ColorOutput "Full command: & `"$OscdimgPath`" $($arguments -join ' ')" "Cyan" -Indent 1
+    Write-ColorOutput "Current working directory: $(Get-Location)" -Color "Cyan" -Indent 1
+    Write-ColorOutput "Running oscdimg with arguments: $($arguments -join ' ')" -Color "Cyan" -Indent 1
+    Write-ColorOutput "Full command: & `"$OscdimgPath`" $($arguments -join ' ')" -Color "Cyan" -Indent 1
     
     & $OscdimgPath $arguments
     if ($LASTEXITCODE -ne 0) { throw "oscdimg failed with exit code: $LASTEXITCODE" }
 
-    Write-ColorOutput "ISO created successfully: $absOutIso" "Green" -Indent 1
+    Write-ColorOutput "ISO created successfully: $absOutIso" -Color "Green" -Indent 1
 }

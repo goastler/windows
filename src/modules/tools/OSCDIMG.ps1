@@ -14,7 +14,7 @@ function Find-OscdimgPath {
     
     foreach ($path in $adkPaths) {
         if (Test-Path $path) {
-            Write-ColorOutput "Found oscdimg.exe at: $path" "Green" -Indent 1
+            Write-ColorOutput "Found oscdimg.exe at: $path" -Color "Green" -Indent 1
             return $path
         }
     }

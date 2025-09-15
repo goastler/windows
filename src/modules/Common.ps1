@@ -4,12 +4,8 @@ function Write-ColorOutput {
     param(
         [string]$Message,
         [string]$Color = "White",
-        [string]$Colour = $null,
         [int]$Indent = 0
     )
-    
-    # Use Colour parameter if provided, otherwise use Color parameter
-    $actualColor = if ($Colour) { $Colour } else { $Color }
     
     # Create indentation string (2 spaces per indent level)
     $indentString = "  " * $Indent
@@ -17,7 +13,7 @@ function Write-ColorOutput {
     # Combine indentation with message
     $indentedMessage = $indentString + $Message
     
-    Write-Host $indentedMessage -ForegroundColor $actualColor
+    Write-Host $indentedMessage -ForegroundColor $Color
 }
 
 function Test-Administrator {
@@ -34,7 +30,7 @@ function Invoke-WebRequestWithCleanup {
         [int]$ProgressId = 3
     )
     
-    Write-ColorOutput "Downloading $Description from: $Uri"
+    Write-ColorOutput "Downloading $Description from: $Uri" -Color "White"
     
     $webRequest = $null
     try {
@@ -58,7 +54,7 @@ function Invoke-WebRequestWithCleanup {
             $totalBytes = $response.ContentLength
             $response.Close()
         } catch {
-            Write-ColorOutput "Could not determine file size, progress tracking may be limited"
+            Write-ColorOutput "Could not determine file size, progress tracking may be limited" -Color "Yellow"
         }
         
         # Start download with progress tracking
@@ -90,7 +86,7 @@ function Invoke-WebRequestWithCleanup {
         
         Write-Progress -Activity "Downloading $Description" -Completed -Id $ProgressId
         Write-Host "" # Clear the progress line
-        Write-ColorOutput "$Description downloaded successfully"
+        Write-ColorOutput "$Description downloaded successfully" -Color "Green"
     }
     finally {
         # Clean up event subscription
@@ -132,10 +128,10 @@ function Invoke-WebRequestWithCleanup {
 function Remove-WorkingDirectory {
     param([string]$Path)
     if (-not $KeepWorkingDirectory -and (Test-Path $Path)) {
-        Write-ColorOutput "Cleaning up working directory: $Path" "Yellow"
+        Write-ColorOutput "Cleaning up working directory: $Path" -Color "Yellow"
         Remove-Item $Path -Recurse -Force
-        Write-ColorOutput "Working directory cleaned up" "Green"
+        Write-ColorOutput "Working directory cleaned up" -Color "Green"
     } elseif ($KeepWorkingDirectory) {
-        Write-ColorOutput "Keeping working directory: $Path" "Cyan"
+        Write-ColorOutput "Keeping working directory: $Path" -Color "Cyan"
     }
 }
