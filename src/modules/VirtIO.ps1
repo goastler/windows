@@ -111,7 +111,7 @@ function Extract-VirtioDrivers {
         } else {
             # Mount the VirtIO ISO
             Write-ColorOutput "Mounting VirtIO ISO..." -Color "Yellow"
-            $mountResult = Mount-DiskImage -ImagePath $VirtioIsoPath -PassThru -ErrorAction Stop | Out-Null
+            Mount-DiskImage -ImagePath $VirtioIsoPath -ErrorAction Stop | Out-Null
             $mountResult = Get-DiskImage -ImagePath $VirtioIsoPath -ErrorAction Stop
             $mounted = $true
         }
@@ -119,6 +119,9 @@ function Extract-VirtioDrivers {
         # Get drive letter with better error handling
         $volume = $mountResult | Get-Volume -ErrorAction Stop
         $driveLetter = $volume.DriveLetter
+        
+        # Suppress any implicit output from volume operations
+        $null = $volume
         
         if (-not $driveLetter) {
             throw "Failed to get drive letter for mounted VirtIO ISO"
@@ -160,10 +163,7 @@ function Extract-VirtioDrivers {
         Write-ColorOutput "DEBUG: virtioDir before return: '$virtioDir'" -Color "Magenta" -Indent 2
         Write-ColorOutput "DEBUG: mountResult: '$mountResult'" -Color "Magenta" -Indent 2
         
-        # Suppress any implicit output from mountResult
-        $null = $mountResult
-        
-        Write-ColorOutput "DEBUG: About to return: '$virtioDir'" -Color "Magenta" -Indent 2
+        # Return only the virtio directory path, suppressing all other output
         return $virtioDir
     } catch {
         # Cleanup on error
