@@ -176,6 +176,7 @@ function Get-WimImageInfo {
                         $currentImage.Version = "w10"
                     }
                 }
+            }
         }
         
         if ($currentImage) {
