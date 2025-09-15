@@ -142,11 +142,14 @@ $toolsPath = Join-Path $modulePath "tools"
 . (Join-Path $toolsPath "DISM.ps1")
 . (Join-Path $toolsPath "ToolsOrchestrator.ps1")
 
-Write-ColorOutput "Importing ISO Operations..." -Color "Yellow" -Indent 1 . (Join-Path $modulePath "ISO.ps1")
+Write-ColorOutput "Importing ISO Operations..." -Color "Yellow" -Indent 1
+. (Join-Path $modulePath "ISO.ps1")
 
-Write-ColorOutput "Importing WIM Analysis..." -Color "Yellow" -Indent 1 . (Join-Path $modulePath "WIM.ps1")
+Write-ColorOutput "Importing WIM Analysis..." -Color "Yellow" -Indent 1
+. (Join-Path $modulePath "WIM.ps1")
 
-Write-ColorOutput "Importing VirtIO Drivers..." -Color "Yellow" -Indent 1 . (Join-Path $modulePath "VirtIO.ps1")
+Write-ColorOutput "Importing VirtIO Drivers..." -Color "Yellow" -Indent 1
+. (Join-Path $modulePath "VirtIO.ps1")
 
 Write-ColorOutput "All modules imported successfully" -Color "Green"
 
@@ -157,7 +160,8 @@ $InputIso = if ([System.IO.Path]::IsPathRooted($InputIso)) {
     $InputIso
 } else {
     $resolved = Join-Path (Get-Location) $InputIso
-    Write-ColorOutput "Resolved InputIso: $InputIso -> $resolved" -Color "Cyan" -Indent 1     $resolved
+    Write-ColorOutput "Resolved InputIso: $InputIso -> $resolved" -Color "Cyan" -Indent 1
+    $resolved
 }
 
 # Resolve OutputIso
@@ -165,7 +169,8 @@ $OutputIso = if ([System.IO.Path]::IsPathRooted($OutputIso)) {
     $OutputIso
 } else {
     $resolved = Join-Path (Get-Location) $OutputIso
-    Write-ColorOutput "Resolved OutputIso: $OutputIso -> $resolved" -Color "Cyan" -Indent 1     $resolved
+    Write-ColorOutput "Resolved OutputIso: $OutputIso -> $resolved" -Color "Cyan" -Indent 1
+    $resolved
 }
 
 # Resolve AutounattendXml
@@ -173,7 +178,8 @@ $AutounattendXml = if ([System.IO.Path]::IsPathRooted($AutounattendXml)) {
     $AutounattendXml
 } else {
     $resolved = Join-Path (Get-Location) $AutounattendXml
-    Write-ColorOutput "Resolved AutounattendXml: $AutounattendXml -> $resolved" -Color "Cyan" -Indent 1     $resolved
+    Write-ColorOutput "Resolved AutounattendXml: $AutounattendXml -> $resolved" -Color "Cyan" -Indent 1
+    $resolved
 }
 
 # Resolve OemDirectory
@@ -181,7 +187,8 @@ $OemDirectory = if ([System.IO.Path]::IsPathRooted($OemDirectory)) {
     $OemDirectory
 } else {
     $resolved = Join-Path (Get-Location) $OemDirectory
-    Write-ColorOutput "Resolved OemDirectory: $OemDirectory -> $resolved" -Color "Cyan" -Indent 1     $resolved
+    Write-ColorOutput "Resolved OemDirectory: $OemDirectory -> $resolved" -Color "Cyan" -Indent 1
+    $resolved
 }
 
 # Resolve WorkingDirectory
@@ -189,7 +196,8 @@ $WorkingDirectory = if ([System.IO.Path]::IsPathRooted($WorkingDirectory)) {
     $WorkingDirectory
 } else {
     $resolved = Join-Path (Get-Location) $WorkingDirectory
-    Write-ColorOutput "Resolved WorkingDirectory: $WorkingDirectory -> $resolved" -Color "Cyan" -Indent 1     $resolved
+    Write-ColorOutput "Resolved WorkingDirectory: $WorkingDirectory -> $resolved" -Color "Cyan" -Indent 1
+    $resolved
 }
 
 # Resolve VirtioCacheDirectory
@@ -197,7 +205,8 @@ $VirtioCacheDirectory = if ([System.IO.Path]::IsPathRooted($VirtioCacheDirectory
     $VirtioCacheDirectory
 } else {
     $resolved = Join-Path (Get-Location) $VirtioCacheDirectory
-    Write-ColorOutput "Resolved VirtioCacheDirectory: $VirtioCacheDirectory -> $resolved" -Color "Cyan" -Indent 1     $resolved
+    Write-ColorOutput "Resolved VirtioCacheDirectory: $VirtioCacheDirectory -> $resolved" -Color "Cyan" -Indent 1
+    $resolved
 }
 
 try {
