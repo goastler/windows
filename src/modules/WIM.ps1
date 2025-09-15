@@ -30,7 +30,7 @@ function Get-WimImageArchitecture {
             $archInfo = Get-Content "temp_arch_info.txt" -ErrorAction SilentlyContinue
             
             # Debug: Show the architecture-specific DISM output
-            Write-ColorOutput "DISM architecture output for index $ImageIndex:" -Color "Cyan" -Indent 2
+            Write-ColorOutput "DISM architecture output for index $($ImageIndex):" -Color "Cyan" -Indent 2
             foreach ($line in $archInfo) {
                 Write-ColorOutput "  $line" -Color "Gray" -Indent 0 -InheritedIndent 2
             }
