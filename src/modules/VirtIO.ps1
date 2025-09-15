@@ -29,9 +29,9 @@ function Get-VirtioDrivers {
         [string]$CacheDirectory
     )
     
+    Write-Host ""
     Write-ColorOutput "=== VirtIO Drivers Download ===" -Color "Cyan"
     
-    Write-Host ""
     # Create cache directory if it doesn't exist
     if (-not (Test-Path $CacheDirectory)) {
         New-Item -ItemType Directory -Path $CacheDirectory -Force | Out-Null

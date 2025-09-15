@@ -212,6 +212,7 @@ $VirtioCacheDirectory = if ([System.IO.Path]::IsPathRooted($VirtioCacheDirectory
 }
 
 try {
+    Write-Host ""
     Write-ColorOutput "=== Windows ISO Repack Script ===" -Color "Cyan"
     Write-ColorOutput "Checking administrator privileges..." -Color "Yellow"
     
@@ -272,9 +273,11 @@ try {
     Write-Host ""
     # Add VirtIO drivers to WIM files
     if ($IncludeVirtioDrivers) {
+        Write-Host ""
         Write-ColorOutput "=== Adding VirtIO Drivers ===" -Color "Cyan"
         Add-VirtioDrivers -ExtractPath $WorkingDirectory -VirtioVersion $VirtioVersion -VirtioCacheDirectory $VirtioCacheDirectory
     } else {
+        Write-Host ""
         Write-ColorOutput "=== Skipping VirtIO Drivers (not requested) ===" -Color "Cyan"
     }
     

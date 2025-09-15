@@ -509,6 +509,7 @@ function Get-VirtioDrivers {
         [string]$CacheDirectory
     )
     
+    Write-Host ""
     Write-ColorOutput "=== VirtIO Drivers Download ===" "Cyan"
     
     # Create cache directory if it doesn't exist
@@ -657,6 +658,7 @@ function Add-VirtioDrivers {
         return
     }
     
+    Write-Host ""
     Write-ColorOutput "=== Adding VirtIO Drivers ===" "Cyan"
     
     try {
@@ -1100,6 +1102,7 @@ function Get-AllWimInfo {
         [string]$ExtractPath
     )
     
+    Write-Host ""
     Write-ColorOutput "=== Analyzing All WIM Files ===" "Cyan"
     
     $wims = @()
@@ -1171,6 +1174,7 @@ function Get-WimInfo {
         [string]$ExtractPath
     )
     
+    Write-Host ""
     Write-ColorOutput "=== Inferring WIM Information ===" "Cyan"
     
     # Try to get info from install.wim first (more reliable)
@@ -1217,6 +1221,7 @@ function Get-WimInfo {
 
 
 try {
+    Write-Host ""
     Write-ColorOutput "=== Windows ISO Repack Script ===" "Cyan"
     Write-ColorOutput "Checking administrator privileges..." "Yellow"
     
@@ -1278,24 +1283,29 @@ try {
     }
     
     # Step 1: Extract ISO contents
+    Write-Host ""
     Write-ColorOutput "=== Step 1: Extracting ISO Contents ===" "Cyan"
     Extract-IsoContents -IsoPath $resolvedInputIso -ExtractPath $WorkingDirectory
     
     # Step 2: Add autounattend.xml and OEM directory
+    Write-Host ""
     Write-ColorOutput "=== Step 2: Adding Configuration Files ===" "Cyan"
     Add-AutounattendXml -ExtractPath $WorkingDirectory -AutounattendXmlPath $AutounattendXml
     Add-OemDirectory -ExtractPath $WorkingDirectory -OemSourcePath $OemDirectory
     
     # Step 3: Analyze all WIM files and add VirtIO drivers per-WIM
     if ($IncludeVirtioDrivers) {
+        Write-Host ""
         Write-ColorOutput "=== Step 3: Processing WIM Files and Adding VirtIO Drivers ===" "Cyan"
         $allWimInfos = Get-AllWimInfo -ExtractPath $WorkingDirectory
         Add-VirtioDrivers -ExtractPath $WorkingDirectory -VirtioVersion $VirtioVersion -VirtioCacheDirectory $VirtioCacheDirectory -WimInfos $allWimInfos
     } else {
+        Write-Host ""
         Write-ColorOutput "=== Step 3: Skipping VirtIO Drivers (not requested) ===" "Cyan"
     }
     
     # Step 4: Create new ISO
+    Write-Host ""
     Write-ColorOutput "=== Step 4: Creating New ISO ===" "Cyan"
     New-IsoFromDirectory -SourcePath $WorkingDirectory -OutputPath $resolvedOutputIso -OscdimgPath $script:oscdimgPath
     
