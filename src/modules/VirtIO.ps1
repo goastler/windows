@@ -61,37 +61,43 @@ function Extract-VirtioDrivers {
     Write-Host ""
     Write-ColorOutput "=== VirtIO Drivers Download and Extract ===" -Color "Cyan"
     
-    # Download VirtIO ISO to temporary location
-    $downloadUrl = Get-VirtioDownloadUrl -Version $Version
-    $downloadUrl = Assert-NotEmpty -VariableName "downloadUrl" -Value $downloadUrl -ErrorMessage "Failed to get download URL for version: $Version"
-    
-    $tempIsoPath = Join-Path $ExtractPath "virtio-win-$Version.iso"
-    
-    # Validate path format (don't check if it exists since we're creating it)
-    try {
-        $null = [System.IO.Path]::GetFullPath($tempIsoPath)
-    } catch {
-        throw "Generated temporary ISO path is invalid: $tempIsoPath"
+    # Set up cache directory
+    $cacheDir = Join-Path $env:TEMP "virtio-cache"
+    if (-not (Test-Path $cacheDir)) {
+        New-Item -ItemType Directory -Path $cacheDir -Force | Out-Null
     }
     
-    try {
-        # Download the ISO
+    # Use cached ISO if available
+    $cachedIsoPath = Join-Path $cacheDir "$Version.iso"
+    
+    if (Test-Path $cachedIsoPath) {
+        Write-ColorOutput "Using cached VirtIO drivers ($Version) from: $cachedIsoPath" -Color "Green" -Indent 1
+    } else {
+        $downloadUrl = Get-VirtioDownloadUrl -Version $Version
+        $downloadUrl = Assert-NotEmpty -VariableName "downloadUrl" -Value $downloadUrl -ErrorMessage "Failed to get download URL for version: $Version"
+        
         Write-ColorOutput "Downloading VirtIO drivers ($Version)..." -Color "Yellow" -Indent 1
-        Invoke-WebRequestWithCleanup -Uri $downloadUrl -OutFile $tempIsoPath -Description "VirtIO drivers ($Version)" -ProgressId 3
+        Invoke-WebRequestWithCleanup -Uri $downloadUrl -OutFile $cachedIsoPath -Description "VirtIO drivers ($Version)" -ProgressId 3
         
         # Verify the downloaded file exists and has content
-        if (-not (Test-Path $tempIsoPath -PathType Leaf)) {
-            throw "Downloaded VirtIO ISO file not found: $tempIsoPath"
+        if (-not (Test-Path $cachedIsoPath -PathType Leaf)) {
+            throw "Downloaded VirtIO ISO file not found: $cachedIsoPath"
         }
         
-        $fileSize = (Get-Item $tempIsoPath).Length
+        $fileSize = (Get-Item $cachedIsoPath).Length
         if ($fileSize -eq 0) {
-            throw "Downloaded VirtIO ISO file is empty: $tempIsoPath"
+            throw "Downloaded VirtIO ISO file is empty: $cachedIsoPath"
         }
         
-        Write-ColorOutput "VirtIO drivers downloaded" -Color "Green" -Indent 1
-        Write-ColorOutput "File size: $([math]::Round($fileSize / 1MB, 2)) MB" -Color "Cyan" -Indent ($Indent + 2)
-        
+        Write-ColorOutput "VirtIO drivers downloaded and cached" -Color "Green" -Indent 1
+        Write-ColorOutput "File size: $([math]::Round($fileSize / 1MB, 2)) MB" -Color "Cyan" -Indent 2
+    }
+    
+    # Copy cached ISO to working directory for extraction
+    $tempIsoPath = Join-Path $ExtractPath "virtio-$Version.iso"
+    Copy-Item $cachedIsoPath $tempIsoPath -Force
+    
+    try {
         # Create virtio directory in the extract path
         $virtioDir = Join-Path $ExtractPath "virtio"
         if (Test-Path $virtioDir) {
@@ -416,7 +422,7 @@ function Add-VirtioDrivers {
         Write-ColorOutput "VirtIO drivers extracted to: $virtioDir" -Color "Green" -Indent ($Indent + 1)         
         # Process each WIM image individually
         foreach ($wimInfo in $WimInfos) {
-            Add-VirtioDriversToWim -WimInfo $wimInfo -VirtioDir $virtioDir -VirtioVersion $VirtioVersion -AllWimInfo $WimInfos -Indent $Indent
+            Add-VirtioDriversToWim -WimInfo $wimInfo -VirtioDir $virtioDir -VirtioVersion $VirtioVersion -AllWimInfo $WimInfos -Indent ($Indent + 1)
         }
         
     } catch {
@@ -506,7 +512,7 @@ function Invoke-VirtioDriverInjection {
         # Mount the specific WIM index
         Write-ColorOutput "Mounting $WimType.wim index $ImageIndex..." -Color "Yellow" -Indent ($Indent + 2)
         # Mount the WIM file using direct execution
-        Invoke-CommandWithExitCode -Command $dismPath -Arguments @("/Mount-Wim", "/WimFile:$WimPath", "/Index:$ImageIndex", "/MountDir:$mountDir") -Description "Mount $WimType.wim index $ImageIndex" -SuppressOutput -Indent $Indent
+        Invoke-CommandWithExitCode -Command $dismPath -Arguments @("/Mount-Wim", "/WimFile:$WimPath", "/Index:$ImageIndex", "/MountDir:$mountDir") -Description "Mount $WimType.wim index $ImageIndex" -SuppressOutput -Indent ($Indent + 2)
         
         Write-ColorOutput "Successfully mounted $WimType.wim index $ImageIndex" -Color "Green" -Indent ($Indent + 2)         
         # Add drivers to the mounted image
@@ -515,13 +521,13 @@ function Invoke-VirtioDriverInjection {
         # Add each driver component
         foreach ($driverPath in $DriverPaths) {
             Write-ColorOutput "Adding drivers from: $driverPath" -Color "Cyan" -Indent ($Indent + 2)
-            Invoke-CommandWithExitCode -Command $dismPath -Arguments @("/Image:$mountDir", "/Add-Driver", "/Driver:$driverPath", "/Recurse") -Description "Add drivers from $driverPath" -SuppressOutput -Indent $Indent
+            Invoke-CommandWithExitCode -Command $dismPath -Arguments @("/Image:$mountDir", "/Add-Driver", "/Driver:$driverPath", "/Recurse") -Description "Add drivers from $driverPath" -SuppressOutput -Indent ($Indent + 2)
         }
         
         # Unmount and commit changes
         Write-ColorOutput "Unmounting $WimType.wim..." -Color "Yellow" -Indent ($Indent + 2)
         # Unmount and commit changes using direct execution
-        Invoke-CommandWithExitCode -Command $dismPath -Arguments @("/Unmount-Wim", "/MountDir:$mountDir", "/Commit") -Description "Unmount $WimType.wim" -SuppressOutput -Indent $Indent
+        Invoke-CommandWithExitCode -Command $dismPath -Arguments @("/Unmount-Wim", "/MountDir:$mountDir", "/Commit") -Description "Unmount $WimType.wim" -SuppressOutput -Indent ($Indent + 2)
         
     } catch {
         throw "Error injecting drivers into $WimType.wim: $($_.Exception.Message)"
