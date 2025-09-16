@@ -276,6 +276,40 @@ function Get-WindowsVersion {
     }
 }
 
+function Get-VirtioArchitecture {
+    param(
+        [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
+        [string]$WindowsArchitecture
+    )
+    
+    # Map Windows architecture names to VirtIO architecture names
+    $archMap = @{
+        "x64" = "amd64"
+        "AMD64" = "amd64"
+        "x86" = "i386"
+        "X86" = "i386"
+        "i386" = "i386"
+        "I386" = "i386"
+        "ia64" = "ia64"
+        "IA64" = "ia64"
+        "arm64" = "arm64"
+        "ARM64" = "arm64"
+        "aarch64" = "arm64"
+        "AARCH64" = "arm64"
+    }
+    
+    $archMap = Assert-Defined -VariableName "archMap" -Value $archMap -ErrorMessage "VirtIO architecture mapping is not defined"
+    
+    if ($archMap.ContainsKey($WindowsArchitecture)) {
+        $mappedArch = $archMap[$WindowsArchitecture]
+        $mappedArch = Assert-NotEmpty -VariableName "archMap[$WindowsArchitecture]" -Value $mappedArch -ErrorMessage "Mapped architecture for '$WindowsArchitecture' is empty"
+        return $mappedArch
+    } else {
+        throw "Unknown Windows architecture for VirtIO driver mapping: '$WindowsArchitecture'. Supported architectures: $($archMap.Keys -join ', ')"
+    }
+}
+
 function Get-VirtioDriverVersion {
     param(
         [Parameter(Mandatory = $true)]
@@ -328,11 +362,14 @@ function Add-VirtioDriversToWim {
     )
     
     # Validate and extract WIM info properties
-    $arch = Assert-NotEmpty -VariableName "WimInfo.Architecture" -Value $WimInfo.Architecture -ErrorMessage "WIM image architecture is not defined"
+    $windowsArch = Assert-NotEmpty -VariableName "WimInfo.Architecture" -Value $WimInfo.Architecture -ErrorMessage "WIM image architecture is not defined"
     $wimPath = Assert-NotEmpty -VariableName "WimInfo.Path" -Value $WimInfo.Path -ErrorMessage "WIM image path is not defined"
     $wimType = Assert-NotEmpty -VariableName "WimInfo.Type" -Value $WimInfo.Type -ErrorMessage "WIM image type is not defined"
     $imageIndex = Assert-PositiveNumber -VariableName "WimInfo.Index" -Value $WimInfo.Index -ErrorMessage "WIM image index must be a positive number"
     $imageName = Assert-NotEmpty -VariableName "WimInfo.Name" -Value $WimInfo.Name -ErrorMessage "WIM image name is not defined"
+    
+    # Map Windows architecture to VirtIO architecture
+    $arch = Get-VirtioArchitecture -WindowsArchitecture $windowsArch
     
     $windowsVersion = Get-WindowsVersion -WimInfo $WimInfo -AllWimInfo $AllWimInfo
     $version = Get-VirtioDriverVersion -WindowsVersion $windowsVersion
@@ -343,7 +380,7 @@ function Add-VirtioDriversToWim {
     $driverComponents = @("viostor", "vioscsi", "NetKVM")
     $driverComponents = Assert-ArrayNotEmpty -VariableName "driverComponents" -Value $driverComponents -ErrorMessage "Driver components array is empty"
     
-    Write-ColorOutput "Adding VirtIO drivers (Arch: $arch, Windows: $windowsVersion -> VirtIO: $version, Components: $($driverComponents -join ', '))" -Color "Green" -Indent 2     
+    Write-ColorOutput "Adding VirtIO drivers (Arch: $windowsArch -> $arch, Windows: $windowsVersion -> VirtIO: $version, Components: $($driverComponents -join ', '))" -Color "Green" -Indent 2     
     
     # Install each driver component individually
     foreach ($component in $driverComponents) {
