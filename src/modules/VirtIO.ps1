@@ -361,7 +361,7 @@ function Add-VirtioDriversToWim {
     $windowsArch = Assert-NotEmpty -VariableName "WimInfo.Architecture" -Value $WimInfo.Architecture -ErrorMessage "WIM image architecture is not defined"
     $wimPath = Assert-NotEmpty -VariableName "WimInfo.Path" -Value $WimInfo.Path -ErrorMessage "WIM image path is not defined"
     $wimType = Assert-NotEmpty -VariableName "WimInfo.Type" -Value $WimInfo.Type -ErrorMessage "WIM image type is not defined"
-    $imageIndex = Assert-PositiveNumber -VariableName "WimInfo.Index" -Value $WimInfo.Index -ErrorMessage "WIM image index must be a positive number"
+    $imageIndex = Assert-PositiveNumber -VariableName "WimInfo.Index" -Value ([int]$WimInfo.Index) -ErrorMessage "WIM image index must be a positive number"
     $imageName = Assert-NotEmpty -VariableName "WimInfo.Name" -Value $WimInfo.Name -ErrorMessage "WIM image name is not defined"
     
     # Map Windows architecture to VirtIO architecture

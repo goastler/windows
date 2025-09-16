@@ -14,3 +14,4 @@
 - post install virtio
 - set bg in setup script
 - auto install virtio on user login
+- ([int]$WimInfo.Index) - should this be done in the assert fn or in the caller? is it brittle?
