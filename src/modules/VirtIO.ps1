@@ -246,10 +246,6 @@ function Add-VirtioDriversToWim {
         [array]$AllWimInfo = @()
     )
     
-    Write-ColorOutput "WimInfo:`n$($WimInfo | Out-String)" -Color "Gray" -Indent 1
-    
-    Write-ColorOutput "AllWimInfo:`n$($AllWimInfo | Out-String)" -Color "Gray" -Indent 1
-    
     $arch = $WimInfo.Architecture
     $windowsVersion = Get-WindowsVersion -WimInfo $WimInfo -AllWimInfo $AllWimInfo
     $version = Get-VirtioDriverVersion -WindowsVersion $windowsVersion
