@@ -40,8 +40,8 @@ function Test-DismAvailability {
     Write-ColorOutput "DISM not found in standard locations. Attempting to enable via Windows Features..." -Color "Yellow"
     try {
         # Try to enable DISM via DISM itself (ironic but sometimes works)
-        $result = Start-Process -FilePath "dism.exe" -ArgumentList "/?" -Wait -PassThru -NoNewWindow -ErrorAction SilentlyContinue
-        if ($result.ExitCode -eq 0) {
+        & dism.exe /? > $null 2>&1
+        if ($LASTEXITCODE -eq 0) {
             Write-ColorOutput "DISM is now available" -Color "Green" -Indent 1
             return
         }
@@ -70,8 +70,8 @@ function Test-DismAvailability {
         Write-ColorOutput "Attempting to install DISM via Chocolatey..." -Color "Yellow"
         Install-Chocolatey
         
-        $result = Start-Process -FilePath "choco" -ArgumentList @("install", "windows-adk-deployment-tools", "-y") -Wait -PassThru -NoNewWindow
-        if ($result.ExitCode -eq 0) {
+        & choco install windows-adk-deployment-tools -y
+        if ($LASTEXITCODE -eq 0) {
             Write-ColorOutput "Windows ADK Deployment Tools installed via Chocolatey" -Color "Green"
             
             # Refresh PATH

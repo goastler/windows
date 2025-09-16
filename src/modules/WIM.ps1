@@ -23,16 +23,12 @@ function Get-WimImageDetails {
     )
     
     # Get detailed image information using DISM /Get-WimInfo with specific index
-    $result = Start-Process -FilePath $DismPath -ArgumentList @(
-        "/Get-WimInfo",
-        "/WimFile:`"$WimPath`"",
-        "/Index:$ImageIndex"
-    ) -Wait -PassThru -NoNewWindow -RedirectStandardOutput "temp_image_details.txt"
+    & $DismPath /Get-WimInfo /WimFile:$WimPath /Index:$ImageIndex > temp_image_details.txt 2>&1
     
-    if ($result.ExitCode -ne 0) {
+    if ($LASTEXITCODE -ne 0) {
         $errorOutput = Get-Content "temp_image_details.txt" -ErrorAction SilentlyContinue
         Remove-Item "temp_image_details.txt" -ErrorAction SilentlyContinue
-        throw "DISM failed with exit code $($result.ExitCode) for image index $ImageIndex. Error output: $($errorOutput -join ' ')"
+        throw "DISM failed with exit code $LASTEXITCODE for image index $ImageIndex. Error output: $($errorOutput -join ' ')"
     }
     
     $imageDetails = Get-Content "temp_image_details.txt" -ErrorAction SilentlyContinue
@@ -108,13 +104,10 @@ function Get-WimImageInfo {
         Write-ColorOutput "Getting WIM image information from: $WimPath" -Color "Yellow" -Indent 0 -InheritedIndent $InheritedIndent
         
         # Use DISM to get image information
-        $result = Start-Process -FilePath $dismPath -ArgumentList @(
-            "/Get-WimInfo",
-            "/WimFile:`"$WimPath`""
-        ) -Wait -PassThru -NoNewWindow -RedirectStandardOutput "temp_wim_info.txt"
+        & $dismPath /Get-WimInfo /WimFile:$WimPath > temp_wim_info.txt 2>&1
         
-        if ($result.ExitCode -ne 0) {
-            throw "Failed to get WIM image information. DISM exit code: $($result.ExitCode)"
+        if ($LASTEXITCODE -ne 0) {
+            throw "Failed to get WIM image information. DISM exit code: $LASTEXITCODE"
         }
         
         # Parse the output to extract image information
