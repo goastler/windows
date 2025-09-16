@@ -171,7 +171,7 @@ function Get-WimImageInfo {
             } elseif ($currentImage -and $line -match "^\s*(\w+(?:\s+\w+)*)\s*:\s*(.+)") {
                 $matches = Assert-Defined -VariableName "matches" -Value $matches -ErrorMessage "Field regex match failed unexpectedly"
                 $fieldName = Assert-NotEmpty -VariableName "matches[1]" -Value $matches[1].Trim() -ErrorMessage "Field name regex match group 1 is empty"
-                $fieldValue = Assert-NotEmpty -VariableName "matches[2]" -Value $matches[2].Trim() -ErrorMessage "Field value regex match group 2 is empty"
+                $fieldValue = $matches[2].Trim()  # Allow empty values as DISM can return empty or undefined values
                 
                 # Store field directly with original DISM name, but preserve the integer Index property
                 if ($fieldName -ne "Index") {
