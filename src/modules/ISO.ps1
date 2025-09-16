@@ -103,10 +103,13 @@ function Add-OemDirectory {
         [Parameter(Mandatory = $true)]
         [ValidateNotNullOrEmpty()]
         [ValidateScript({
-            if (-not (Test-Path $_ -PathType Container)) {
-                throw "Extract path does not exist: $_"
+            # Validate that the path is a valid path format, but allow non-existent directories
+            try {
+                $null = [System.IO.Path]::GetFullPath($_)
+                $true
+            } catch {
+                throw "Extract path is not a valid path format: $_"
             }
-            $true
         })]
         [string]$ExtractPath,
         
