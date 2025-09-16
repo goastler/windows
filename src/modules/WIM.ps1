@@ -332,6 +332,8 @@ function Filter-InstallWimImages {
     # Determine which images to keep
     $imagesToKeep = @()
     $imagesToRemove = @()
+
+    Write-Host "DEBUG: wimInfo = $($wimInfo)"
     
     foreach ($image in $wimInfo) {
         Write-Host "DEBUG: image = $($image)"
