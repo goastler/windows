@@ -281,7 +281,7 @@ try {
     if ($IncludeTargets -or $ExcludeTargets) {
         Write-Host ""
         Write-ColorOutput "=== Filtering Install Images ===" -Color "Cyan"
-        Filter-InstallWimImages -ExtractPath $WorkingDirectory -IncludeTargets $IncludeTargets -ExcludeTargets $ExcludeTargets
+        # Filter-InstallWimImages -ExtractPath $WorkingDirectory -IncludeTargets $IncludeTargets -ExcludeTargets $ExcludeTargets
     }
     
     Write-Host ""
