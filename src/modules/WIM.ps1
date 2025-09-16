@@ -199,7 +199,6 @@ function Get-WimImageInfo {
                 # Ensure Index is preserved (add it if it doesn't exist)
                 $indexValue = $basicImage.Index
                 $indexValue = Assert-PositiveNumber -VariableName "basicImage.Index" -Value $indexValue -ErrorMessage "Basic image index must be a positive number"
-                $detailedImage.Index = $indexValue
                 
                 $detailedImages += $detailedImage
             } catch {
