@@ -288,15 +288,10 @@ function Get-VirtioArchitecture {
         "x64" = "amd64"
         "AMD64" = "amd64"
         "x86" = "i386"
-        "X86" = "i386"
         "i386" = "i386"
-        "I386" = "i386"
         "ia64" = "ia64"
-        "IA64" = "ia64"
         "arm64" = "arm64"
-        "ARM64" = "arm64"
         "aarch64" = "arm64"
-        "AARCH64" = "arm64"
     }
     
     $archMap = Assert-Defined -VariableName "archMap" -Value $archMap -ErrorMessage "VirtIO architecture mapping is not defined"
