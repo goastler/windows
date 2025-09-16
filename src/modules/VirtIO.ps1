@@ -229,9 +229,6 @@ function Get-VirtioDriverVersion {
         "8.1" = "w8.1"
         "8" = "w8"
         "7" = "w7"
-        "vista" = "vista"
-        "xp" = "xp"
-        "pe" = "pe"
     }
     
     if ($versionMap.ContainsKey($WindowsVersion)) {
@@ -248,6 +245,10 @@ function Add-VirtioDriversToWim {
         [string]$VirtioVersion,
         [array]$AllWimInfo = @()
     )
+    
+    Write-ColorOutput "WimInfo:`n$($WimInfo | Out-String)" -Color "Gray" -Indent 1
+    
+    Write-ColorOutput "AllWimInfo:`n$($AllWimInfo | Out-String)" -Color "Gray" -Indent 1
     
     $arch = $WimInfo.Architecture
     $windowsVersion = Get-WindowsVersion -WimInfo $WimInfo -AllWimInfo $AllWimInfo
@@ -319,9 +320,6 @@ function Add-VirtioDrivers {
         $virtioDir = Extract-VirtioDrivers -VirtioIsoPath $virtioIsoPath -ExtractPath $ExtractPath
         
         Write-ColorOutput "VirtIO drivers extracted to: $virtioDir" -Color "Green" -Indent 1         
-        # Log the driver structure for debugging
-        $driverDirs = Get-ChildItem -Path $virtioDir | Where-Object { $_.PSIsContainer } | Select-Object -ExpandProperty Name
-        Write-ColorOutput "Available driver directories: $($driverDirs -join ', ')" -Color "Cyan" -Indent 1         
         # Process each WIM image individually
         foreach ($wimInfo in $WimInfos) {
             Add-VirtioDriversToWim -WimInfo $wimInfo -VirtioDir $virtioDir -VirtioVersion $VirtioVersion -AllWimInfo $WimInfos

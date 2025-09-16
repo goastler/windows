@@ -309,13 +309,13 @@ function Filter-InstallWimImages {
         }
     }
     
+    if ($imagesToKeep.Count -eq 0) {
+        throw "No install.wim images would be kept after filtering. Cannot create ISO with no install images."
+    }
+    
     if ($imagesToRemove.Count -eq 0) {
         Write-ColorOutput "No images to remove" -Color "Green" -Indent 1
         return
-    }
-    
-    if ($imagesToKeep.Count -eq 0) {
-        throw "All install.wim images would be removed. Cannot create ISO with no install images."
     }
     
     Write-ColorOutput "Removing $($imagesToRemove.Count) image(s) from install.wim..." -Color "Yellow" -Indent 1
