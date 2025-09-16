@@ -144,60 +144,18 @@ function Get-WimImageInfo {
                 }
                 $currentImage = @{
                     Index = [int]$matches[1]
-                    Name = ""
-                    Description = ""
-                    Architecture = ""
-                    Version = ""
                 }
-            } elseif ($currentImage -and $line -match "Name\s*:\s*(.+)") {
-                $currentImage.Name = $matches[1].Trim()
+            } elseif ($currentImage -and $line -match "^\s*(\w+(?:\s+\w+)*)\s*:\s*(.+)") {
+                $fieldName = $matches[1].Trim()
+                $fieldValue = $matches[2].Trim()
                 
-                # Detect version from name
-                if ($currentImage.Name -match "Windows 11" -or $currentImage.Name -match "Windows 1[1-9]") {
-                    $currentImage.Version = "w11"
-                } elseif ($currentImage.Name -match "Windows 10") {
-                    $currentImage.Version = "w10"
-                }
-            } elseif ($currentImage -and $line -match "Description\s*:\s*(.+)") {
-                $currentImage.Description = $matches[1].Trim()
-                
-                # Detect version from description if not already found
-                if (-not $currentImage.Version) {
-                    if ($currentImage.Description -match "Windows 11" -or $currentImage.Description -match "Windows 1[1-9]") {
-                        $currentImage.Version = "w11"
-                    } elseif ($currentImage.Description -match "Windows 10") {
-                        $currentImage.Version = "w10"
-                    }
-                }
+                # Store field directly with original DISM name
+                $currentImage[$fieldName] = $fieldValue
             }
         }
         
         if ($currentImage) {
             $images += $currentImage
-        }
-        
-        # Post-process images to add architecture detection
-        foreach ($image in $images) {
-            Write-ColorOutput "Getting architecture for image $($image.Index)..." -Color "Yellow" -Indent 1 -InheritedIndent $InheritedIndent
-            
-            # Get architecture using DISM
-            $imageDetails = Get-WimImageDetails -WimPath $WimPath -ImageIndex $image.Index -DismPath $DismPath -ShowDebugOutput $true -InheritedIndent $InheritedIndent
-            
-            if ($imageDetails.ParsedData.ContainsKey("Architecture")) {
-                $arch = $imageDetails.ParsedData["Architecture"].ToLower()
-                switch ($arch) {
-                    "x64" { $detectedArch = "amd64" }
-                    "x86" { $detectedArch = "x86" }
-                    "arm64" { $detectedArch = "arm64" }
-                    default { 
-                        throw "Unknown architecture '$arch' found in DISM output for image index $($image.Index). Expected: x64, x86, or arm64"
-                    }
-                }
-                Write-ColorOutput "Architecture detected via DISM: $detectedArch" -Color "Green" -Indent 1 -InheritedIndent $InheritedIndent
-                $image.Architecture = $detectedArch
-            } else {
-                throw "Architecture information not found in DISM output for image index $($image.Index)"
-            }
         }
         
         return $images
@@ -233,29 +191,6 @@ function Get-AllWimInfo {
     $installWimPath = Join-Path $ExtractPath "sources\install.wim"
     $bootWimPath = Join-Path $ExtractPath "sources\boot.wim"
     
-    # Analyze install.wim if it exists
-    if (Test-Path $installWimPath) {
-        Write-ColorOutput "Analyzing install.wim..." -Color "Yellow" -Indent 1 -InheritedIndent $InheritedIndent
-        $installWimInfo = Get-WimImageInfo -WimPath $installWimPath -DismPath (Get-DismPath) -InheritedIndent ($InheritedIndent + 1)
-        
-        if ($installWimInfo) {
-            foreach ($image in $installWimInfo) {
-                $wimInfo = @{
-                    Path = $installWimPath
-                    Type = "install"
-                    Index = $image.Index
-                    Name = $image.Name
-                    Description = $image.Description
-                    Architecture = $image.Architecture
-                    Version = $image.Version
-                }
-                
-                $wims += $wimInfo
-                Write-ColorOutput "Found install image: $($image.Name) (Arch: $($image.Architecture), Version: $($image.Version))" -Color "Green" -Indent 2 -InheritedIndent $InheritedIndent
-            }
-        }
-    }
-    
     # Analyze boot.wim if it exists
     if (Test-Path $bootWimPath) {
         Write-ColorOutput "Analyzing boot.wim..." -Color "Yellow" -Indent 1 -InheritedIndent $InheritedIndent
@@ -263,18 +198,35 @@ function Get-AllWimInfo {
         
         if ($bootWimInfo) {
             foreach ($image in $bootWimInfo) {
-                $wimInfo = @{
-                    Path = $bootWimPath
-                    Type = "boot"
-                    Index = $image.Index
-                    Name = $image.Name
-                    Description = $image.Description
-                    Architecture = $image.Architecture
-                    Version = $image.Version
-                }
+                # Start with all DISM fields from the image
+                $wimInfo = $image.Clone()
+                
+                # Add our custom fields
+                $wimInfo.Path = $bootWimPath
+                $wimInfo.Type = "boot"
                 
                 $wims += $wimInfo
                 Write-ColorOutput "Found boot image: $($image.Name) (Arch: $($image.Architecture), Version: $($image.Version))" -Color "Green" -Indent 2 -InheritedIndent $InheritedIndent
+            }
+        }
+    }
+    
+    # Analyze install.wim if it exists
+    if (Test-Path $installWimPath) {
+        Write-ColorOutput "Analyzing install.wim..." -Color "Yellow" -Indent 1 -InheritedIndent $InheritedIndent
+        $installWimInfo = Get-WimImageInfo -WimPath $installWimPath -DismPath (Get-DismPath) -InheritedIndent ($InheritedIndent + 1)
+        
+        if ($installWimInfo) {
+            foreach ($image in $installWimInfo) {
+                # Start with all DISM fields from the image
+                $wimInfo = $image.Clone()
+                
+                # Add our custom fields
+                $wimInfo.Path = $installWimPath
+                $wimInfo.Type = "install"
+                
+                $wims += $wimInfo
+                Write-ColorOutput "Found install image: $($image.Name) (Arch: $($image.Architecture), Version: $($image.Version))" -Color "Green" -Indent 2 -InheritedIndent $InheritedIndent
             }
         }
     }

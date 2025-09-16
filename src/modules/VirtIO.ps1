@@ -175,6 +175,37 @@ function Extract-VirtioDrivers {
     }
 }
 
+function Get-WindowsVersion {
+    param(
+        [hashtable]$WimInfo
+    )
+    
+    # For boot.wim files, return "pe" (Windows PE)
+    if ($WimInfo.Type -eq "boot") {
+        return "pe"
+    }
+    
+    # For install.wim files, infer Windows version from image name
+    $imageName = $WimInfo.Name
+    if ($imageName -match "Windows 11" -or $imageName -match "Windows 1[1-9]") {
+        return "11"
+    } elseif ($imageName -match "Windows 10") {
+        return "10"
+    } elseif ($imageName -match "Windows 8\.1") {
+        return "8.1"
+    } elseif ($imageName -match "Windows 8") {
+        return "8"
+    } elseif ($imageName -match "Windows 7") {
+        return "7"
+    } elseif ($imageName -match "Windows Vista") {
+        return "vista"
+    } elseif ($imageName -match "Windows XP") {
+        return "xp"
+    } else {
+        throw "Unable to detect Windows version from image name: '$imageName'. Expected Windows XP, Vista, 7, 8, 8.1, 10, or 11 (or higher)."
+    }
+}
+
 function Add-VirtioDriversToWim {
     param(
         [hashtable]$WimInfo,
@@ -183,24 +214,13 @@ function Add-VirtioDriversToWim {
     )
     
     $arch = $WimInfo.Architecture
-    $version = $WimInfo.Version
+    $version = Get-WindowsVersion -WimInfo $WimInfo
     $wimPath = $WimInfo.Path
     $wimType = $WimInfo.Type
     $imageIndex = $WimInfo.Index
     $imageName = $WimInfo.Name
     
     Write-ColorOutput "Processing $wimType image: $imageName" -Color "Yellow" -Indent 1     
-    # Validate Windows 11 architecture compatibility
-    if ($version -eq "w11" -and $arch -eq "x86") {
-        Write-ColorOutput "Skipping Windows 11 x86 image (not supported)" -Color "Yellow" -Indent 2
-        return
-    }
-    
-    # Validate VirtIO driver availability for ARM64
-    if ($arch -eq "arm64") {
-        Write-ColorOutput "Skipping ARM64 image (VirtIO drivers not available)" -Color "Yellow" -Indent 2
-        return
-    }
     
     # Check if appropriate drivers exist
     $driverPath = Join-Path $VirtioDir $arch
@@ -220,7 +240,7 @@ function Add-VirtioDriversToWim {
         if ($wimType -eq "boot") {
             Inject-VirtioDriversIntoBootWim -WimPath $wimPath -VirtioDir $VirtioDir -Arch $arch -Version $version -ImageIndex $imageIndex
         } else {
-            # Inject-VirtioDriversIntoInstallWim -WimPath $wimPath -VirtioDir $VirtioDir -Arch $arch -Version $version -ImageIndex $imageIndex
+            Inject-VirtioDriversIntoInstallWim -WimPath $wimPath -VirtioDir $VirtioDir -Arch $arch -Version $version -ImageIndex $imageIndex
         }
     } catch {
         throw "Failed to add VirtIO drivers to $wimType image: $($_.Exception.Message)"
