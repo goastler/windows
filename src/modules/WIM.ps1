@@ -161,9 +161,7 @@ function Get-WimImageInfo {
         foreach ($line in $wimInfo) {
             if ($line -match "Index\s*:\s*(\d+)") {
                 if ($currentImage) {
-                    Write-Host "DEBUG: Adding currentImage to ArrayList: $($currentImage.GetType().Name), Keys: $($currentImage.Keys -join ', ')"
                     $null = $images.Add($currentImage)
-                    Write-Host "DEBUG in for line loop: images = $($images)"
                 }
                 $matches = Assert-Defined -VariableName "matches" -Value $matches -ErrorMessage "Index regex match failed unexpectedly"
                 $indexValue = Assert-NotEmpty -VariableName "matches[1]" -Value $matches[1] -ErrorMessage "Index regex match group 1 is empty"
@@ -183,9 +181,7 @@ function Get-WimImageInfo {
         }
         
         if ($currentImage) {
-            Write-Host "DEBUG: Adding final currentImage to ArrayList: $($currentImage.GetType().Name), Keys: $($currentImage.Keys -join ', ')"
             $null = $images.Add($currentImage)
-            Write-Host "DEBUG in if currentImage loop: images = $($images)"
         }
         
         # Now get detailed information for each image - use regular array with comma operator
@@ -207,7 +203,6 @@ function Get-WimImageInfo {
                 $indexForError = $basicImage.Index
                 throw "Warning: Failed to get detailed info for image index ${indexForError}: $($_.Exception.Message)"
             }
-            Write-Host "DEBUG in foreach basicImage loop: detailedImages = $($detailedImages)"
         }
         
         return $detailedImages
@@ -249,7 +244,6 @@ function Get-AllWimInfo {
         foreach ($image in $bootWimInfo) {
             # Validate image properties before using them
             $image = Assert-Defined -VariableName "image" -Value $image -ErrorMessage "Boot WIM image is null"
-            Write-Host "DEBUG: Boot image.Name = '$($image.Name)', image.Architecture = '$($image.Architecture)', image.Version = '$($image.Version)'"
             $imageName = Assert-NotEmpty -VariableName "image.Name" -Value $image.Name -ErrorMessage "Boot WIM image name is not defined"
             $imageArch = Assert-NotEmpty -VariableName "image.Architecture" -Value $image.Architecture -ErrorMessage "Boot WIM image architecture is not defined"
             $imageVersion = Assert-NotEmpty -VariableName "image.Version" -Value $image.Version -ErrorMessage "Boot WIM image version is not defined"
@@ -274,7 +268,6 @@ function Get-AllWimInfo {
         foreach ($image in $installWimInfo) {
             # Validate image properties before using them
             $image = Assert-Defined -VariableName "image" -Value $image -ErrorMessage "Install WIM image is null"
-            Write-Host "DEBUG: image.Name = '$($image.Name)', image.Architecture = '$($image.Architecture)', image.Version = '$($image.Version)'"
             $imageName = Assert-NotEmpty -VariableName "image.Name" -Value $image.Name -ErrorMessage "Install WIM image name is not defined"
             $imageArch = Assert-NotEmpty -VariableName "image.Architecture" -Value $image.Architecture -ErrorMessage "Install WIM image architecture is not defined"
             $imageVersion = Assert-NotEmpty -VariableName "image.Version" -Value $image.Version -ErrorMessage "Install WIM image version is not defined"
@@ -337,7 +330,6 @@ function Filter-InstallWimImages {
     $imagesToKeep = @()
     $imagesToRemove = @()
 
-    Write-Host "DEBUG: wimInfo = $($wimInfo)"
     
     foreach ($image in $wimInfo) {
         # Validate image properties before using them
@@ -379,7 +371,9 @@ function Filter-InstallWimImages {
     }
     
     # Validate filtering results
+    Write-Host "DEBUG: imagesToKeep = $($imagesToKeep)"
     $imagesToKeep = Assert-ArrayNotEmpty -VariableName "imagesToKeep" -Value $imagesToKeep -ErrorMessage "No install.wim images would be kept after filtering. Cannot create ISO with no install images."
+    Write-Host "DEBUG: imagesToKeep after"
     
     if ($imagesToRemove.Count -eq 0) {
         Write-ColorOutput "No images to remove" -Color "Green" -Indent 1
