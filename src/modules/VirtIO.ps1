@@ -220,7 +220,7 @@ function Add-VirtioDriversToWim {
         if ($wimType -eq "boot") {
             Inject-VirtioDriversIntoBootWim -WimPath $wimPath -VirtioDir $VirtioDir -Arch $arch -Version $version -ImageIndex $imageIndex
         } else {
-            Inject-VirtioDriversIntoInstallWim -WimPath $wimPath -VirtioDir $VirtioDir -Arch $arch -Version $version -ImageIndex $imageIndex
+            # Inject-VirtioDriversIntoInstallWim -WimPath $wimPath -VirtioDir $VirtioDir -Arch $arch -Version $version -ImageIndex $imageIndex
         }
     } catch {
         throw "Failed to add VirtIO drivers to $wimType image: $($_.Exception.Message)"
