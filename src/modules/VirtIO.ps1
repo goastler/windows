@@ -308,6 +308,26 @@ function Inject-VirtioDriversIntoBootWim {
         # Get DISM path
         $dismPath = Get-DismPath
         
+        # Check WIM file permissions
+        $wimFileInfo = Get-Item $WimPath -ErrorAction Stop
+        Write-ColorOutput "WIM file: $($wimFileInfo.FullName)" -Color "Cyan" -Indent 2
+        Write-ColorOutput "WIM file size: $([math]::Round($wimFileInfo.Length / 1GB, 2)) GB" -Color "Cyan" -Indent 2
+        Write-ColorOutput "WIM file read-only: $($wimFileInfo.IsReadOnly)" -Color "Cyan" -Indent 2
+        
+        # Remove read-only attribute from WIM file if present
+        if ($wimFileInfo.IsReadOnly) {
+            Write-ColorOutput "Removing read-only attribute from WIM file..." -Color "Yellow" -Indent 2
+            Set-ItemProperty -Path $WimPath -Name IsReadOnly -Value $false
+            Write-ColorOutput "Read-only attribute removed" -Color "Green" -Indent 2
+        }
+        
+        # Check mount directory permissions
+        Write-ColorOutput "Mount directory: $mountDir" -Color "Cyan" -Indent 2
+        if (Test-Path $mountDir) {
+            $mountDirInfo = Get-Item $mountDir
+            Write-ColorOutput "Mount directory exists: $($mountDirInfo.Exists)" -Color "Cyan" -Indent 2
+        }
+        
         # Mount the specific boot.wim index
         Write-ColorOutput "Mounting boot.wim index $ImageIndex..." -Color "Yellow" -Indent 2
         # Mount the WIM file using direct execution
