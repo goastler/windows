@@ -128,7 +128,6 @@ function Get-WimImageInfo {
     )
     
     try {
-        
         Write-ColorOutput "Getting WIM image information from: $WimPath" -Color "Yellow" -Indent 0 -InheritedIndent $InheritedIndent
         
         # Use DISM to get image information for all images
@@ -206,17 +205,11 @@ function Get-WimImageInfo {
                 
                 # Ensure Index is preserved (add it if it doesn't exist)
                 $indexValue = $basicImage.Index
-                Write-ColorOutput "DEBUG: basicImage.Index = '$indexValue' (type: $($indexValue.GetType().Name))" -Color "Yellow" -Indent 2 -InheritedIndent $InheritedIndent
-                Write-ColorOutput "DEBUG: About to call Assert-PositiveNumber with VariableName='basicImage.Index', Value='$indexValue'" -Color "Yellow" -Indent 2 -InheritedIndent $InheritedIndent
-                try {
-                    $indexValue = Assert-PositiveNumber -VariableName "basicImage.Index" -Value $indexValue -ErrorMessage "Basic image index must be a positive number"
-                } catch {
-                    Write-ColorOutput "DEBUG: Assert-PositiveNumber failed with error: $($_.Exception.Message)" -Color "Red" -Indent 2 -InheritedIndent $InheritedIndent
-                    throw
-                }
-                $detailedImage["Index"] = $indexValue
+                $indexValue = Assert-PositiveNumber -VariableName "basicImage.Index" -Value $indexValue -ErrorMessage "Basic image index must be a positive number"
                 
                 $detailedImages += $detailedImage
+
+                Write-Host ($detailedImage | Out-String)
             } catch {
                 $indexForError = $basicImage.Index
                 throw "Warning: Failed to get detailed info for image index ${indexForError}: $($_.Exception.Message)"
