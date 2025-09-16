@@ -83,22 +83,15 @@ function Get-WimImageDetails {
     
     # Parse structured fields
     foreach ($line in $imageDetails) {
-        Write-Host "DEBUG: Processing line: '$line'"
         if ($line -match "^\s*(\w+(?:\s+\w+)*)\s*:\s*(.+)") {
             $matches = Assert-Defined -VariableName "matches" -Value $matches -ErrorMessage "Regex match failed unexpectedly"
             $key = $matches[1].Trim()
             if ($key) {  # Only process if key is not empty
                 $value = $matches[2].Trim()  # Allow empty values
                 $result[$key] = $value
-                Write-Host "DEBUG: Parsed field '$key' = '$value'"
             }
-        } else {
-            Write-Host "DEBUG: Line did not match regex: '$line'"
         }
     }
-    
-    Write-Host "DEBUG: Final result hashtable keys: $($result.Keys -join ', ')"
-    Write-Host "DEBUG: Name = '$($result.Name)', Architecture = '$($result.Architecture)', Version = '$($result.Version)'"
     
     return $result
 }
@@ -206,6 +199,7 @@ function Get-WimImageInfo {
                 # Ensure Index is preserved (add it if it doesn't exist)
                 $indexValue = $basicImage.Index
                 $indexValue = Assert-PositiveNumber -VariableName "basicImage.Index" -Value $indexValue -ErrorMessage "Basic image index must be a positive number"
+                $detailedImage.Index = $indexValue
                 
                 $detailedImages += $detailedImage
             } catch {
@@ -214,6 +208,10 @@ function Get-WimImageInfo {
             }
         }
         
+        Write-Host "DEBUG: Get-WimImageInfo returning $($detailedImages.Count) images"
+        foreach ($img in $detailedImages) {
+            Write-Host "DEBUG: Image type: $($img.GetType().Name), Keys: $($img.Keys -join ', ')"
+        }
         return $detailedImages
         
     } catch {
@@ -277,6 +275,13 @@ function Get-AllWimInfo {
     if (Test-Path $installWimPath) {
         Write-ColorOutput "Analyzing install.wim..." -Color "Yellow" -Indent 1 -InheritedIndent $InheritedIndent
         $installWimInfo = Get-WimImageInfo -WimPath $installWimPath -DismPath (Get-DismPath) -InheritedIndent ($InheritedIndent + 1)
+        
+        Write-Host "DEBUG: installWimInfo type: $($installWimInfo.GetType().Name), count: $($installWimInfo.Count)"
+        if ($installWimInfo) {
+            Write-Host "DEBUG: installWimInfo is not null/empty"
+        } else {
+            Write-Host "DEBUG: installWimInfo is null or empty"
+        }
         
         foreach ($image in $installWimInfo) {
             # Validate image properties before using them
