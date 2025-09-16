@@ -199,12 +199,18 @@ function Get-WimImageInfo {
                 $detailedImage = $detailedInfo.Clone()
                 
                 # Ensure Index is preserved (add it if it doesn't exist)
-                $basicImage.Index = Assert-PositiveNumber -VariableName "basicImage.Index" -Value $basicImage.Index -ErrorMessage "Basic image index must be a positive number"
-                $detailedImage["Index"] = $basicImage.Index
+                $indexValue = $basicImage["Index"]
+                # Convert to integer if it's a string
+                if ($indexValue -is [string]) {
+                    $indexValue = [int]$indexValue
+                }
+                $indexValue = Assert-PositiveNumber -VariableName "basicImage.Index" -Value $indexValue -ErrorMessage "Basic image index must be a positive number"
+                $detailedImage["Index"] = $indexValue
                 
                 $detailedImages += $detailedImage
             } catch {
-                throw "Warning: Failed to get detailed info for image index $($basicImage.Index): $($_.Exception.Message)"
+                $indexForError = $basicImage["Index"]
+                throw "Warning: Failed to get detailed info for image index $indexForError: $($_.Exception.Message)"
             }
         }
         
