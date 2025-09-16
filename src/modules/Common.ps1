@@ -328,8 +328,6 @@ function Assert-PositiveNumber {
         [string]$ErrorMessage = "Variable '$VariableName' must be a positive number"
     )
     
-    Write-Host "DEBUG Assert-PositiveNumber: VariableName='$VariableName', Value='$Value' (type: $($Value.GetType().Name))" -ForegroundColor Yellow
-    
     if ($null -eq $Value -or -not ($Value -is [int] -or $Value -is [long] -or $Value -is [double] -or $Value -is [decimal])) {
         throw "Variable '$VariableName' must be a number. Got: $($Value.GetType().Name)"
     }
