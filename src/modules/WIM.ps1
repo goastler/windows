@@ -209,16 +209,17 @@ function Get-WimImageInfo {
         }
         
         # Filter out any invalid entries (Int32 values, null, etc.) and convert to regular array
-        $validImages = @()
-        foreach ($img in $detailedImages) {
-            if ($img -is [hashtable] -and $img -ne $null) {
-                $validImages += $img
-            } else {
-                Write-Host "DEBUG: Filtering out invalid image entry in Get-WimImageInfo: $($img)"
-            }
-        }
+        # $validImages = @()
+        # foreach ($img in $detailedImages) {
+        #     if ($img -is [hashtable] -and $img -ne $null) {
+        #         $validImages += $img
+        #     } else {
+        #         Write-Host "DEBUG: Filtering out invalid image entry in Get-WimImageInfo: $($img)"
+        #     }
+        # }
+        # return $validImages
         
-        return $validImages
+        return $detailedImages
         
     } catch {
         throw "Failed to get WIM image information: $($_.Exception.Message)"
