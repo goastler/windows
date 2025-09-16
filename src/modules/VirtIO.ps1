@@ -66,7 +66,13 @@ function Extract-VirtioDrivers {
     $downloadUrl = Assert-NotEmpty -VariableName "downloadUrl" -Value $downloadUrl -ErrorMessage "Failed to get download URL for version: $Version"
     
     $tempIsoPath = Join-Path $ExtractPath "virtio-win-$Version.iso"
-    $tempIsoPath = Assert-ValidPath -VariableName "tempIsoPath" -Path $tempIsoPath -ErrorMessage "Generated temporary ISO path is invalid: $tempIsoPath"
+    
+    # Validate path format (don't check if it exists since we're creating it)
+    try {
+        $null = [System.IO.Path]::GetFullPath($tempIsoPath)
+    } catch {
+        throw "Generated temporary ISO path is invalid: $tempIsoPath"
+    }
     
     try {
         # Download the ISO
