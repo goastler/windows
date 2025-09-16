@@ -83,7 +83,7 @@ function Get-WimImageDetails {
     
     # Parse structured fields
     foreach ($line in $imageDetails) {
-        if ($line -match "^\s*(\w+)\s*:\s*(.*)$") {
+        if ($line -match "^\s*(\w+(?:\s+\w+)*)\s*:\s*(.+)") {
             $matches = Assert-Defined -VariableName "matches" -Value $matches -ErrorMessage "Regex match failed unexpectedly"
             $key = $matches[1].Trim()
             if ($key) {  # Only process if key is not empty
