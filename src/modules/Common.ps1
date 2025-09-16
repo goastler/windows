@@ -221,12 +221,16 @@ function Invoke-CommandWithExitCode {
         [switch]$SuppressOutput,
         
         [Parameter(Mandatory = $false)]
-        [string]$OutputFile
+        [string]$OutputFile,
+        
+        [Parameter(Mandatory = $false)]
+        [ValidateRange(0, 20)]
+        [int]$InheritedIndent = 0
     )
     
     $Command = Assert-NotEmpty -VariableName "Command" -Value $Command -ErrorMessage "Command cannot be empty"
     
-    Write-ColorOutput "Running: $Command $($Arguments -join ' ')" -Color "Cyan" -Indent 1
+    Write-ColorOutput "Running: $Command $($Arguments -join ' ')" -Color "Cyan" -Indent 1 -InheritedIndent $InheritedIndent
     
     try {
         # Set working directory if specified
@@ -260,7 +264,7 @@ function Invoke-CommandWithExitCode {
             throw "$Description failed with exit code: $exitCode. Expected: $($ExpectedExitCodes -join ', ')"
         }
         
-        Write-ColorOutput "$Description completed successfully (exit code: $exitCode)" -Color "Green" -Indent 1
+        Write-ColorOutput "$Description completed successfully (exit code: $exitCode)" -Color "Green" -Indent 1 -InheritedIndent $InheritedIndent
         return $exitCode
         
     } catch {

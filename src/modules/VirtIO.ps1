@@ -547,7 +547,7 @@ function Inject-VirtioDriversIntoBootWim {
         # Mount the specific boot.wim index
         Write-ColorOutput "Mounting boot.wim index $ImageIndex..." -Color "Yellow" -Indent 2
         # Mount the WIM file using direct execution
-        Invoke-CommandWithExitCode -Command $dismPath -Arguments @("/Mount-Wim", "/WimFile:$WimPath", "/Index:$ImageIndex", "/MountDir:$mountDir") -Description "Mount boot.wim index $ImageIndex" -SuppressOutput
+        Invoke-CommandWithExitCode -Command $dismPath -Arguments @("/Mount-Wim", "/WimFile:$WimPath", "/Index:$ImageIndex", "/MountDir:$mountDir") -Description "Mount boot.wim index $ImageIndex" -SuppressOutput -InheritedIndent $InheritedIndent
         
         Write-ColorOutput "Successfully mounted boot.wim index $ImageIndex" -Color "Green" -Indent 2         
         # Add drivers to the mounted image
@@ -556,13 +556,13 @@ function Inject-VirtioDriversIntoBootWim {
         # Add each driver component
         foreach ($driverPath in $DriverPaths) {
             Write-ColorOutput "Adding drivers from: $driverPath" -Color "Cyan" -Indent 2
-            Invoke-CommandWithExitCode -Command $dismPath -Arguments @("/Image:$mountDir", "/Add-Driver", "/Driver:$driverPath", "/Recurse") -Description "Add drivers from $driverPath" -SuppressOutput
+            Invoke-CommandWithExitCode -Command $dismPath -Arguments @("/Image:$mountDir", "/Add-Driver", "/Driver:$driverPath", "/Recurse") -Description "Add drivers from $driverPath" -SuppressOutput -InheritedIndent $InheritedIndent
         }
         
         # Unmount and commit changes
         Write-ColorOutput "Unmounting boot.wim..." -Color "Yellow" -Indent 2
         # Unmount and commit changes using direct execution
-        Invoke-CommandWithExitCode -Command $dismPath -Arguments @("/Unmount-Wim", "/MountDir:$mountDir", "/Commit") -Description "Unmount boot.wim" -SuppressOutput
+        Invoke-CommandWithExitCode -Command $dismPath -Arguments @("/Unmount-Wim", "/MountDir:$mountDir", "/Commit") -Description "Unmount boot.wim" -SuppressOutput -InheritedIndent $InheritedIndent
         
     } catch {
         throw "Error injecting drivers into boot.wim: $($_.Exception.Message)"
@@ -657,7 +657,7 @@ function Inject-VirtioDriversIntoInstallWim {
         # Mount the specific install.wim index
         Write-ColorOutput "Mounting install.wim index $ImageIndex..." -Color "Yellow" -Indent 2
         # Mount the WIM file using direct execution
-        Invoke-CommandWithExitCode -Command $dismPath -Arguments @("/Mount-Wim", "/WimFile:$WimPath", "/Index:$ImageIndex", "/MountDir:$mountDir") -Description "Mount install.wim index $ImageIndex" -SuppressOutput
+        Invoke-CommandWithExitCode -Command $dismPath -Arguments @("/Mount-Wim", "/WimFile:$WimPath", "/Index:$ImageIndex", "/MountDir:$mountDir") -Description "Mount install.wim index $ImageIndex" -SuppressOutput -InheritedIndent $InheritedIndent
         
         Write-ColorOutput "Successfully mounted install.wim index $ImageIndex" -Color "Green" -Indent 2         
         # Add drivers to the mounted image
@@ -666,13 +666,13 @@ function Inject-VirtioDriversIntoInstallWim {
         # Add each driver component
         foreach ($driverPath in $DriverPaths) {
             Write-ColorOutput "Adding drivers from: $driverPath" -Color "Cyan" -Indent 2
-            Invoke-CommandWithExitCode -Command $dismPath -Arguments @("/Image:$mountDir", "/Add-Driver", "/Driver:$driverPath", "/Recurse") -Description "Add drivers from $driverPath" -SuppressOutput
+            Invoke-CommandWithExitCode -Command $dismPath -Arguments @("/Image:$mountDir", "/Add-Driver", "/Driver:$driverPath", "/Recurse") -Description "Add drivers from $driverPath" -SuppressOutput -InheritedIndent $InheritedIndent
         }
         
         # Unmount and commit changes
         Write-ColorOutput "Unmounting install.wim..." -Color "Yellow" -Indent 2
         # Unmount and commit changes using direct execution
-        Invoke-CommandWithExitCode -Command $dismPath -Arguments @("/Unmount-Wim", "/MountDir:$mountDir", "/Commit") -Description "Unmount install.wim" -SuppressOutput
+        Invoke-CommandWithExitCode -Command $dismPath -Arguments @("/Unmount-Wim", "/MountDir:$mountDir", "/Commit") -Description "Unmount install.wim" -SuppressOutput -InheritedIndent $InheritedIndent
         
     } catch {
         throw "Error injecting drivers into install.wim: $($_.Exception.Message)"

@@ -49,7 +49,7 @@ function Get-WimImageDetails {
     
     # Get detailed image information using DISM /Get-WimInfo with specific index
     try {
-        Invoke-CommandWithExitCode -Command $DismPath -Arguments @("/Get-WimInfo", "/WimFile:$WimPath", "/Index:$ImageIndex") -Description "Get detailed WIM image information for index $ImageIndex" -OutputFile "temp_image_details.txt"
+        Invoke-CommandWithExitCode -Command $DismPath -Arguments @("/Get-WimInfo", "/WimFile:$WimPath", "/Index:$ImageIndex") -Description "Get detailed WIM image information for index $ImageIndex" -OutputFile "temp_image_details.txt" -InheritedIndent $InheritedIndent
     } catch {
         $errorOutput = Get-Content "temp_image_details.txt" -ErrorAction SilentlyContinue
         Remove-Item "temp_image_details.txt" -ErrorAction SilentlyContinue
@@ -132,7 +132,7 @@ function Get-WimImageInfo {
         Write-ColorOutput "Getting WIM image information from: $WimPath" -Color "Yellow" -Indent 0 -InheritedIndent $InheritedIndent
         
         # Use DISM to get image information for all images
-        Invoke-CommandWithExitCode -Command $dismPath -Arguments @("/Get-WimInfo", "/WimFile:$WimPath") -Description "Get WIM image information" -OutputFile "temp_wim_info.txt"
+        Invoke-CommandWithExitCode -Command $dismPath -Arguments @("/Get-WimInfo", "/WimFile:$WimPath") -Description "Get WIM image information" -OutputFile "temp_wim_info.txt" -InheritedIndent $InheritedIndent
         
         # Parse the output to extract image information
         $wimInfo = Get-Content "temp_wim_info.txt" -ErrorAction SilentlyContinue
@@ -210,7 +210,7 @@ function Get-WimImageInfo {
                 $detailedImages += $detailedImage
             } catch {
                 $indexForError = $basicImage["Index"]
-                throw "Warning: Failed to get detailed info for image index $indexForError: $($_.Exception.Message)"
+                throw "Warning: Failed to get detailed info for image index ${indexForError}: $($_.Exception.Message)"
             }
         }
         
@@ -441,7 +441,7 @@ function Filter-InstallWimImages {
             
             # Execute DISM command
             try {
-                Invoke-CommandWithExitCode -Command $dismPath -Arguments $dismArgs -Description "Export image '$imageName' (index $sourceIndex)" -SuppressOutput
+                Invoke-CommandWithExitCode -Command $dismPath -Arguments $dismArgs -Description "Export image '$imageName' (index $sourceIndex)" -SuppressOutput -InheritedIndent $InheritedIndent
             } catch {
                 $errorDetails = $_
                 if (Test-Path "C:\WINDOWS\Logs\DISM\dism.log") {
