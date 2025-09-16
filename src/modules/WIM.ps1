@@ -244,13 +244,10 @@ function Get-AllWimInfo {
         
         foreach ($image in $bootWimInfo) {
             # Validate image properties before using them
-            Write-Host "image: $($image)"
             $image = Assert-Defined -VariableName "image" -Value $image -ErrorMessage "Boot WIM image is null"
-            Write-Host "name"
+            Write-Host "DEBUG: Boot image.Name = '$($image.Name)', image.Architecture = '$($image.Architecture)', image.Version = '$($image.Version)'"
             $imageName = Assert-NotEmpty -VariableName "image.Name" -Value $image.Name -ErrorMessage "Boot WIM image name is not defined"
-            Write-Host "arch"
             $imageArch = Assert-NotEmpty -VariableName "image.Architecture" -Value $image.Architecture -ErrorMessage "Boot WIM image architecture is not defined"
-            Write-Host "version"
             $imageVersion = Assert-NotEmpty -VariableName "image.Version" -Value $image.Version -ErrorMessage "Boot WIM image version is not defined"
             
             # Start with all detailed DISM fields from the image
@@ -273,6 +270,7 @@ function Get-AllWimInfo {
         foreach ($image in $installWimInfo) {
             # Validate image properties before using them
             $image = Assert-Defined -VariableName "image" -Value $image -ErrorMessage "Install WIM image is null"
+            Write-Host "DEBUG: image.Name = '$($image.Name)', image.Architecture = '$($image.Architecture)', image.Version = '$($image.Version)'"
             $imageName = Assert-NotEmpty -VariableName "image.Name" -Value $image.Name -ErrorMessage "Install WIM image name is not defined"
             $imageArch = Assert-NotEmpty -VariableName "image.Architecture" -Value $image.Architecture -ErrorMessage "Install WIM image architecture is not defined"
             $imageVersion = Assert-NotEmpty -VariableName "image.Version" -Value $image.Version -ErrorMessage "Install WIM image version is not defined"
@@ -336,6 +334,7 @@ function Filter-InstallWimImages {
     $imagesToRemove = @()
     
     foreach ($image in $wimInfo) {
+        Write-Host "DEBUG: image = $($image)"
         # Validate image properties before using them
         $image = Assert-Defined -VariableName "image" -Value $image -ErrorMessage "WIM image is null"
         $imageName = Assert-NotEmpty -VariableName "image.Name" -Value $image.Name -ErrorMessage "WIM image name is not defined"
