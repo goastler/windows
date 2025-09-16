@@ -67,7 +67,7 @@ function Extract-VirtioDrivers {
     )
     
     Write-Host ""
-    Write-ColorOutput "=== VirtIO Drivers Download and Extract ===" -Color "Cyan"
+    Write-ColorOutput "=== VirtIO Drivers Download and Extract ===" -Color "Cyan" -Indent ($Indent + 1)
     
     # Set up cache directory
     $cacheDir = Join-Path $env:TEMP "virtio-cache"
@@ -433,7 +433,7 @@ function Add-VirtioDrivers {
         # Get WIM information for all WIM files in the ISO
         Write-Host ""
         Write-ColorOutput "Analyzing WIM files..." -Color "Yellow" -Indent ($Indent + 1)
-        $WimInfos = Get-AllWimInfo -ExtractPath $ExtractPath
+        $WimInfos = Get-AllWimInfo -ExtractPath $ExtractPath -Indent ($Indent + 1)
         Write-ColorOutput "Processing all WIM images ($($WimInfos.Count) total)" -Color "Green" -Indent ($Indent + 1)
         
         # Download and extract VirtIO drivers

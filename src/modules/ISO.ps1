@@ -34,7 +34,7 @@ function Extract-IsoContents {
         [int]$Indent = 0
     )
     
-    Write-ColorOutput "Mounting ISO: $IsoPath" -Color "Yellow"
+    Write-ColorOutput "Mounting ISO: $IsoPath" -Color "Yellow" -Indent ($Indent + 1)
     
     $mountResult = Mount-DiskImage -ImagePath $IsoPath -PassThru
     $mountResult = Assert-Defined -VariableName "mountResult" -Value $mountResult -ErrorMessage "Failed to mount ISO"
@@ -100,7 +100,7 @@ function Add-AutounattendXml {
         [int]$Indent = 0
     )
     
-    Write-ColorOutput "Adding autounattend.xml to ISO contents..." -Color "Yellow"
+    Write-ColorOutput "Adding autounattend.xml to ISO contents..." -Color "Yellow" -Indent ($Indent + 1)
     $destinationPath = Join-Path $ExtractPath "autounattend.xml"
     Copy-Item $AutounattendXmlPath $destinationPath -Force
     Write-ColorOutput "autounattend.xml added to: $destinationPath" -Color "Green" -Indent ($Indent + 1)
@@ -136,7 +136,7 @@ function Add-OemDirectory {
         [int]$Indent = 0
     )
     
-    Write-ColorOutput "Adding $OEM$ directory to ISO contents..." -Color "Yellow"
+    Write-ColorOutput "Adding $OEM$ directory to ISO contents..." -Color "Yellow" -Indent ($Indent + 1)
     
     $destinationPath = Join-Path $ExtractPath '$OEM$'
     
@@ -196,14 +196,13 @@ function New-IsoFromDirectory {
         [int]$Indent = 0
     )
     
-    Write-ColorOutput "Creating new ISO from directory: $SourcePath" -Color "Yellow"
+    Write-ColorOutput "Creating new ISO from directory: $SourcePath" -Color "Yellow" -Indent ($Indent + 1)
 
     # Resolve absolute paths
     $absSrc    = (Resolve-Path $SourcePath).ProviderPath
     $absSrc = Assert-ValidPath -VariableName "absSrc" -Path $absSrc -ErrorMessage "Failed to resolve source path: $SourcePath"
     
-    $absOutDir = (Resolve-Path (Split-Path $OutputPath -Parent)).ProviderPath
-    $absOutDir = Assert-ValidPath -VariableName "absOutDir" -Path $absOutDir -ErrorMessage "Failed to resolve output directory path: $OutputPath"
+    $absOutDir = [System.IO.Path]::GetFullPath((Split-Path $OutputPath -Parent))
     
     $absOutIso = Join-Path $absOutDir (Split-Path $OutputPath -Leaf)
 
