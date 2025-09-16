@@ -244,20 +244,20 @@ try {
     Write-Host ""
     # Extract ISO contents
     Write-ColorOutput "=== Extracting ISO Contents ===" -Color "Cyan"
-    Extract-IsoContents -IsoPath $resolvedInputIso -ExtractPath $WorkingDirectory
+    Extract-IsoContents -IsoPath $resolvedInputIso -ExtractPath $WorkingDirectory -Indent 0
     
     Write-Host ""
     # Add autounattend.xml and OEM directory
     Write-ColorOutput "=== Adding Configuration Files ===" -Color "Cyan"
-    Add-AutounattendXml -ExtractPath $WorkingDirectory -AutounattendXmlPath $AutounattendXml
-    Add-OemDirectory -ExtractPath $WorkingDirectory -OemSourcePath $OemDirectory
+    Add-AutounattendXml -ExtractPath $WorkingDirectory -AutounattendXmlPath $AutounattendXml -Indent 0
+    Add-OemDirectory -ExtractPath $WorkingDirectory -OemSourcePath $OemDirectory -Indent 0
     
     Write-Host ""
     # Filter install.wim images if include/exclude targets are specified
     if ($IncludeTargets -or $ExcludeTargets) {
         Write-Host ""
         Write-ColorOutput "=== Filtering Install Images ===" -Color "Cyan"
-        Filter-InstallWimImages -ExtractPath $WorkingDirectory -IncludeTargets $IncludeTargets -ExcludeTargets $ExcludeTargets
+        Filter-InstallWimImages -ExtractPath $WorkingDirectory -IncludeTargets $IncludeTargets -ExcludeTargets $ExcludeTargets -Indent 0
     }
     
     Write-Host ""
@@ -274,7 +274,7 @@ try {
     Write-Host ""
     # Create new ISO
     Write-ColorOutput "=== Creating New ISO ===" -Color "Cyan"
-    New-IsoFromDirectory -SourcePath $WorkingDirectory -OutputPath $resolvedOutputIso -OscdimgPath $script:oscdimgPath
+    New-IsoFromDirectory -SourcePath $WorkingDirectory -OutputPath $resolvedOutputIso -OscdimgPath $script:oscdimgPath -Indent 0
     
     if (Test-Path $resolvedOutputIso) {
         $fileSize = (Get-Item $resolvedOutputIso).Length

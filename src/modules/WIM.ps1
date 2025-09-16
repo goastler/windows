@@ -304,7 +304,11 @@ function Filter-InstallWimImages {
         [Parameter(Mandatory = $false)]
         [string[]]$IncludeTargets = $null,
         [Parameter(Mandatory = $false)]
-        [string[]]$ExcludeTargets = $null
+        [string[]]$ExcludeTargets = $null,
+        
+        [Parameter(Mandatory = $false)]
+        [ValidateRange(0, 40)]
+        [int]$Indent = 0
     )
     
     $installWimPath = Join-Path $ExtractPath "sources\install.wim"
@@ -313,15 +317,15 @@ function Filter-InstallWimImages {
     try {
         $installWimPath = Assert-FileExists -FilePath $installWimPath -ErrorMessage "No install.wim found at: $installWimPath"
     } catch {
-        Write-ColorOutput "No install.wim found at: $installWimPath" -Color "Yellow" -Indent 1
+        Write-ColorOutput "No install.wim found at: $installWimPath" -Color "Yellow" -Indent ($Indent + 1)
         return
     }
     
-    Write-ColorOutput "Filtering install.wim images..." -Color "Yellow" -Indent 1
+    Write-ColorOutput "Filtering install.wim images..." -Color "Yellow" -Indent ($Indent + 1)
     
     # Get current WIM information
     $dismPath = Get-DismPath
-    $wimInfo = Get-WimImageInfo -WimPath $installWimPath -DismPath $dismPath -Indent 1
+    $wimInfo = Get-WimImageInfo -WimPath $installWimPath -DismPath $dismPath -Indent ($Indent + 1)
     
     # Validate WIM has images
     $wimInfo = Assert-ArrayNotEmpty -VariableName "wimInfo" -Value $wimInfo -ErrorMessage "No images found in install.wim"
@@ -363,10 +367,10 @@ function Filter-InstallWimImages {
         
         if ($shouldKeep) {
             $imagesToKeep += $image
-            Write-ColorOutput "Keeping: $imageName" -Color "Green" -Indent 2
+            Write-ColorOutput "Keeping: $imageName" -Color "Green" -Indent ($Indent + 2)
         } else {
             $imagesToRemove += $image
-            Write-ColorOutput "Removing: $imageName" -Color "Yellow" -Indent 2
+            Write-ColorOutput "Removing: $imageName" -Color "Yellow" -Indent ($Indent + 2)
         }
     }
     
@@ -374,11 +378,11 @@ function Filter-InstallWimImages {
     $imagesToKeep = Assert-ArrayNotEmpty -VariableName "imagesToKeep" -Value $imagesToKeep -ErrorMessage "No install.wim images would be kept after filtering. Cannot create ISO with no install images."
     
     if ($imagesToRemove.Count -eq 0) {
-        Write-ColorOutput "No images to remove" -Color "Green" -Indent 1
+        Write-ColorOutput "No images to remove" -Color "Green" -Indent ($Indent + 1)
         return
     }
     
-    Write-ColorOutput "Removing $($imagesToRemove.Count) image(s) from install.wim..." -Color "Yellow" -Indent 1
+    Write-ColorOutput "Removing $($imagesToRemove.Count) image(s) from install.wim..." -Color "Yellow" -Indent ($Indent + 1)
     
     # Create a new install.wim with only the images we want to keep
     $tempWimPath = Join-Path (Split-Path $installWimPath -Parent) "install_temp.wim"
@@ -392,7 +396,7 @@ function Filter-InstallWimImages {
             $sourceIndex = Assert-PositiveNumber -VariableName "imageToKeep.Index" -Value ([int]$imageToKeep.Index) -ErrorMessage "Image index must be a positive number"
             $imageName = Assert-NotEmpty -VariableName "imageToKeep.Name" -Value $imageToKeep.Name -ErrorMessage "Image name cannot be empty"
             
-            Write-ColorOutput "Adding image $($newIndex): $imageName" -Color "Cyan" -Indent 2
+            Write-ColorOutput "Adding image $($newIndex): $imageName" -Color "Cyan" -Indent ($Indent + 2)
             $dismCommand = @(
                 $dismPath,
                 "/Export-Image",
@@ -420,11 +424,11 @@ function Filter-InstallWimImages {
                 $dismArgs += "/Compress:maximum"
             }
             
-            Write-ColorOutput "DISM Command: $dismPath $($dismArgs -join ' ')" -Color "Gray" -Indent 3
+            Write-ColorOutput "DISM Command: $dismPath $($dismArgs -join ' ')" -Color "Gray" -Indent ($Indent + 3)
             
             # Execute DISM command
             try {
-                Invoke-CommandWithExitCode -Command $dismPath -Arguments $dismArgs -Description "Export image '$imageName' (index $sourceIndex)" -SuppressOutput -Indent 1
+                Invoke-CommandWithExitCode -Command $dismPath -Arguments $dismArgs -Description "Export image '$imageName' (index $sourceIndex)" -SuppressOutput -Indent ($Indent + 1)
             } catch {
                 $errorDetails = $_
                 if (Test-Path "C:\WINDOWS\Logs\DISM\dism.log") {
@@ -443,8 +447,8 @@ function Filter-InstallWimImages {
         Remove-Item $installWimPath -Force
         Move-Item $tempWimPath $installWimPath
         
-        Write-ColorOutput "Successfully filtered install.wim" -Color "Green" -Indent 1
-        Write-ColorOutput "Kept $($imagesToKeep.Count) image(s), removed $($imagesToRemove.Count) image(s)" -Color "Green" -Indent 2
+        Write-ColorOutput "Successfully filtered install.wim" -Color "Green" -Indent ($Indent + 1)
+        Write-ColorOutput "Kept $($imagesToKeep.Count) image(s), removed $($imagesToRemove.Count) image(s)" -Color "Green" -Indent ($Indent + 2)
         
     } catch {
         

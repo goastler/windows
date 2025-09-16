@@ -17,7 +17,11 @@ function Get-VirtioDownloadUrl {
         [Parameter(Mandatory = $true)]
         [ValidateNotNullOrEmpty()]
         [ValidateSet("stable", "latest")]
-        [string]$Version
+        [string]$Version,
+        
+        [Parameter(Mandatory = $false)]
+        [ValidateRange(0, 40)]
+        [int]$Indent = 0
     )
     
     $urls = @{
@@ -55,7 +59,11 @@ function Extract-VirtioDrivers {
                 throw "Extract path is not a valid path format: $_"
             }
         })]
-        [string]$ExtractPath
+        [string]$ExtractPath,
+        
+        [Parameter(Mandatory = $false)]
+        [ValidateRange(0, 40)]
+        [int]$Indent = 0
     )
     
     Write-Host ""
@@ -71,12 +79,12 @@ function Extract-VirtioDrivers {
     $cachedIsoPath = Join-Path $cacheDir "$Version.iso"
     
     if (Test-Path $cachedIsoPath) {
-        Write-ColorOutput "Using cached VirtIO drivers ($Version) from: $cachedIsoPath" -Color "Green" -Indent 1
+        Write-ColorOutput "Using cached VirtIO drivers ($Version) from: $cachedIsoPath" -Color "Green" -Indent ($Indent + 1)
     } else {
         $downloadUrl = Get-VirtioDownloadUrl -Version $Version
         $downloadUrl = Assert-NotEmpty -VariableName "downloadUrl" -Value $downloadUrl -ErrorMessage "Failed to get download URL for version: $Version"
         
-        Write-ColorOutput "Downloading VirtIO drivers ($Version)..." -Color "Yellow" -Indent 1
+        Write-ColorOutput "Downloading VirtIO drivers ($Version)..." -Color "Yellow" -Indent ($Indent + 1)
         Invoke-WebRequestWithCleanup -Uri $downloadUrl -OutFile $cachedIsoPath -Description "VirtIO drivers ($Version)" -ProgressId 3
         
         # Verify the downloaded file exists and has content
@@ -89,8 +97,8 @@ function Extract-VirtioDrivers {
             throw "Downloaded VirtIO ISO file is empty: $cachedIsoPath"
         }
         
-        Write-ColorOutput "VirtIO drivers downloaded and cached" -Color "Green" -Indent 1
-        Write-ColorOutput "File size: $([math]::Round($fileSize / 1MB, 2)) MB" -Color "Cyan" -Indent 2
+        Write-ColorOutput "VirtIO drivers downloaded and cached" -Color "Green" -Indent ($Indent + 1)
+        Write-ColorOutput "File size: $([math]::Round($fileSize / 1MB, 2)) MB" -Color "Cyan" -Indent ($Indent + 2)
     }
     
     # Copy cached ISO to working directory for extraction
@@ -110,7 +118,7 @@ function Extract-VirtioDrivers {
         
         try {
             # Mount the VirtIO ISO
-            Write-ColorOutput "Mounting VirtIO ISO..." -Color "Yellow" -Indent 1
+            Write-ColorOutput "Mounting VirtIO ISO..." -Color "Yellow" -Indent ($Indent + 1)
             Mount-DiskImage -ImagePath $tempIsoPath -ErrorAction Stop | Out-Null
             $mountResult = Get-DiskImage -ImagePath $tempIsoPath -ErrorAction Stop
             $mounted = $true
@@ -129,11 +137,11 @@ function Extract-VirtioDrivers {
             
             $mountedPath = "${driveLetter}:\"
             $mountedPath = Assert-ValidPath -VariableName "mountedPath" -Path $mountedPath -ErrorMessage "Generated mounted path is invalid: $mountedPath"
-            Write-ColorOutput "VirtIO ISO mounted at: $mountedPath" -Color "Green" -Indent 1
+            Write-ColorOutput "VirtIO ISO mounted at: $mountedPath" -Color "Green" -Indent ($Indent + 1)
             
             # Copy VirtIO drivers from mounted ISO to extract directory
             try {
-                Write-ColorOutput "Copying VirtIO drivers to: $virtioDir" -Color "Yellow" -Indent 1
+                Write-ColorOutput "Copying VirtIO drivers to: $virtioDir" -Color "Yellow" -Indent ($Indent + 1)
                 # Use robocopy for better performance and error handling
                 $robocopyArgs = @($mountedPath, $virtioDir, "/E", "/R:3", "/W:1", "/NFL", "/NDL", "/NJH", "/NJS", "/nc", "/ns", "/np")
                 $robocopyResult = & robocopy @robocopyArgs
@@ -144,18 +152,18 @@ function Extract-VirtioDrivers {
                     throw "Robocopy failed with exit code: $robocopyExitCode"
                 }
                 
-                Write-ColorOutput "VirtIO drivers extracted" -Color "Green" -Indent 1
+                Write-ColorOutput "VirtIO drivers extracted" -Color "Green" -Indent ($Indent + 1)
             } catch {
                 throw "Failed to copy VirtIO drivers: $($_.Exception.Message)"
             } finally {
                 # Always try to dismount the ISO
                 if ($mounted) {
                     try {
-                        Write-ColorOutput "Dismounting VirtIO ISO..." -Color "Yellow" -Indent 1
+                        Write-ColorOutput "Dismounting VirtIO ISO..." -Color "Yellow" -Indent ($Indent + 1)
                         Dismount-DiskImage -ImagePath $tempIsoPath -ErrorAction Stop | Out-Null
-                        Write-ColorOutput "VirtIO ISO dismounted" -Color "Green" -Indent 1
+                        Write-ColorOutput "VirtIO ISO dismounted" -Color "Green" -Indent ($Indent + 1)
                     } catch {
-                        Write-ColorOutput "Warning: Failed to dismount VirtIO ISO: $($_.Exception.Message)" -Color "Yellow" -Indent 1
+                        Write-ColorOutput "Warning: Failed to dismount VirtIO ISO: $($_.Exception.Message)" -Color "Yellow" -Indent ($Indent + 1)
                     }
                 }
             }
@@ -164,7 +172,7 @@ function Extract-VirtioDrivers {
             # Cleanup on error
             if ($mounted) {
                 try {
-                    Write-ColorOutput "Cleaning up failed mount..." -Color "Yellow" -Indent 1
+                    Write-ColorOutput "Cleaning up failed mount..." -Color "Yellow" -Indent ($Indent + 1)
                     Dismount-DiskImage -ImagePath $tempIsoPath -ErrorAction SilentlyContinue | Out-Null
                 } catch {
                     # Ignore cleanup errors
@@ -204,7 +212,11 @@ function Get-WindowsVersion {
         [hashtable]$WimInfo,
         
         [Parameter(Mandatory = $false)]
-        [array]$AllWimInfo = @()
+        [array]$AllWimInfo = @(),
+        
+        [Parameter(Mandatory = $false)]
+        [ValidateRange(0, 40)]
+        [int]$Indent = 0
     )
     
     # For boot.wim files, determine version from the first install.wim image
@@ -215,8 +227,8 @@ function Get-WindowsVersion {
         $firstInstallImage = Assert-Defined -VariableName "firstInstallImage" -Value $firstInstallImage -ErrorMessage "Cannot determine Windows version for boot.wim: No install.wim images found to reference"
         
         # Get the Windows version from the first install image
-        $installVersion = Get-WindowsVersion -WimInfo $firstInstallImage -AllWimInfo $AllWimInfo
-        Write-ColorOutput "Boot.wim using Windows version from first install image: $installVersion" -Color "Cyan" -Indent ($Indent + 2)
+        $installVersion = Get-WindowsVersion -WimInfo $firstInstallImage -AllWimInfo $AllWimInfo -Indent $Indent
+        Write-ColorOutput "Boot.wim using Windows version from first install image: $installVersion" -Color "Cyan" -Indent ($Indent + 1)
         return $installVersion
     }
     
@@ -245,7 +257,11 @@ function Get-VirtioArchitecture {
     param(
         [Parameter(Mandatory = $true)]
         [ValidateNotNullOrEmpty()]
-        [string]$WindowsArchitecture
+        [string]$WindowsArchitecture,
+        
+        [Parameter(Mandatory = $false)]
+        [ValidateRange(0, 40)]
+        [int]$Indent = 0
     )
     
     # Map Windows architecture names to VirtIO architecture names
@@ -274,7 +290,11 @@ function Get-VirtioDriverVersion {
     param(
         [Parameter(Mandatory = $true)]
         [ValidateNotNullOrEmpty()]
-        [string]$WindowsVersion
+        [string]$WindowsVersion,
+        
+        [Parameter(Mandatory = $false)]
+        [ValidateRange(0, 40)]
+        [int]$Indent = 0
     )
     
     # Map Windows version to VirtIO driver directory format
@@ -333,10 +353,10 @@ function Add-VirtioDriversToWim {
     $imageName = Assert-NotEmpty -VariableName "WimInfo.Name" -Value $WimInfo.Name -ErrorMessage "WIM image name is not defined"
     
     # Map Windows architecture to VirtIO architecture
-    $arch = Get-VirtioArchitecture -WindowsArchitecture $windowsArch
+    $arch = Get-VirtioArchitecture -WindowsArchitecture $windowsArch -Indent $Indent
     
-    $windowsVersion = Get-WindowsVersion -WimInfo $WimInfo -AllWimInfo $AllWimInfo
-    $version = Get-VirtioDriverVersion -WindowsVersion $windowsVersion
+    $windowsVersion = Get-WindowsVersion -WimInfo $WimInfo -AllWimInfo $AllWimInfo -Indent $Indent
+    $version = Get-VirtioDriverVersion -WindowsVersion $windowsVersion -Indent $Indent
     
     Write-ColorOutput "Processing $wimType image: $imageName" -Color "Yellow" -Indent ($Indent + 1)
     
@@ -417,7 +437,7 @@ function Add-VirtioDrivers {
         Write-ColorOutput "Processing all WIM images ($($WimInfos.Count) total)" -Color "Green" -Indent ($Indent + 1)
         
         # Download and extract VirtIO drivers
-        $virtioDir = Extract-VirtioDrivers -Version $VirtioVersion -ExtractPath $ExtractPath
+        $virtioDir = Extract-VirtioDrivers -Version $VirtioVersion -ExtractPath $ExtractPath -Indent ($Indent + 1)
         
         Write-ColorOutput "VirtIO drivers extracted to: $virtioDir" -Color "Green" -Indent ($Indent + 1)         
         # Process each WIM image individually
