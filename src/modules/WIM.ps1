@@ -11,24 +11,49 @@ $toolsPath = Join-Path $PSScriptRoot "tools"
 function Get-WimImageDetails {
     param(
         [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
+        [ValidateScript({
+            if (-not (Test-Path $_ -PathType Leaf)) {
+                throw "WIM file does not exist: $_"
+            }
+            $true
+        })]
         [string]$WimPath,
+        
         [Parameter(Mandatory = $true)]
+        [ValidateScript({
+            if ($_ -le 0) {
+                throw "ImageIndex must be a positive number"
+            }
+            $true
+        })]
         [int]$ImageIndex,
+        
         [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
+        [ValidateScript({
+            if (-not (Test-Path $_ -PathType Leaf)) {
+                throw "DISM executable does not exist: $_"
+            }
+            $true
+        })]
         [string]$DismPath,
+        
         [Parameter(Mandatory = $false)]
         [bool]$ShowDebugOutput = $true,
+        
         [Parameter(Mandatory = $false)]
+        [ValidateRange(0, 20)]
         [int]$InheritedIndent = 0
     )
     
     # Get detailed image information using DISM /Get-WimInfo with specific index
-    & $DismPath /Get-WimInfo /WimFile:$WimPath /Index:$ImageIndex > temp_image_details.txt 2>&1
-    
-    if ($LASTEXITCODE -ne 0) {
+    try {
+        Invoke-CommandWithExitCode -Command $DismPath -Arguments @("/Get-WimInfo", "/WimFile:$WimPath", "/Index:$ImageIndex") -Description "Get detailed WIM image information for index $ImageIndex" -OutputFile "temp_image_details.txt"
+    } catch {
         $errorOutput = Get-Content "temp_image_details.txt" -ErrorAction SilentlyContinue
         Remove-Item "temp_image_details.txt" -ErrorAction SilentlyContinue
-        throw "DISM failed with exit code $LASTEXITCODE for image index $ImageIndex. Error output: $($errorOutput -join ' ')"
+        throw "DISM failed for image index $ImageIndex. Error output: $($errorOutput -join ' ') $_"
     }
     
     $imageDetails = Get-Content "temp_image_details.txt" -ErrorAction SilentlyContinue
@@ -57,8 +82,9 @@ function Get-WimImageDetails {
     $parsedData = @{}
     foreach ($line in $imageDetails) {
         if ($line -match "^\s*(\w+)\s*:\s*(.+)$") {
-            $key = $matches[1].Trim()
-            $value = $matches[2].Trim()
+            $matches = Assert-Defined -VariableName "matches" -Value $matches -ErrorMessage "Regex match failed unexpectedly"
+            $key = Assert-NotEmpty -VariableName "matches[1]" -Value $matches[1].Trim() -ErrorMessage "Regex match group 1 is empty"
+            $value = Assert-NotEmpty -VariableName "matches[2]" -Value $matches[2].Trim() -ErrorMessage "Regex match group 2 is empty"
             $parsedData[$key] = $value
         }
     }
@@ -73,12 +99,10 @@ function Get-WimImageInfo {
     param(
         [Parameter(Mandatory = $true)]
         [ValidateNotNullOrEmpty()]
+        [ValidatePattern('\.wim$')]
         [ValidateScript({
             if (-not (Test-Path $_ -PathType Leaf)) {
                 throw "WIM file does not exist: $_"
-            }
-            if ($_ -notmatch '\.wim$') {
-                throw "File must have .wim extension: $_"
             }
             $true
         })]
@@ -100,17 +124,15 @@ function Get-WimImageInfo {
     )
     
     try {
+        
         Write-ColorOutput "Getting WIM image information from: $WimPath" -Color "Yellow" -Indent 0 -InheritedIndent $InheritedIndent
         
         # Use DISM to get image information for all images
-        & $dismPath /Get-WimInfo /WimFile:$WimPath > temp_wim_info.txt 2>&1
-        
-        if ($LASTEXITCODE -ne 0) {
-            throw "Failed to get WIM image information. DISM exit code: $LASTEXITCODE"
-        }
+        Invoke-CommandWithExitCode -Command $dismPath -Arguments @("/Get-WimInfo", "/WimFile:$WimPath") -Description "Get WIM image information" -OutputFile "temp_wim_info.txt"
         
         # Parse the output to extract image information
         $wimInfo = Get-Content "temp_wim_info.txt" -ErrorAction SilentlyContinue
+        $wimInfo = Assert-Defined -VariableName "wimInfo" -Value $wimInfo -ErrorMessage "Failed to read DISM output from temp_wim_info.txt"
         
         # Check if DISM output is empty or contains only whitespace
         if (-not $wimInfo -or ($wimInfo | Where-Object { $_.Trim() -ne "" }).Count -eq 0) {
@@ -141,12 +163,15 @@ function Get-WimImageInfo {
                 if ($currentImage) {
                     $images += $currentImage
                 }
+                $matches = Assert-Defined -VariableName "matches" -Value $matches -ErrorMessage "Index regex match failed unexpectedly"
+                $indexValue = Assert-NotEmpty -VariableName "matches[1]" -Value $matches[1] -ErrorMessage "Index regex match group 1 is empty"
                 $currentImage = @{
-                    Index = [int]$matches[1]
+                    Index = [int]$indexValue
                 }
             } elseif ($currentImage -and $line -match "^\s*(\w+(?:\s+\w+)*)\s*:\s*(.+)") {
-                $fieldName = $matches[1].Trim()
-                $fieldValue = $matches[2].Trim()
+                $matches = Assert-Defined -VariableName "matches" -Value $matches -ErrorMessage "Field regex match failed unexpectedly"
+                $fieldName = Assert-NotEmpty -VariableName "matches[1]" -Value $matches[1].Trim() -ErrorMessage "Field name regex match group 1 is empty"
+                $fieldValue = Assert-NotEmpty -VariableName "matches[2]" -Value $matches[2].Trim() -ErrorMessage "Field value regex match group 2 is empty"
                 
                 # Store field directly with original DISM name
                 $currentImage[$fieldName] = $fieldValue
@@ -166,9 +191,12 @@ function Get-WimImageInfo {
                 $detailedInfo = Get-WimImageDetails -WimPath $WimPath -ImageIndex $basicImage.Index -DismPath $DismPath -ShowDebugOutput $true -InheritedIndent $InheritedIndent
                 
                 # Start with all detailed DISM fields from the image
+                $detailedInfo = Assert-Defined -VariableName "detailedInfo" -Value $detailedInfo -ErrorMessage "Failed to get detailed image information"
+                $detailedInfo.ParsedData = Assert-Defined -VariableName "detailedInfo.ParsedData" -Value $detailedInfo.ParsedData -ErrorMessage "Parsed data is not available from detailed image information"
                 $detailedImage = $detailedInfo.ParsedData.Clone()
                 
                 # Ensure Index is preserved
+                $basicImage.Index = Assert-PositiveNumber -VariableName "basicImage.Index" -Value $basicImage.Index -ErrorMessage "Basic image index must be a positive number"
                 $detailedImage.Index = $basicImage.Index
                 
                 $detailedImages += $detailedImage
@@ -217,6 +245,12 @@ function Get-AllWimInfo {
         
         if ($bootWimInfo) {
             foreach ($image in $bootWimInfo) {
+                # Validate image properties before using them
+                $image = Assert-Defined -VariableName "image" -Value $image -ErrorMessage "Boot WIM image is null"
+                $imageName = Assert-NotEmpty -VariableName "image.Name" -Value $image.Name -ErrorMessage "Boot WIM image name is not defined"
+                $imageArch = Assert-NotEmpty -VariableName "image.Architecture" -Value $image.Architecture -ErrorMessage "Boot WIM image architecture is not defined"
+                $imageVersion = Assert-NotEmpty -VariableName "image.Version" -Value $image.Version -ErrorMessage "Boot WIM image version is not defined"
+                
                 # Start with all detailed DISM fields from the image
                 $wimInfo = $image.Clone()
                 
@@ -225,7 +259,7 @@ function Get-AllWimInfo {
                 $wimInfo.Type = "boot"
                 
                 $wims += $wimInfo
-                Write-ColorOutput "Found boot image: $($image.Name) (Arch: $($image.Architecture), Version: $($image.Version))" -Color "Green" -Indent 2 -InheritedIndent $InheritedIndent
+                Write-ColorOutput "Found boot image: $imageName (Arch: $imageArch, Version: $imageVersion)" -Color "Green" -Indent 2 -InheritedIndent $InheritedIndent
             }
         }
     }
@@ -237,6 +271,12 @@ function Get-AllWimInfo {
         
         if ($installWimInfo) {
             foreach ($image in $installWimInfo) {
+                # Validate image properties before using them
+                $image = Assert-Defined -VariableName "image" -Value $image -ErrorMessage "Install WIM image is null"
+                $imageName = Assert-NotEmpty -VariableName "image.Name" -Value $image.Name -ErrorMessage "Install WIM image name is not defined"
+                $imageArch = Assert-NotEmpty -VariableName "image.Architecture" -Value $image.Architecture -ErrorMessage "Install WIM image architecture is not defined"
+                $imageVersion = Assert-NotEmpty -VariableName "image.Version" -Value $image.Version -ErrorMessage "Install WIM image version is not defined"
+                
                 # Start with all detailed DISM fields from the image
                 $wimInfo = $image.Clone()
                 
@@ -245,15 +285,13 @@ function Get-AllWimInfo {
                 $wimInfo.Type = "install"
                 
                 $wims += $wimInfo
-                Write-ColorOutput "Found install image: $($image.Name) (Arch: $($image.Architecture), Version: $($image.Version))" -Color "Green" -Indent 2 -InheritedIndent $InheritedIndent
+                Write-ColorOutput "Found install image: $imageName (Arch: $imageArch, Version: $imageVersion)" -Color "Green" -Indent 2 -InheritedIndent $InheritedIndent
             }
         }
     }
     
     Write-Host ""
-    if ($wims.Count -eq 0) {
-        throw "No WIM files found in the ISO"
-    }
+    $wims = Assert-ArrayNotEmpty -VariableName "wims" -Value $wims -ErrorMessage "No WIM files found in the ISO"
     
     Write-ColorOutput "Found $($wims.Count) WIM image(s) total" -Color "Green" -Indent 0 -InheritedIndent $InheritedIndent
     return $wims
@@ -262,6 +300,12 @@ function Get-AllWimInfo {
 function Filter-InstallWimImages {
     param(
         [Parameter(Mandatory = $true)]
+        [ValidateScript({
+            if (-not (Test-Path $_ -PathType Container)) {
+                throw "Extract path does not exist: $_"
+            }
+            $true
+        })]
         [string]$ExtractPath,
         [Parameter(Mandatory = $false)]
         [string[]]$IncludeTargets = $null,
@@ -271,7 +315,10 @@ function Filter-InstallWimImages {
     
     $installWimPath = Join-Path $ExtractPath "sources\install.wim"
     
-    if (-not (Test-Path $installWimPath)) {
+    # Validate install.wim exists
+    try {
+        $installWimPath = Assert-FileExists -FilePath $installWimPath -ErrorMessage "No install.wim found at: $installWimPath"
+    } catch {
         Write-ColorOutput "No install.wim found at: $installWimPath" -Color "Yellow" -Indent 1
         return
     }
@@ -282,7 +329,10 @@ function Filter-InstallWimImages {
     $dismPath = Get-DismPath
     $wimInfo = Get-WimImageInfo -WimPath $installWimPath -DismPath $dismPath -InheritedIndent 1
     
-    if (-not $wimInfo -or $wimInfo.Count -eq 0) {
+    # Validate WIM has images
+    try {
+        $wimInfo = Assert-ArrayNotEmpty -VariableName "wimInfo" -Value $wimInfo -ErrorMessage "No images found in install.wim"
+    } catch {
         Write-ColorOutput "No images found in install.wim" -Color "Yellow" -Indent 1
         return
     }
@@ -292,7 +342,9 @@ function Filter-InstallWimImages {
     $imagesToRemove = @()
     
     foreach ($image in $wimInfo) {
-        $imageName = $image.Name
+        # Validate image properties before using them
+        $image = Assert-Defined -VariableName "image" -Value $image -ErrorMessage "WIM image is null"
+        $imageName = Assert-NotEmpty -VariableName "image.Name" -Value $image.Name -ErrorMessage "WIM image name is not defined"
         $shouldKeep = $true
         
         # Check include targets
@@ -328,9 +380,8 @@ function Filter-InstallWimImages {
         }
     }
     
-    if ($imagesToKeep.Count -eq 0) {
-        throw "No install.wim images would be kept after filtering. Cannot create ISO with no install images."
-    }
+    # Validate filtering results
+    $imagesToKeep = Assert-ArrayNotEmpty -VariableName "imagesToKeep" -Value $imagesToKeep -ErrorMessage "No install.wim images would be kept after filtering. Cannot create ISO with no install images."
     
     if ($imagesToRemove.Count -eq 0) {
         Write-ColorOutput "No images to remove" -Color "Green" -Indent 1
@@ -347,11 +398,11 @@ function Filter-InstallWimImages {
         # Create new WIM with only the images we want to keep
         $newIndex = 1
         foreach ($imageToKeep in $imagesToKeep) {
-            Write-ColorOutput "Adding image $($newIndex): $($imageToKeep.Name)" -Color "Cyan" -Indent 2
+            # Validate image data
+            $sourceIndex = Assert-PositiveNumber -VariableName "imageToKeep.Index" -Value $imageToKeep.Index -ErrorMessage "Image index must be a positive number"
+            $imageName = Assert-NotEmpty -VariableName "imageToKeep.Name" -Value $imageToKeep.Name -ErrorMessage "Image name cannot be empty"
             
-            # Build DISM command with proper quoting for image names that might contain spaces
-            $sourceIndex = $imageToKeep.Index
-            $imageName = $imageToKeep.Name
+            Write-ColorOutput "Adding image $($newIndex): $imageName" -Color "Cyan" -Indent 2
             $dismCommand = @(
                 $dismPath,
                 "/Export-Image",
@@ -366,13 +417,26 @@ function Filter-InstallWimImages {
                 $dismCommand += "/Compress:maximum"
             }
             
-            Write-ColorOutput "DISM Command: $($dismCommand -join ' ')" -Color "Gray" -Indent 3
+            # Build DISM arguments
+            $dismArgs = @(
+                "/Export-Image",
+                "/SourceImageFile:`"$installWimPath`"",
+                "/SourceIndex:$sourceIndex",
+                "/DestinationImageFile:`"$tempWimPath`"",
+                "/DestinationName:`"$imageName`""
+            )
+            
+            if ($newIndex -gt 1) {
+                $dismArgs += "/Compress:maximum"
+            }
+            
+            Write-ColorOutput "DISM Command: $dismPath $($dismArgs -join ' ')" -Color "Gray" -Indent 3
             
             # Execute DISM command
-            & $dismPath /Export-Image /SourceImageFile:"$installWimPath" /SourceIndex:$sourceIndex /DestinationImageFile:"$tempWimPath" /DestinationName:"$imageName" @(if ($newIndex -gt 1) { "/Compress:maximum" })
-            
-            if ($LASTEXITCODE -ne 0) {
-                $errorDetails = "DISM exit code: $LASTEXITCODE"
+            try {
+                Invoke-CommandWithExitCode -Command $dismPath -Arguments $dismArgs -Description "Export image '$imageName' (index $sourceIndex)" -SuppressOutput
+            } catch {
+                $errorDetails = $_
                 if (Test-Path "C:\WINDOWS\Logs\DISM\dism.log") {
                     $logContent = Get-Content "C:\WINDOWS\Logs\DISM\dism.log" -Tail 10 -ErrorAction SilentlyContinue
                     if ($logContent) {

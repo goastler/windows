@@ -6,20 +6,42 @@ $commonPath = Join-Path $PSScriptRoot "Common.ps1"
 
 function Extract-IsoContents {
     param(
+        [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
+        [ValidateScript({
+            if (-not (Test-Path $_ -PathType Leaf)) {
+                throw "ISO file does not exist: $_"
+            }
+            $true
+        })]
         [string]$IsoPath,
+        
+        [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
+        [ValidateScript({
+            try {
+                $resolvedPath = Resolve-Path $_ -ErrorAction Stop
+                $true
+            } catch {
+                throw "Extract path is invalid: $_"
+            }
+        })]
         [string]$ExtractPath
     )
     
     Write-ColorOutput "Mounting ISO: $IsoPath" -Color "Yellow"
     
     $mountResult = Mount-DiskImage -ImagePath $IsoPath -PassThru
-    $driveLetter = ($mountResult | Get-Volume).DriveLetter
+    $mountResult = Assert-Defined -VariableName "mountResult" -Value $mountResult -ErrorMessage "Failed to mount ISO"
     
-    if (-not $driveLetter) {
-        throw "Failed to mount ISO or get drive letter"
-    }
+    $volume = $mountResult | Get-Volume
+    $volume = Assert-Defined -VariableName "volume" -Value $volume -ErrorMessage "Failed to get volume information from mounted ISO"
+    
+    $driveLetter = $volume.DriveLetter
+    $driveLetter = Assert-NotEmpty -VariableName "driveLetter" -Value $driveLetter -ErrorMessage "Failed to get drive letter from mounted ISO"
     
     $mountedPath = "${driveLetter}:\"
+    $mountedPath = Assert-ValidPath -VariableName "mountedPath" -Path $mountedPath -ErrorMessage "Generated mounted path is invalid: $mountedPath"
     Write-ColorOutput "ISO mounted at: $mountedPath" -Color "Green" -Indent 1
     
     Write-Host ""
@@ -48,9 +70,27 @@ function Extract-IsoContents {
 
 function Add-AutounattendXml {
     param(
+        [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
+        [ValidateScript({
+            if (-not (Test-Path $_ -PathType Container)) {
+                throw "Extract path does not exist: $_"
+            }
+            $true
+        })]
         [string]$ExtractPath,
+        
+        [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
+        [ValidateScript({
+            if (-not (Test-Path $_ -PathType Leaf)) {
+                throw "Autounattend.xml file does not exist: $_"
+            }
+            $true
+        })]
         [string]$AutounattendXmlPath
     )
+    
     Write-ColorOutput "Adding autounattend.xml to ISO contents..." -Color "Yellow"
     $destinationPath = Join-Path $ExtractPath "autounattend.xml"
     Copy-Item $AutounattendXmlPath $destinationPath -Force
@@ -59,15 +99,28 @@ function Add-AutounattendXml {
 
 function Add-OemDirectory {
     param(
+        [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
+        [ValidateScript({
+            if (-not (Test-Path $_ -PathType Container)) {
+                throw "Extract path does not exist: $_"
+            }
+            $true
+        })]
         [string]$ExtractPath,
+        
+        [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
+        [ValidateScript({
+            if (-not (Test-Path $_ -PathType Container)) {
+                throw "$OEM$ directory not found at: $_"
+            }
+            $true
+        })]
         [string]$OemSourcePath
     )
-    Write-ColorOutput "Adding $OEM$ directory to ISO contents..." -Color "Yellow"
     
-    if (-not (Test-Path $OemSourcePath -PathType Container)) {
-        Write-ColorOutput "Warning: $OEM$ directory not found at: $OemSourcePath" -Color "Yellow" -Indent 1
-        return
-    }
+    Write-ColorOutput "Adding $OEM$ directory to ISO contents..." -Color "Yellow"
     
     $destinationPath = Join-Path $ExtractPath '$OEM$'
     
@@ -83,19 +136,56 @@ function Add-OemDirectory {
 
 function New-IsoFromDirectory {
     param(
+        [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
+        [ValidateScript({
+            if (-not (Test-Path $_ -PathType Container)) {
+                throw "Source directory does not exist: $_"
+            }
+            $true
+        })]
         [string]$SourcePath,
+        
+        [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
+        [ValidateScript({
+            try {
+                $resolvedPath = Resolve-Path $_ -ErrorAction Stop
+                $true
+            } catch {
+                throw "Output path is invalid: $_"
+            }
+        })]
         [string]$OutputPath,
+        
+        [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
+        [ValidateScript({
+            if (-not (Test-Path $_ -PathType Leaf)) {
+                throw "OSCDIMG executable does not exist: $_"
+            }
+            $true
+        })]
         [string]$OscdimgPath
     )
+    
     Write-ColorOutput "Creating new ISO from directory: $SourcePath" -Color "Yellow"
 
     # Resolve absolute paths
     $absSrc    = (Resolve-Path $SourcePath).ProviderPath
+    $absSrc = Assert-ValidPath -VariableName "absSrc" -Path $absSrc -ErrorMessage "Failed to resolve source path: $SourcePath"
+    
     $absOutDir = (Resolve-Path (Split-Path $OutputPath -Parent)).ProviderPath
+    $absOutDir = Assert-ValidPath -VariableName "absOutDir" -Path $absOutDir -ErrorMessage "Failed to resolve output directory path: $OutputPath"
+    
     $absOutIso = Join-Path $absOutDir (Split-Path $OutputPath -Leaf)
+    $absOutIso = Assert-ValidPath -VariableName "absOutIso" -Path $absOutIso -ErrorMessage "Generated output ISO path is invalid: $absOutIso"
 
     $etfsbootPath  = "$absSrc\boot\etfsboot.com"
+    $etfsbootPath = Assert-ValidPath -VariableName "etfsbootPath" -Path $etfsbootPath -ErrorMessage "Generated etfsboot path is invalid: $etfsbootPath"
+    
     $efisysPath    = "$absSrc\efi\microsoft\boot\efisys.bin"
+    $efisysPath = Assert-ValidPath -VariableName "efisysPath" -Path $efisysPath -ErrorMessage "Generated efisys path is invalid: $efisysPath"
 
     Write-ColorOutput "Using source directly: $absSrc" -Color "Cyan" -Indent 1 
     $arguments = @(
@@ -110,8 +200,7 @@ function New-IsoFromDirectory {
     Write-ColorOutput "Current working directory: $(Get-Location)" -Color "Cyan" -Indent 1
     Write-ColorOutput "Running oscdimg with arguments: $($arguments -join ' ')" -Color "Cyan" -Indent 1
     Write-ColorOutput "Full command: & `"$OscdimgPath`" $($arguments -join ' ')" -Color "Cyan" -Indent 1     
-    & $OscdimgPath $arguments
-    if ($LASTEXITCODE -ne 0) { throw "oscdimg failed with exit code: $LASTEXITCODE" }
+    Invoke-CommandWithExitCode -Command $OscdimgPath -Arguments $arguments -Description "Create ISO with oscdimg" -WorkingDirectory (Get-Location)
 
     Write-ColorOutput "ISO created successfully: $absOutIso" -Color "Green" -Indent 1
 }
