@@ -125,7 +125,7 @@ function Get-WimImageInfo {
     )
     
     try {
-        Write-ColorOutput "Getting WIM image information from: $WimPath" -Color "Yellow" -Indent ($Indent + 1)
+        Write-ColorOutput "Getting WIM image information from: $WimPath" -Color "Yellow" -Indent $Indent
         
         # Use DISM to get image information for all images
         Invoke-CommandWithExitCode -Command $dismPath -Arguments @("/Get-WimInfo", "/WimFile:$WimPath") -Description "Get WIM image information" -OutputFile "temp_wim_info.txt" -Indent ($Indent + 1)
@@ -229,7 +229,7 @@ function Get-AllWimInfo {
         [int]$Indent = 0
     )
     
-    Write-ColorOutput "=== Analyzing All WIM Files ===" -Color "Cyan" -Indent ($Indent + 1)
+    Write-ColorOutput "=== Analyzing All WIM Files ===" -Color "Cyan" -Indent $Indent
     
     Write-Host ""
     $wims = @()
@@ -424,7 +424,7 @@ function Filter-InstallWimImages {
                 $dismArgs += "/Compress:maximum"
             }
             
-            Write-ColorOutput "DISM Command: $dismPath $($dismArgs -join ' ')" -Color "Gray" -Indent ($Indent + 3)
+            Write-ColorOutput "DISM Command: $dismPath $($dismArgs -join ' ')" -Color "Gray" -Indent ($Indent + 2)
             
             # Execute DISM command
             try {

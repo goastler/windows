@@ -67,7 +67,7 @@ function Extract-VirtioDrivers {
     )
     
     Write-Host ""
-    Write-ColorOutput "=== VirtIO Drivers Download and Extract ===" -Color "Cyan" -Indent ($Indent + 1)
+    Write-ColorOutput "=== VirtIO Drivers Download and Extract ===" -Color "Cyan" -Indent $Indent
     
     # Set up cache directory
     $cacheDir = Join-Path $env:TEMP "virtio-cache"
@@ -358,7 +358,7 @@ function Add-VirtioDriversToWim {
     $windowsVersion = Get-WindowsVersion -WimInfo $WimInfo -AllWimInfo $AllWimInfo -Indent $Indent
     $version = Get-VirtioDriverVersion -WindowsVersion $windowsVersion -Indent $Indent
     
-    Write-ColorOutput "Processing $wimType image: $imageName" -Color "Yellow" -Indent ($Indent + 1)
+    Write-ColorOutput "Processing $wimType image: $imageName" -Color "Yellow" -Indent $Indent
     
     # Define the VirtIO driver components we want to inject
     $driverComponents = @("viostor", "vioscsi", "NetKVM")
@@ -432,9 +432,9 @@ function Add-VirtioDrivers {
     try {
         # Get WIM information for all WIM files in the ISO
         Write-Host ""
-        Write-ColorOutput "Analyzing WIM files..." -Color "Yellow" -Indent ($Indent + 1)
+        Write-ColorOutput "Analyzing WIM files..." -Color "Yellow" -Indent $Indent
         $WimInfos = Get-AllWimInfo -ExtractPath $ExtractPath -Indent ($Indent + 1)
-        Write-ColorOutput "Processing all WIM images ($($WimInfos.Count) total)" -Color "Green" -Indent ($Indent + 1)
+        Write-ColorOutput "Processing all WIM images ($($WimInfos.Count) total)" -Color "Green" -Indent $Indent
         
         # Download and extract VirtIO drivers
         $virtioDir = Extract-VirtioDrivers -Version $VirtioVersion -ExtractPath $ExtractPath -Indent ($Indent + 1)
@@ -483,7 +483,7 @@ function Invoke-VirtioDriverInjection {
     )
     
     Write-Host ""
-    Write-ColorOutput "=== Injecting VirtIO Drivers into $WimType.wim (Index: $ImageIndex) ===" -Color "Cyan" -Indent ($Indent + 1)     
+    Write-ColorOutput "=== Injecting VirtIO Drivers into $WimType.wim (Index: $ImageIndex) ===" -Color "Cyan" -Indent $Indent     
     $mountDir = Join-Path (Split-Path $WimPath -Parent) "${WimType}_mount_$ImageIndex"
     
     # Validate WIM file exists
@@ -532,7 +532,7 @@ function Invoke-VirtioDriverInjection {
         # Mount the specific WIM index
         Write-ColorOutput "Mounting $WimType.wim index $ImageIndex..." -Color "Yellow" -Indent ($Indent + 2)
         # Mount the WIM file using direct execution
-        Invoke-CommandWithExitCode -Command $dismPath -Arguments @("/Mount-Wim", "/WimFile:$WimPath", "/Index:$ImageIndex", "/MountDir:$mountDir") -Description "Mount $WimType.wim index $ImageIndex" -SuppressOutput -Indent ($Indent + 2)
+        Invoke-CommandWithExitCode -Command $dismPath -Arguments @("/Mount-Wim", "/WimFile:$WimPath", "/Index:$ImageIndex", "/MountDir:$mountDir") -Description "Mount $WimType.wim index $ImageIndex" -SuppressOutput -Indent ($Indent + 1)
         
         Write-ColorOutput "Successfully mounted $WimType.wim index $ImageIndex" -Color "Green" -Indent ($Indent + 2)         
         # Add drivers to the mounted image
@@ -541,13 +541,13 @@ function Invoke-VirtioDriverInjection {
         # Add each driver component
         foreach ($driverPath in $DriverPaths) {
             Write-ColorOutput "Adding drivers from: $driverPath" -Color "Cyan" -Indent ($Indent + 2)
-            Invoke-CommandWithExitCode -Command $dismPath -Arguments @("/Image:$mountDir", "/Add-Driver", "/Driver:$driverPath", "/Recurse") -Description "Add drivers from $driverPath" -SuppressOutput -Indent ($Indent + 2)
+            Invoke-CommandWithExitCode -Command $dismPath -Arguments @("/Image:$mountDir", "/Add-Driver", "/Driver:$driverPath", "/Recurse") -Description "Add drivers from $driverPath" -SuppressOutput -Indent ($Indent + 1)
         }
         
         # Unmount and commit changes
         Write-ColorOutput "Unmounting $WimType.wim..." -Color "Yellow" -Indent ($Indent + 2)
         # Unmount and commit changes using direct execution
-        Invoke-CommandWithExitCode -Command $dismPath -Arguments @("/Unmount-Wim", "/MountDir:$mountDir", "/Commit") -Description "Unmount $WimType.wim" -SuppressOutput -Indent ($Indent + 2)
+        Invoke-CommandWithExitCode -Command $dismPath -Arguments @("/Unmount-Wim", "/MountDir:$mountDir", "/Commit") -Description "Unmount $WimType.wim" -SuppressOutput -Indent ($Indent + 1)
         
     } catch {
         throw "Error injecting drivers into $WimType.wim: $($_.Exception.Message)"
