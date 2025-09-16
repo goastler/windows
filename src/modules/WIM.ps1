@@ -389,7 +389,7 @@ function Filter-InstallWimImages {
         $newIndex = 1
         foreach ($imageToKeep in $imagesToKeep) {
             # Validate image data
-            $sourceIndex = Assert-PositiveNumber -VariableName "imageToKeep.Index" -Value $imageToKeep.Index -ErrorMessage "Image index must be a positive number"
+            $sourceIndex = Assert-PositiveNumber -VariableName "imageToKeep.Index" -Value ([int]$imageToKeep.Index) -ErrorMessage "Image index must be a positive number"
             $imageName = Assert-NotEmpty -VariableName "imageToKeep.Name" -Value $imageToKeep.Name -ErrorMessage "Image name cannot be empty"
             
             Write-ColorOutput "Adding image $($newIndex): $imageName" -Color "Cyan" -Indent 2
