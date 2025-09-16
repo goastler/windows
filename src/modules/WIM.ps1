@@ -83,15 +83,22 @@ function Get-WimImageDetails {
     
     # Parse structured fields
     foreach ($line in $imageDetails) {
+        Write-Host "DEBUG: Processing line: '$line'"
         if ($line -match "^\s*(\w+(?:\s+\w+)*)\s*:\s*(.+)") {
             $matches = Assert-Defined -VariableName "matches" -Value $matches -ErrorMessage "Regex match failed unexpectedly"
             $key = $matches[1].Trim()
             if ($key) {  # Only process if key is not empty
                 $value = $matches[2].Trim()  # Allow empty values
                 $result[$key] = $value
+                Write-Host "DEBUG: Parsed field '$key' = '$value'"
             }
+        } else {
+            Write-Host "DEBUG: Line did not match regex: '$line'"
         }
     }
+    
+    Write-Host "DEBUG: Final result hashtable keys: $($result.Keys -join ', ')"
+    Write-Host "DEBUG: Name = '$($result.Name)', Architecture = '$($result.Architecture)', Version = '$($result.Version)'"
     
     return $result
 }
@@ -243,28 +250,26 @@ function Get-AllWimInfo {
         Write-ColorOutput "Analyzing boot.wim..." -Color "Yellow" -Indent 1 -InheritedIndent $InheritedIndent
         $bootWimInfo = Get-WimImageInfo -WimPath $bootWimPath -DismPath (Get-DismPath) -InheritedIndent ($InheritedIndent + 1)
         
-        if ($bootWimInfo) {
-            foreach ($image in $bootWimInfo) {
-                # Validate image properties before using them
-                Write-Host "image: $($image)"
-                $image = Assert-Defined -VariableName "image" -Value $image -ErrorMessage "Boot WIM image is null"
-                Write-Host "name"
-                $imageName = Assert-NotEmpty -VariableName "image.Name" -Value $image.Name -ErrorMessage "Boot WIM image name is not defined"
-                Write-Host "arch"
-                $imageArch = Assert-NotEmpty -VariableName "image.Architecture" -Value $image.Architecture -ErrorMessage "Boot WIM image architecture is not defined"
-                Write-Host "version"
-                $imageVersion = Assert-NotEmpty -VariableName "image.Version" -Value $image.Version -ErrorMessage "Boot WIM image version is not defined"
-                
-                # Start with all detailed DISM fields from the image
-                $wimInfo = $image.Clone()
-                
-                # Add our custom fields
-                $wimInfo.Path = $bootWimPath
-                $wimInfo.Type = "boot"
-                
-                $wims += $wimInfo
-                Write-ColorOutput "Found boot image: $imageName (Arch: $imageArch, Version: $imageVersion)" -Color "Green" -Indent 2 -InheritedIndent $InheritedIndent
-            }
+        foreach ($image in $bootWimInfo) {
+            # Validate image properties before using them
+            Write-Host "image: $($image)"
+            $image = Assert-Defined -VariableName "image" -Value $image -ErrorMessage "Boot WIM image is null"
+            Write-Host "name"
+            $imageName = Assert-NotEmpty -VariableName "image.Name" -Value $image.Name -ErrorMessage "Boot WIM image name is not defined"
+            Write-Host "arch"
+            $imageArch = Assert-NotEmpty -VariableName "image.Architecture" -Value $image.Architecture -ErrorMessage "Boot WIM image architecture is not defined"
+            Write-Host "version"
+            $imageVersion = Assert-NotEmpty -VariableName "image.Version" -Value $image.Version -ErrorMessage "Boot WIM image version is not defined"
+            
+            # Start with all detailed DISM fields from the image
+            $wimInfo = $image.Clone()
+            
+            # Add our custom fields
+            $wimInfo.Path = $bootWimPath
+            $wimInfo.Type = "boot"
+            
+            $wims += $wimInfo
+            Write-ColorOutput "Found boot image: $imageName (Arch: $imageArch, Version: $imageVersion)" -Color "Green" -Indent 2 -InheritedIndent $InheritedIndent
         }
     }
     
@@ -273,28 +278,26 @@ function Get-AllWimInfo {
         Write-ColorOutput "Analyzing install.wim..." -Color "Yellow" -Indent 1 -InheritedIndent $InheritedIndent
         $installWimInfo = Get-WimImageInfo -WimPath $installWimPath -DismPath (Get-DismPath) -InheritedIndent ($InheritedIndent + 1)
         
-        if ($installWimInfo) {
-            foreach ($image in $installWimInfo) {
-                # Validate image properties before using them
-                $image = Assert-Defined -VariableName "image" -Value $image -ErrorMessage "Install WIM image is null"
-                Write-Host "DEBUG: image = $($image)"
-                Write-Host "name"
-                $imageName = Assert-NotEmpty -VariableName "image.Name" -Value $image.Name -ErrorMessage "Install WIM image name is not defined"
-                Write-Host "arch"
-                $imageArch = Assert-NotEmpty -VariableName "image.Architecture" -Value $image.Architecture -ErrorMessage "Install WIM image architecture is not defined"
-                Write-Host "version"
-                $imageVersion = Assert-NotEmpty -VariableName "image.Version" -Value $image.Version -ErrorMessage "Install WIM image version is not defined"
-                
-                # Start with all detailed DISM fields from the image
-                $wimInfo = $image.Clone()
-                
-                # Add our custom fields
-                $wimInfo.Path = $installWimPath
-                $wimInfo.Type = "install"
-                
-                $wims += $wimInfo
-                Write-ColorOutput "Found install image: $imageName (Arch: $imageArch, Version: $imageVersion)" -Color "Green" -Indent 2 -InheritedIndent $InheritedIndent
-            }
+        foreach ($image in $installWimInfo) {
+            # Validate image properties before using them
+            $image = Assert-Defined -VariableName "image" -Value $image -ErrorMessage "Install WIM image is null"
+            Write-Host "DEBUG: image = $($image)"
+            Write-Host "name"
+            $imageName = Assert-NotEmpty -VariableName "image.Name" -Value $image.Name -ErrorMessage "Install WIM image name is not defined"
+            Write-Host "arch"
+            $imageArch = Assert-NotEmpty -VariableName "image.Architecture" -Value $image.Architecture -ErrorMessage "Install WIM image architecture is not defined"
+            Write-Host "version"
+            $imageVersion = Assert-NotEmpty -VariableName "image.Version" -Value $image.Version -ErrorMessage "Install WIM image version is not defined"
+            
+            # Start with all detailed DISM fields from the image
+            $wimInfo = $image.Clone()
+            
+            # Add our custom fields
+            $wimInfo.Path = $installWimPath
+            $wimInfo.Type = "install"
+            
+            $wims += $wimInfo
+            Write-ColorOutput "Found install image: $imageName (Arch: $imageArch, Version: $imageVersion)" -Color "Green" -Indent 2 -InheritedIndent $InheritedIndent
         }
     }
     
@@ -338,12 +341,10 @@ function Filter-InstallWimImages {
     $wimInfo = Get-WimImageInfo -WimPath $installWimPath -DismPath $dismPath -InheritedIndent 1
     
     # Validate WIM has images
-    try {
-        $wimInfo = Assert-ArrayNotEmpty -VariableName "wimInfo" -Value $wimInfo -ErrorMessage "No images found in install.wim"
-    } catch {
-        Write-ColorOutput "No images found in install.wim" -Color "Yellow" -Indent 1
-        return
-    }
+    $wimInfo = Assert-ArrayNotEmpty -VariableName "wimInfo" -Value $wimInfo -ErrorMessage "No images found in install.wim"
+
+    Write-Host "DEBUG: wimInfo content:"
+    $wimInfo | ForEach-Object { Write-Host ($_ | Out-String) }
     
     # Determine which images to keep
     $imagesToKeep = @()
