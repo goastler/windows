@@ -188,11 +188,10 @@ function Get-WimImageInfo {
             Write-Host "DEBUG in if currentImage loop: images = $($images)"
         }
         
-        # Now get detailed information for each image
-        $detailedImages = [System.Collections.ArrayList]::new()
+        # Now get detailed information for each image - use regular array with comma operator
+        $detailedImages = @()
         foreach ($basicImage in $images) {
             Write-ColorOutput "Getting detailed info for image index $($basicImage.Index)..." -Color "Cyan" -Indent 1 -InheritedIndent $InheritedIndent
-            Write-Host "DEBUG in foreach basicImage loop: detailedImages = $($detailedImages)"
             try {
                 $detailedInfo = Get-WimImageDetails -WimPath $WimPath -ImageIndex $basicImage.Index -DismPath $DismPath -ShowDebugOutput $true -InheritedIndent $InheritedIndent
                 
@@ -202,24 +201,14 @@ function Get-WimImageInfo {
                 
                 # Index is already included in the detailed info from DISM output
                 
-                Write-Host "DEBUG: Adding detailedImage to ArrayList: $($detailedImage.GetType().Name), Keys: $($detailedImage.Keys -join ', ')"
-                $null = $detailedImages.Add($detailedImage)
+                # Use comma operator to prevent PowerShell from unrolling the hashtable
+                $detailedImages += , $detailedImage
             } catch {
                 $indexForError = $basicImage.Index
                 throw "Warning: Failed to get detailed info for image index ${indexForError}: $($_.Exception.Message)"
             }
+            Write-Host "DEBUG in foreach basicImage loop: detailedImages = $($detailedImages)"
         }
-        
-        # Filter out any invalid entries (Int32 values, null, etc.) and convert to regular array
-        # $validImages = @()
-        # foreach ($img in $detailedImages) {
-        #     if ($img -is [hashtable] -and $img -ne $null) {
-        #         $validImages += $img
-        #     } else {
-        #         Write-Host "DEBUG: Filtering out invalid image entry in Get-WimImageInfo: $($img)"
-        #     }
-        # }
-        # return $validImages
         
         return $detailedImages
         
