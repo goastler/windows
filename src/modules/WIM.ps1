@@ -177,8 +177,10 @@ function Get-WimImageInfo {
                 $fieldName = Assert-NotEmpty -VariableName "matches[1]" -Value $matches[1].Trim() -ErrorMessage "Field name regex match group 1 is empty"
                 $fieldValue = Assert-NotEmpty -VariableName "matches[2]" -Value $matches[2].Trim() -ErrorMessage "Field value regex match group 2 is empty"
                 
-                # Store field directly with original DISM name
-                $currentImage[$fieldName] = $fieldValue
+                # Store field directly with original DISM name, but preserve the integer Index property
+                if ($fieldName -ne "Index") {
+                    $currentImage[$fieldName] = $fieldValue
+                }
             }
         }
         
@@ -199,17 +201,13 @@ function Get-WimImageInfo {
                 $detailedImage = $detailedInfo.Clone()
                 
                 # Ensure Index is preserved (add it if it doesn't exist)
-                $indexValue = $basicImage["Index"]
-                # Convert to integer if it's a string
-                if ($indexValue -is [string]) {
-                    $indexValue = [int]$indexValue
-                }
+                $indexValue = $basicImage.Index
                 $indexValue = Assert-PositiveNumber -VariableName "basicImage.Index" -Value $indexValue -ErrorMessage "Basic image index must be a positive number"
                 $detailedImage["Index"] = $indexValue
                 
                 $detailedImages += $detailedImage
             } catch {
-                $indexForError = $basicImage["Index"]
+                $indexForError = $basicImage.Index
                 throw "Warning: Failed to get detailed info for image index ${indexForError}: $($_.Exception.Message)"
             }
         }
