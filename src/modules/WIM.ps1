@@ -342,15 +342,14 @@ function Filter-InstallWimImages {
     
     # Validate WIM has images
     $wimInfo = Assert-ArrayNotEmpty -VariableName "wimInfo" -Value $wimInfo -ErrorMessage "No images found in install.wim"
-
-    Write-Host "DEBUG: wimInfo content:"
-    $wimInfo | ForEach-Object { Write-Host ($_ | Out-String) }
     
     # Determine which images to keep
     $imagesToKeep = @()
     $imagesToRemove = @()
     
     foreach ($image in $wimInfo) {
+        Write-Host "DEBUG: image = $($image)"
+        
         # Validate image properties before using them
         $image = Assert-Defined -VariableName "image" -Value $image -ErrorMessage "WIM image is null"
         $imageName = Assert-NotEmpty -VariableName "image.Name" -Value $image.Name -ErrorMessage "WIM image name is not defined"
