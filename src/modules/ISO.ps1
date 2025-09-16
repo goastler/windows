@@ -154,7 +154,14 @@ function New-IsoFromDirectory {
         [ValidateNotNullOrEmpty()]
         [ValidateScript({
             try {
-                $resolvedPath = Resolve-Path $_ -ErrorAction Stop
+                # Check if the path format is valid
+                $null = [System.IO.Path]::GetFullPath($_)
+                
+                # Create parent directory if it doesn't exist
+                $parentDir = Split-Path $_ -Parent
+                if (-not (Test-Path $parentDir -PathType Container)) {
+                    New-Item -ItemType Directory -Path $parentDir -Force | Out-Null
+                }
                 $true
             } catch {
                 throw "Output path is invalid: $_"
