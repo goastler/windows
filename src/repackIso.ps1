@@ -118,7 +118,6 @@ param(
         # Note: We don't check if directory exists here as it will be created during processing
         $true
     })]
-    [string]$VirtioCacheDirectory = (Join-Path $env:TEMP "virtio-cache"),
 
     [Parameter(Mandatory = $false)]
     [switch]$OverwriteOutputIso,
@@ -208,14 +207,6 @@ $WorkingDirectory = if ([System.IO.Path]::IsPathRooted($WorkingDirectory)) {
     $resolved
 }
 
-# Resolve VirtioCacheDirectory
-$VirtioCacheDirectory = if ([System.IO.Path]::IsPathRooted($VirtioCacheDirectory)) {
-    $VirtioCacheDirectory
-} else {
-    $resolved = Join-Path (Get-Location) $VirtioCacheDirectory
-    Write-ColorOutput "Resolved VirtioCacheDirectory: $VirtioCacheDirectory -> $resolved" -Color "Cyan" -Indent 1
-    $resolved
-}
 
 try {
     Write-Host ""
@@ -235,7 +226,6 @@ try {
     Write-ColorOutput "Include VirtIO Drivers: $IncludeVirtioDrivers" -Color "White"
     if ($IncludeVirtioDrivers) {
         Write-ColorOutput "VirtIO Version: $VirtioVersion" -Color "White"
-        Write-ColorOutput "VirtIO Cache Directory: $VirtioCacheDirectory" -Color "White"
     }
     
     Write-Host ""
@@ -289,7 +279,7 @@ try {
     if ($IncludeVirtioDrivers) {
         Write-Host ""
         Write-ColorOutput "=== Adding VirtIO Drivers ===" -Color "Cyan"
-        Add-VirtioDrivers -ExtractPath $WorkingDirectory -VirtioVersion $VirtioVersion -VirtioCacheDirectory $VirtioCacheDirectory
+        Add-VirtioDrivers -ExtractPath $WorkingDirectory -VirtioVersion $VirtioVersion
     } else {
         Write-Host ""
         Write-ColorOutput "=== Skipping VirtIO Drivers (not requested) ===" -Color "Cyan"
