@@ -424,7 +424,7 @@ function Filter-InstallWimImages {
             
             # Execute DISM command
             try {
-                Invoke-CommandWithExitCode -Command $dismPath -Arguments $dismArgs -Description "Export image '$imageName' (index $sourceIndex)" -SuppressOutput -InheritedIndent $InheritedIndent
+                Invoke-CommandWithExitCode -Command $dismPath -Arguments $dismArgs -Description "Export image '$imageName' (index $sourceIndex)" -SuppressOutput -InheritedIndent 1
             } catch {
                 $errorDetails = $_
                 if (Test-Path "C:\WINDOWS\Logs\DISM\dism.log") {
