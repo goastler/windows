@@ -4,15 +4,14 @@
 $commonPath = Join-Path (Split-Path $PSScriptRoot -Parent) "Common.ps1"
 . $commonPath
 
+# Load ADK path utilities
+. (Join-Path $PSScriptRoot "AdkPaths.ps1")
+
 function Find-OscdimgPath {
-    $adkPaths = @(
-        "${env:ProgramFiles(x86)}\Windows Kits\10\Assessment and Deployment Kit\Deployment Tools\amd64\Oscdimg\oscdimg.exe",
-        "${env:ProgramFiles}\Windows Kits\10\Assessment and Deployment Kit\Deployment Tools\amd64\Oscdimg\oscdimg.exe",
-        "${env:ProgramFiles(x86)}\Windows Kits\8.1\Assessment and Deployment Kit\Deployment Tools\amd64\Oscdimg\oscdimg.exe",
-        "${env:ProgramFiles}\Windows Kits\8.1\Assessment and Deployment Kit\Deployment Tools\amd64\Oscdimg\oscdimg.exe"
-    )
+    $adkPaths = Get-AdkExecutablePaths
     
     foreach ($path in $adkPaths) {
+        $path = Assert-ValidPath -VariableName "path" -Path $path -ErrorMessage "ADK path is invalid: $path"
         if (Test-Path $path) {
             Write-ColorOutput "Found oscdimg.exe at: $path" -Color "Green" -Indent 1
             return $path

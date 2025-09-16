@@ -13,7 +13,9 @@ function Test-DismAvailability {
     # Check if DISM is available in PATH
     $dismCommand = Get-Command "dism.exe" -ErrorAction SilentlyContinue
     if ($dismCommand) {
-        Write-ColorOutput "DISM found at: $($dismCommand.Source)" -Color "Green" -Indent 1
+        $dismSource = $dismCommand.Source
+        $dismSource = Assert-ValidPath -VariableName "dismSource" -Path $dismSource -ErrorMessage "DISM command source path is invalid: $dismSource"
+        Write-ColorOutput "DISM found at: $dismSource" -Color "Green" -Indent 1
         return
     }
     
@@ -22,12 +24,16 @@ function Test-DismAvailability {
         "${env:SystemRoot}\System32\dism.exe",
         "${env:SystemRoot}\SysWOW64\dism.exe"
     )
+    $dismPaths = Assert-ArrayNotEmpty -VariableName "dismPaths" -Value $dismPaths -ErrorMessage "DISM paths array is empty"
     
     foreach ($path in $dismPaths) {
+        $path = Assert-ValidPath -VariableName "path" -Path $path -ErrorMessage "DISM path is invalid: $path"
+        
         if (Test-Path $path) {
             Write-ColorOutput "DISM found at: $path" -Color "Green" -Indent 1
             # Add to PATH for current session if not already there
             $dismDir = Split-Path $path -Parent
+            $dismDir = Assert-ValidPath -VariableName "dismDir" -Path $dismDir -ErrorMessage "DISM directory path is invalid: $dismDir"
             if ($env:Path -notlike "*$dismDir*") {
                 $env:Path += ";$dismDir"
                 Write-ColorOutput "Added DISM directory to PATH: $dismDir" -Color "Cyan" -Indent 2
@@ -58,7 +64,9 @@ function Test-DismAvailability {
         # Check again
         $dismCommand = Get-Command "dism.exe" -ErrorAction SilentlyContinue
         if ($dismCommand) {
-            Write-ColorOutput "DISM enabled successfully at: $($dismCommand.Source)" -Color "Green" -Indent 1
+            $dismSource = $dismCommand.Source
+            $dismSource = Assert-ValidPath -VariableName "dismSource" -Path $dismSource -ErrorMessage "DISM command source path is invalid: $dismSource"
+            Write-ColorOutput "DISM enabled successfully at: $dismSource" -Color "Green" -Indent 1
             return
         }
     } catch {
@@ -81,7 +89,9 @@ function Test-DismAvailability {
             # Check again
             $dismCommand = Get-Command "dism.exe" -ErrorAction SilentlyContinue
             if ($dismCommand) {
-                Write-ColorOutput "DISM now available at: $($dismCommand.Source)" -Color "Green" -Indent 1
+                $dismSource = $dismCommand.Source
+                $dismSource = Assert-ValidPath -VariableName "dismSource" -Path $dismSource -ErrorMessage "DISM command source path is invalid: $dismSource"
+                Write-ColorOutput "DISM now available at: $dismSource" -Color "Green" -Indent 1
                 return
             }
         }
@@ -97,7 +107,9 @@ function Get-DismPath {
     # Try to get DISM from PATH first
     $dismCommand = Get-Command "dism.exe" -ErrorAction SilentlyContinue
     if ($dismCommand) {
-        return $dismCommand.Source
+        $dismSource = $dismCommand.Source
+        $dismSource = Assert-ValidPath -VariableName "dismSource" -Path $dismSource -ErrorMessage "DISM command source path is invalid: $dismSource"
+        return $dismSource
     }
     
     # Check common DISM locations
@@ -105,8 +117,11 @@ function Get-DismPath {
         "${env:SystemRoot}\System32\dism.exe",
         "${env:SystemRoot}\SysWOW64\dism.exe"
     )
+    $dismPaths = Assert-ArrayNotEmpty -VariableName "dismPaths" -Value $dismPaths -ErrorMessage "DISM paths array is empty"
     
     foreach ($path in $dismPaths) {
+        $path = Assert-ValidPath -VariableName "path" -Path $path -ErrorMessage "DISM path is invalid: $path"
+        
         if (Test-Path $path) {
             return $path
         }

@@ -7,6 +7,9 @@ $commonPath = Join-Path (Split-Path $PSScriptRoot -Parent) "Common.ps1"
 # Load Chocolatey module dependency
 . (Join-Path $PSScriptRoot "Chocolatey.ps1")
 
+# Load ADK path utilities
+. (Join-Path $PSScriptRoot "AdkPaths.ps1")
+
 function Install-WindowsADK {
     Write-Host ""
     Write-ColorOutput "=== Windows ADK Installation ===" -Color "Cyan"
@@ -20,14 +23,10 @@ function Install-WindowsADK {
         Write-ColorOutput "Windows ADK installed via Chocolatey" -Color "Green"
         
         # Add ADK paths to current session PATH
-        $adkPaths = @(
-            "${env:ProgramFiles(x86)}\Windows Kits\10\Assessment and Deployment Kit\Deployment Tools\amd64\Oscdimg",
-            "${env:ProgramFiles}\Windows Kits\10\Assessment and Deployment Kit\Deployment Tools\amd64\Oscdimg",
-            "${env:ProgramFiles(x86)}\Windows Kits\8.1\Assessment and Deployment Kit\Deployment Tools\amd64\Oscdimg",
-            "${env:ProgramFiles}\Windows Kits\8.1\Assessment and Deployment Kit\Deployment Tools\amd64\Oscdimg"
-        )
+        $adkPaths = Get-AdkPaths
         
         foreach ($path in $adkPaths) {
+            $path = Assert-ValidPath -VariableName "path" -Path $path -ErrorMessage "ADK path is invalid: $path"
             if (Test-Path $path) {
                 $env:Path += ";$path"
                 Write-ColorOutput "Added to PATH: $path" -Color "Cyan" -Indent 1

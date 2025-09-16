@@ -198,8 +198,6 @@ function New-IsoFromDirectory {
     )
 
     Write-ColorOutput "Current working directory: $(Get-Location)" -Color "Cyan" -Indent 1
-    Write-ColorOutput "Running oscdimg with arguments: $($arguments -join ' ')" -Color "Cyan" -Indent 1
-    Write-ColorOutput "Full command: & `"$OscdimgPath`" $($arguments -join ' ')" -Color "Cyan" -Indent 1     
     Invoke-CommandWithExitCode -Command $OscdimgPath -Arguments $arguments -Description "Create ISO with oscdimg" -WorkingDirectory (Get-Location)
 
     Write-ColorOutput "ISO created successfully: $absOutIso" -Color "Green" -Indent 1
