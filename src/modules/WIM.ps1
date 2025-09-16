@@ -371,9 +371,7 @@ function Filter-InstallWimImages {
     }
     
     # Validate filtering results
-    Write-Host "DEBUG: imagesToKeep = $($imagesToKeep)"
     $imagesToKeep = Assert-ArrayNotEmpty -VariableName "imagesToKeep" -Value $imagesToKeep -ErrorMessage "No install.wim images would be kept after filtering. Cannot create ISO with no install images."
-    Write-Host "DEBUG: imagesToKeep after"
     
     if ($imagesToRemove.Count -eq 0) {
         Write-ColorOutput "No images to remove" -Color "Green" -Indent 1

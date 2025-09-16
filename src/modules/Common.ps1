@@ -283,6 +283,9 @@ function Assert-Defined {
         [string]$VariableName,
         
         [Parameter(Mandatory = $true)]
+        [AllowNull()]
+        [AllowEmptyString()]
+        [AllowEmptyCollection()]
         [object]$Value,
         
         [Parameter(Mandatory = $false)]
@@ -302,6 +305,9 @@ function Assert-NotEmpty {
         [string]$VariableName,
         
         [Parameter(Mandatory = $true)]
+        [AllowNull()]
+        [AllowEmptyString()]
+        [AllowEmptyCollection()]
         [string]$Value,
         
         [Parameter(Mandatory = $false)]
@@ -321,6 +327,9 @@ function Assert-PositiveNumber {
         [string]$VariableName,
         
         [Parameter(Mandatory = $true)]
+        [AllowNull()]
+        [AllowEmptyString()]
+        [AllowEmptyCollection()]
         [object]$Value,
         
         [Parameter(Mandatory = $false)]
@@ -344,6 +353,9 @@ function Assert-NonNegativeNumber {
         [string]$VariableName,
         
         [Parameter(Mandatory = $true)]
+        [AllowNull()]
+        [AllowEmptyString()]
+        [AllowEmptyCollection()]
         [object]$Value,
         
         [Parameter(Mandatory = $false)]
@@ -367,6 +379,9 @@ function Assert-ArrayNotEmpty {
         [string]$VariableName,
         
         [Parameter(Mandatory = $true)]
+        [AllowNull()]
+        [AllowEmptyString()]
+        [AllowEmptyCollection()]
         [array]$Value,
         
         [Parameter(Mandatory = $false)]
@@ -383,6 +398,9 @@ function Assert-ArrayNotEmpty {
 function Assert-FileExists {
     param(
         [Parameter(Mandatory = $true)]
+        [AllowNull()]
+        [AllowEmptyString()]
+        [AllowEmptyCollection()]
         [string]$FilePath,
         
         [Parameter(Mandatory = $false)]
@@ -399,6 +417,9 @@ function Assert-FileExists {
 function Assert-DirectoryExists {
     param(
         [Parameter(Mandatory = $true)]
+        [AllowNull()]
+        [AllowEmptyString()]
+        [AllowEmptyCollection()]
         [string]$DirectoryPath,
         
         [Parameter(Mandatory = $false)]
@@ -418,6 +439,9 @@ function Assert-ValidPath {
         [string]$VariableName,
         
         [Parameter(Mandatory = $true)]
+        [AllowNull()]
+        [AllowEmptyString()]
+        [AllowEmptyCollection()]
         [string]$Path,
         
         [Parameter(Mandatory = $false)]
