@@ -328,7 +328,7 @@ function Filter-InstallWimImages {
         # Create new WIM with only the images we want to keep
         $newIndex = 1
         foreach ($imageToKeep in $imagesToKeep) {
-            Write-ColorOutput "Adding image $newIndex: $($imageToKeep.Name)" -Color "Cyan" -Indent 2
+            Write-ColorOutput "Adding image $($newIndex): $($imageToKeep.Name)" -Color "Cyan" -Indent 2
             
             if ($newIndex -eq 1) {
                 # First image - export to create new WIM
