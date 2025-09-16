@@ -19,11 +19,12 @@ function Extract-IsoContents {
         [Parameter(Mandatory = $true)]
         [ValidateNotNullOrEmpty()]
         [ValidateScript({
+            # Validate that the path is a valid path format, but allow non-existent directories
             try {
-                $resolvedPath = Resolve-Path $_ -ErrorAction Stop
+                $null = [System.IO.Path]::GetFullPath($_)
                 $true
             } catch {
-                throw "Extract path is invalid: $_"
+                throw "Extract path is not a valid path format: $_"
             }
         })]
         [string]$ExtractPath
