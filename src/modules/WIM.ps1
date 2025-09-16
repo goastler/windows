@@ -81,9 +81,6 @@ function Get-WimImageDetails {
     # Parse the output into a structured format and coalesce with raw output
     $result = @{}
     
-    # Add raw output as a property
-    $result.RawOutput = $imageDetails
-    
     # Parse structured fields
     foreach ($line in $imageDetails) {
         if ($line -match "^\s*(\w+)\s*:\s*(.*)$") {
@@ -167,14 +164,10 @@ function Get-WimImageInfo {
                     $images += $currentImage
                 }
                 $matches = Assert-Defined -VariableName "matches" -Value $matches -ErrorMessage "Index regex match failed unexpectedly"
-                Write-ColorOutput "DEBUG: Index regex matched line: '$line'" -Color "Yellow" -Indent 2 -InheritedIndent $InheritedIndent
-                Write-ColorOutput "DEBUG: matches[0] = '$($matches[0])', matches[1] = '$($matches[1])'" -Color "Yellow" -Indent 2 -InheritedIndent $InheritedIndent
                 $indexValue = Assert-NotEmpty -VariableName "matches[1]" -Value $matches[1] -ErrorMessage "Index regex match group 1 is empty"
-                Write-ColorOutput "DEBUG: About to convert indexValue '$indexValue' to int" -Color "Yellow" -Indent 2 -InheritedIndent $InheritedIndent
                 $currentImage = @{
                     Index = [int]$indexValue
                 }
-                Write-ColorOutput "DEBUG: Created basic image with Index = $($currentImage.Index) (type: $($currentImage.Index.GetType().Name))" -Color "Yellow" -Indent 2 -InheritedIndent $InheritedIndent
             } elseif ($currentImage -and $line -match "^\s*(\w+(?:\s+\w+)*)\s*:\s*(.+)") {
                 $matches = Assert-Defined -VariableName "matches" -Value $matches -ErrorMessage "Field regex match failed unexpectedly"
                 $fieldName = Assert-NotEmpty -VariableName "matches[1]" -Value $matches[1].Trim() -ErrorMessage "Field name regex match group 1 is empty"
@@ -208,8 +201,6 @@ function Get-WimImageInfo {
                 $indexValue = Assert-PositiveNumber -VariableName "basicImage.Index" -Value $indexValue -ErrorMessage "Basic image index must be a positive number"
                 
                 $detailedImages += $detailedImage
-
-                Write-Host ($detailedImage | Out-String)
             } catch {
                 $indexForError = $basicImage.Index
                 throw "Warning: Failed to get detailed info for image index ${indexForError}: $($_.Exception.Message)"
