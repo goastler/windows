@@ -13,3 +13,4 @@
 - virtio certs for <=w8.1
 - post install virtio
 - set bg in setup script
+- auto install virtio on user login

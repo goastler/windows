@@ -732,18 +732,6 @@ Get-ChildItem -Path 'Registry::HKU\DefaultUser\AppEvents\Schemes\Apps\*\*' |
     Where-Object -Property 'PSChildName' -NotIn $excludes |
     Get-ChildItem -Include '.Current' | Set-ItemProperty -Name '(Default)' -Value '';
 		</File>
-		<File path="C:\Windows\Setup\Scripts\VirtIoGuestTools.ps1">
-&amp; {
-	foreach( $letter in 'DEFGHIJKLMNOPQRSTUVWXYZ'.ToCharArray() ) {
-		$exe = "${letter}:\virtio-win-guest-tools.exe";
-		if( Test-Path -LiteralPath $exe ) {
-			Start-Process -FilePath $exe -ArgumentList '/passive', '/norestart' -Wait;
-			return;
-		}
-	}
-	'VirtIO Guest Tools image (virtio-win-*.iso) is not attached to this VM.';
-} *&gt;&amp;1 &gt;&gt; 'C:\Windows\Setup\Scripts\VirtIoGuestTools.log';
-		</File>
 		<File path="C:\Windows\Setup\Scripts\SetStartPins.ps1">
 $json = '{"pinnedList":[]}';
 if( [System.Environment]::OSVersion.Version.Build -lt 20000 ) {
@@ -1033,9 +1021,6 @@ $scripts = @(
 	};
 	{
 		Disable-ComputerRestore -Drive 'C:\';
-	};
-	{
-		Get-Content -LiteralPath 'C:\Windows\Setup\Scripts\VirtIoGuestTools.ps1' -Raw | Invoke-Expression;
 	};
 	{
 		cmd.exe /c "rmdir C:\Windows.old";

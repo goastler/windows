@@ -78,21 +78,23 @@ function Get-WimImageDetails {
     # Clean up the temporary file
     Remove-Item "temp_image_details.txt" -ErrorAction SilentlyContinue
     
-    # Parse the output into a structured format
-    $parsedData = @{}
+    # Parse the output into a structured format and coalesce with raw output
+    $result = @{}
+    
+    # Add raw output as a property
+    $result.RawOutput = $imageDetails
+    
+    # Parse structured fields
     foreach ($line in $imageDetails) {
-        if ($line -match "^\s*(\w+)\s*:\s*(.+)$") {
+        if ($line -match "^\s*(\w+)\s*:\s*(.*)$") {
             $matches = Assert-Defined -VariableName "matches" -Value $matches -ErrorMessage "Regex match failed unexpectedly"
             $key = Assert-NotEmpty -VariableName "matches[1]" -Value $matches[1].Trim() -ErrorMessage "Regex match group 1 is empty"
-            $value = Assert-NotEmpty -VariableName "matches[2]" -Value $matches[2].Trim() -ErrorMessage "Regex match group 2 is empty"
-            $parsedData[$key] = $value
+            $value = $matches[2].Trim()  # Allow empty values
+            $result[$key] = $value
         }
     }
     
-    return @{
-        RawOutput = $imageDetails
-        ParsedData = $parsedData
-    }
+    return $result
 }
 
 function Get-WimImageInfo {
@@ -192,8 +194,7 @@ function Get-WimImageInfo {
                 
                 # Start with all detailed DISM fields from the image
                 $detailedInfo = Assert-Defined -VariableName "detailedInfo" -Value $detailedInfo -ErrorMessage "Failed to get detailed image information"
-                $detailedInfo.ParsedData = Assert-Defined -VariableName "detailedInfo.ParsedData" -Value $detailedInfo.ParsedData -ErrorMessage "Parsed data is not available from detailed image information"
-                $detailedImage = $detailedInfo.ParsedData.Clone()
+                $detailedImage = $detailedInfo.Clone()
                 
                 # Ensure Index is preserved
                 $basicImage.Index = Assert-PositiveNumber -VariableName "basicImage.Index" -Value $basicImage.Index -ErrorMessage "Basic image index must be a positive number"
