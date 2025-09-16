@@ -366,7 +366,7 @@ function Filter-InstallWimImages {
             Write-ColorOutput "Keeping: $imageName" -Color "Green" -Indent 2
         } else {
             $imagesToRemove += $image
-            Write-ColorOutput "Removing: $imageName" -Color "Red" -Indent 2
+            Write-ColorOutput "Removing: $imageName" -Color "Yellow" -Indent 2
         }
     }
     
