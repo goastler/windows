@@ -265,7 +265,6 @@ function Invoke-CommandWithExitCode {
         }
         
         Write-ColorOutput "$Description completed successfully (exit code: $exitCode)" -Color "Green" -Indent 1 -InheritedIndent $InheritedIndent
-        return $exitCode
         
     } catch {
         throw "$Description failed: $_"
