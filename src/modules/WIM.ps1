@@ -69,104 +69,6 @@ function Get-WimImageDetails {
     }
 }
 
-
-function Get-WimImageInfo {
-    param(
-        [Parameter(Mandatory = $true)]
-        [ValidateNotNullOrEmpty()]
-        [ValidateScript({
-            if (-not (Test-Path $_ -PathType Leaf)) {
-                throw "WIM file does not exist: $_"
-            }
-            if ($_ -notmatch '\.wim$') {
-                throw "File must have .wim extension: $_"
-            }
-            $true
-        })]
-        [string]$WimPath,
-        
-        [Parameter(Mandatory = $true)]
-        [ValidateNotNullOrEmpty()]
-        [ValidateScript({
-            if (-not (Test-Path $_ -PathType Leaf)) {
-                throw "DISM executable does not exist: $_"
-            }
-            $true
-        })]
-        [string]$DismPath,
-        
-        [Parameter(Mandatory = $false)]
-        [ValidateRange(0, 20)]
-        [int]$InheritedIndent = 0
-    )
-    
-    try {
-        Write-ColorOutput "Getting WIM image information from: $WimPath" -Color "Yellow" -Indent 0 -InheritedIndent $InheritedIndent
-        
-        # Use DISM to get image information
-        & $dismPath /Get-WimInfo /WimFile:$WimPath > temp_wim_info.txt 2>&1
-        
-        if ($LASTEXITCODE -ne 0) {
-            throw "Failed to get WIM image information. DISM exit code: $LASTEXITCODE"
-        }
-        
-        # Parse the output to extract image information
-        $wimInfo = Get-Content "temp_wim_info.txt" -ErrorAction SilentlyContinue
-        
-        # Check if DISM output is empty or contains only whitespace
-        if (-not $wimInfo -or ($wimInfo | Where-Object { $_.Trim() -ne "" }).Count -eq 0) {
-            Write-ColorOutput "Warning: DISM returned empty output for WIM file: $WimPath" -Color "Yellow" -Indent 1 -InheritedIndent $InheritedIndent
-            Write-ColorOutput "This may indicate the WIM file is corrupted or inaccessible" -Color "Yellow" -Indent 1 -InheritedIndent $InheritedIndent
-            Remove-Item "temp_wim_info.txt" -ErrorAction SilentlyContinue
-            return @()
-        }
-        
-        # Debug: Log the raw DISM output for troubleshooting
-        Write-ColorOutput "Raw DISM output from temp_wim_info.txt:" -Color "Cyan" -Indent 1 -InheritedIndent $InheritedIndent
-        Write-Host ""
-        foreach ($line in $wimInfo) {
-            if ($line.Trim() -ne "") {
-                Write-ColorOutput "  $line" -Color "Gray" -Indent 0 -InheritedIndent ($InheritedIndent + 1)
-            }
-        }
-        Write-Host ""
-        
-        # Clean up the temporary file
-        Remove-Item "temp_wim_info.txt" -ErrorAction SilentlyContinue
-        
-        $images = @()
-        $currentImage = $null
-        
-        foreach ($line in $wimInfo) {
-            if ($line -match "Index\s*:\s*(\d+)") {
-                if ($currentImage) {
-                    $images += $currentImage
-                }
-                $currentImage = @{
-                    Index = [int]$matches[1]
-                }
-            } elseif ($currentImage -and $line -match "^\s*(\w+(?:\s+\w+)*)\s*:\s*(.+)") {
-                $fieldName = $matches[1].Trim()
-                $fieldValue = $matches[2].Trim()
-                
-                # Store field directly with original DISM name
-                $currentImage[$fieldName] = $fieldValue
-            }
-        }
-        
-        if ($currentImage) {
-            $images += $currentImage
-        }
-        
-        return $images
-        
-    } catch {
-        throw "Failed to get WIM image information: $($_.Exception.Message)"
-    }
-}
-
-
-
 function Get-AllWimInfo {
     param(
         [Parameter(Mandatory = $true)]
@@ -194,7 +96,7 @@ function Get-AllWimInfo {
     # Analyze boot.wim if it exists
     if (Test-Path $bootWimPath) {
         Write-ColorOutput "Analyzing boot.wim..." -Color "Yellow" -Indent 1 -InheritedIndent $InheritedIndent
-        $bootWimInfo = Get-WimImageInfo -WimPath $bootWimPath -DismPath (Get-DismPath) -InheritedIndent ($InheritedIndent + 1)
+        $bootWimInfo = Get-WimImageDetails -WimPath $bootWimPath -DismPath (Get-DismPath) -InheritedIndent ($InheritedIndent + 1)
         
         if ($bootWimInfo) {
             foreach ($image in $bootWimInfo) {
@@ -214,7 +116,7 @@ function Get-AllWimInfo {
     # Analyze install.wim if it exists
     if (Test-Path $installWimPath) {
         Write-ColorOutput "Analyzing install.wim..." -Color "Yellow" -Indent 1 -InheritedIndent $InheritedIndent
-        $installWimInfo = Get-WimImageInfo -WimPath $installWimPath -DismPath (Get-DismPath) -InheritedIndent ($InheritedIndent + 1)
+        $installWimInfo = Get-WimImageDetails -WimPath $installWimPath -DismPath (Get-DismPath) -InheritedIndent ($InheritedIndent + 1)
         
         if ($installWimInfo) {
             foreach ($image in $installWimInfo) {
@@ -261,7 +163,7 @@ function Filter-InstallWimImages {
     
     # Get current WIM information
     $dismPath = Get-DismPath
-    $wimInfo = Get-WimImageInfo -WimPath $installWimPath -DismPath $dismPath -InheritedIndent 1
+    $wimInfo = Get-WimImageDetails -WimPath $installWimPath -DismPath $dismPath -InheritedIndent 1
     
     if (-not $wimInfo -or $wimInfo.Count -eq 0) {
         Write-ColorOutput "No images found in install.wim" -Color "Yellow" -Indent 1
