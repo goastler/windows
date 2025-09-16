@@ -106,20 +106,6 @@ param(
     [string]$VirtioVersion = "stable",
 
     [Parameter(Mandatory = $false)]
-    [ValidateNotNullOrEmpty()]
-    [ValidateScript({
-        # Resolve to absolute path
-        $resolvedPath = if ([System.IO.Path]::IsPathRooted($_)) {
-            $_
-        } else {
-            Join-Path (Get-Location) $_
-        }
-        
-        # Note: We don't check if directory exists here as it will be created during processing
-        $true
-    })]
-
-    [Parameter(Mandatory = $false)]
     [switch]$OverwriteOutputIso,
 
     [Parameter(Mandatory = $false)]
