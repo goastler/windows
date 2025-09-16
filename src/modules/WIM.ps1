@@ -204,6 +204,7 @@ function Get-WimImageInfo {
                 # Ensure Index is preserved (add it if it doesn't exist)
                 $indexValue = $basicImage.Index
                 Write-ColorOutput "DEBUG: basicImage.Index = '$indexValue' (type: $($indexValue.GetType().Name))" -Color "Yellow" -Indent 2 -InheritedIndent $InheritedIndent
+                Write-ColorOutput "DEBUG: About to call Assert-PositiveNumber with VariableName='basicImage.Index', Value='$indexValue'" -Color "Yellow" -Indent 2 -InheritedIndent $InheritedIndent
                 $indexValue = Assert-PositiveNumber -VariableName "basicImage.Index" -Value $indexValue -ErrorMessage "Basic image index must be a positive number"
                 $detailedImage["Index"] = $indexValue
                 
