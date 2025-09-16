@@ -10,12 +10,8 @@ function Write-ColorOutput {
         [string]$Color = "White",
         
         [Parameter(Mandatory = $false)]
-        [ValidateRange(0, 20)]
-        [int]$Indent = 0,
-        
-        [Parameter(Mandatory = $false)]
-        [ValidateRange(0, 20)]
-        [int]$InheritedIndent = 0
+        [ValidateRange(0, 40)]
+        [int]$Indent = 0
     )
     
     # Additional validation for edge cases
@@ -23,16 +19,13 @@ function Write-ColorOutput {
         throw "Message cannot be empty or contain only whitespace"
     }
     
-    # Calculate total indentation (inherited + current)
-    $totalIndent = $InheritedIndent + $Indent
-    
-    # Validate total indentation doesn't exceed reasonable limits
-    if ($totalIndent -gt 40) {
-        throw "Total indentation ($totalIndent) exceeds maximum allowed (40). Indent: $Indent, InheritedIndent: $InheritedIndent"
+    # Validate indentation doesn't exceed reasonable limits
+    if ($Indent -gt 40) {
+        throw "Indentation ($Indent) exceeds maximum allowed (40)"
     }
     
     # Create indentation string (2 spaces per indent level)
-    $indentString = "  " * $totalIndent
+    $indentString = "  " * $Indent
     
     # Combine indentation with message
     $indentedMessage = $indentString + $Message
@@ -130,7 +123,7 @@ function Invoke-WebRequestWithCleanup {
                 $downloadedMB = [math]::Round($global:downloadProgress.BytesReceived / 1MB, 2)
                 $totalMB = if ($totalBytes -gt 0) { [math]::Round($totalBytes / 1MB, 2) } else { "Unknown" }
                 
-                Write-ProgressWithPercentage -Activity "Downloading $Description" -Status "Downloaded $downloadedMB MB of $totalMB MB" -PercentComplete $percentComplete -Id $ProgressId
+                Write-Progress -Activity "Downloading $Description" -Status "Downloaded $downloadedMB MB of $totalMB MB" -PercentComplete $percentComplete -Id $ProgressId
             }
         }
         
@@ -224,13 +217,13 @@ function Invoke-CommandWithExitCode {
         [string]$OutputFile,
         
         [Parameter(Mandatory = $false)]
-        [ValidateRange(0, 20)]
-        [int]$InheritedIndent = 0
+        [ValidateRange(0, 40)]
+        [int]$Indent = 0
     )
     
     $Command = Assert-NotEmpty -VariableName "Command" -Value $Command -ErrorMessage "Command cannot be empty"
     
-    Write-ColorOutput "Running: $Command $($Arguments -join ' ')" -Color "Cyan" -Indent 1 -InheritedIndent $InheritedIndent
+    Write-ColorOutput "Running: $Command $($Arguments -join ' ')" -Color "Cyan" -Indent ($Indent + 1)
     
     try {
         # Set working directory if specified
@@ -264,7 +257,7 @@ function Invoke-CommandWithExitCode {
             throw "$Description failed with exit code: $exitCode. Expected: $($ExpectedExitCodes -join ', ')"
         }
         
-        Write-ColorOutput "$Description completed successfully (exit code: $exitCode)" -Color "Green" -Indent 1 -InheritedIndent $InheritedIndent
+        Write-ColorOutput "$Description completed successfully (exit code: $exitCode)" -Color "Green" -Indent ($Indent + 1)
         
     } catch {
         throw "$Description failed: $_"

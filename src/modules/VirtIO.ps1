@@ -90,7 +90,7 @@ function Extract-VirtioDrivers {
         }
         
         Write-ColorOutput "VirtIO drivers downloaded" -Color "Green" -Indent 1
-        Write-ColorOutput "File size: $([math]::Round($fileSize / 1MB, 2)) MB" -Color "Cyan" -Indent 2
+        Write-ColorOutput "File size: $([math]::Round($fileSize / 1MB, 2)) MB" -Color "Cyan" -Indent ($Indent + 2)
         
         # Create virtio directory in the extract path
         $virtioDir = Join-Path $ExtractPath "virtio"
@@ -210,7 +210,7 @@ function Get-WindowsVersion {
         
         # Get the Windows version from the first install image
         $installVersion = Get-WindowsVersion -WimInfo $firstInstallImage -AllWimInfo $AllWimInfo
-        Write-ColorOutput "Boot.wim using Windows version from first install image: $installVersion" -Color "Cyan" -Indent 2
+        Write-ColorOutput "Boot.wim using Windows version from first install image: $installVersion" -Color "Cyan" -Indent ($Indent + 2)
         return $installVersion
     }
     
@@ -316,7 +316,7 @@ function Add-VirtioDriversToWim {
         
         [Parameter(Mandatory = $false)]
         [ValidateRange(0, 20)]
-        [int]$InheritedIndent = 0
+        [int]$Indent = 0
     )
     
     # Validate and extract WIM info properties
@@ -332,13 +332,13 @@ function Add-VirtioDriversToWim {
     $windowsVersion = Get-WindowsVersion -WimInfo $WimInfo -AllWimInfo $AllWimInfo
     $version = Get-VirtioDriverVersion -WindowsVersion $windowsVersion
     
-    Write-ColorOutput "Processing $wimType image: $imageName" -Color "Yellow" -Indent 1 -InheritedIndent $InheritedIndent
+    Write-ColorOutput "Processing $wimType image: $imageName" -Color "Yellow" -Indent ($Indent + 1)
     
     # Define the VirtIO driver components we want to inject
     $driverComponents = @("viostor", "vioscsi", "NetKVM")
     $driverComponents = Assert-ArrayNotEmpty -VariableName "driverComponents" -Value $driverComponents -ErrorMessage "Driver components array is empty"
     
-    Write-ColorOutput "Adding VirtIO drivers (Arch: $windowsArch -> $arch, Windows: $windowsVersion -> VirtIO: $version, Components: $($driverComponents -join ', '))" -Color "Green" -Indent 2 -InheritedIndent $InheritedIndent     
+    Write-ColorOutput "Adding VirtIO drivers (Arch: $windowsArch -> $arch, Windows: $windowsVersion -> VirtIO: $version, Components: $($driverComponents -join ', '))" -Color "Green" -Indent ($Indent + 2)     
     
     # Collect all driver paths
     $allDriverPaths = @()
@@ -368,14 +368,14 @@ function Add-VirtioDriversToWim {
             throw "Architecture '$arch' not found for component '$component' version '$version' at: $archPath"
         }
         
-        Write-ColorOutput "Found $component drivers at: $archPath" -Color "Cyan" -Indent 2 -InheritedIndent $InheritedIndent
+        Write-ColorOutput "Found $component drivers at: $archPath" -Color "Cyan" -Indent ($Indent + 2)
         $allDriverPaths += $archPath
     }
     
     # Install all driver components at once
     try {
-        Invoke-VirtioDriverInjection -WimPath $wimPath -DriverPaths $allDriverPaths -ImageIndex $imageIndex -WimType $wimType -InheritedIndent ($InheritedIndent + 2)
-        Write-ColorOutput "Successfully installed all VirtIO drivers" -Color "Green" -Indent 2 -InheritedIndent $InheritedIndent
+        Invoke-VirtioDriverInjection -WimPath $wimPath -DriverPaths $allDriverPaths -ImageIndex $imageIndex -WimType $wimType -Indent ($Indent + 2)
+        Write-ColorOutput "Successfully installed all VirtIO drivers" -Color "Green" -Indent ($Indent + 2)
     } catch {
         throw "Failed to install VirtIO drivers: $($_.Exception.Message)"
     }
@@ -400,23 +400,23 @@ function Add-VirtioDrivers {
         
         [Parameter(Mandatory = $false)]
         [ValidateRange(0, 20)]
-        [int]$InheritedIndent = 0
+        [int]$Indent = 0
     )
     
     try {
         # Get WIM information for all WIM files in the ISO
         Write-Host ""
-        Write-ColorOutput "Analyzing WIM files..." -Color "Yellow" -Indent 1
+        Write-ColorOutput "Analyzing WIM files..." -Color "Yellow" -Indent ($Indent + 1)
         $WimInfos = Get-AllWimInfo -ExtractPath $ExtractPath
-        Write-ColorOutput "Processing all WIM images ($($WimInfos.Count) total)" -Color "Green" -Indent 1
+        Write-ColorOutput "Processing all WIM images ($($WimInfos.Count) total)" -Color "Green" -Indent ($Indent + 1)
         
         # Download and extract VirtIO drivers
         $virtioDir = Extract-VirtioDrivers -Version $VirtioVersion -ExtractPath $ExtractPath
         
-        Write-ColorOutput "VirtIO drivers extracted to: $virtioDir" -Color "Green" -Indent 1         
+        Write-ColorOutput "VirtIO drivers extracted to: $virtioDir" -Color "Green" -Indent ($Indent + 1)         
         # Process each WIM image individually
         foreach ($wimInfo in $WimInfos) {
-            Add-VirtioDriversToWim -WimInfo $wimInfo -VirtioDir $virtioDir -VirtioVersion $VirtioVersion -AllWimInfo $WimInfos -InheritedIndent $InheritedIndent
+            Add-VirtioDriversToWim -WimInfo $wimInfo -VirtioDir $virtioDir -VirtioVersion $VirtioVersion -AllWimInfo $WimInfos -Indent $Indent
         }
         
     } catch {
@@ -453,11 +453,11 @@ function Invoke-VirtioDriverInjection {
         
         [Parameter(Mandatory = $false)]
         [ValidateRange(0, 20)]
-        [int]$InheritedIndent = 0
+        [int]$Indent = 0
     )
     
     Write-Host ""
-    Write-ColorOutput "=== Injecting VirtIO Drivers into $WimType.wim (Index: $ImageIndex) ===" -Color "Cyan" -Indent 1     
+    Write-ColorOutput "=== Injecting VirtIO Drivers into $WimType.wim (Index: $ImageIndex) ===" -Color "Cyan" -Indent ($Indent + 1)     
     $mountDir = Join-Path (Split-Path $WimPath -Parent) "${WimType}_mount_$ImageIndex"
     
     # Validate WIM file exists
@@ -471,57 +471,57 @@ function Invoke-VirtioDriverInjection {
         New-Item -ItemType Directory -Path $mountDir -Force | Out-Null
         
         # Use the provided driver paths
-        Write-ColorOutput "Using drivers from $($DriverPaths.Count) component(s):" -Color "Green" -Indent 2
+        Write-ColorOutput "Using drivers from $($DriverPaths.Count) component(s):" -Color "Green" -Indent ($Indent + 2)
         foreach ($driverPath in $DriverPaths) {
-            Write-ColorOutput "  - $driverPath" -Color "Cyan" -Indent 2
+            Write-ColorOutput "  - $driverPath" -Color "Cyan" -Indent ($Indent + 2)
         }         
         # Check for administrator privileges
-        Write-ColorOutput "Checking administrator privileges..." -Color "Cyan" -Indent 2
+        Write-ColorOutput "Checking administrator privileges..." -Color "Cyan" -Indent ($Indent + 2)
         Assert-Administrator -ErrorMessage "Administrator privileges are required to mount and modify WIM files. Please run PowerShell as Administrator."
-        Write-ColorOutput "Administrator privileges confirmed" -Color "Green" -Indent 2
+        Write-ColorOutput "Administrator privileges confirmed" -Color "Green" -Indent ($Indent + 2)
         
         # Get DISM path
         $dismPath = Get-DismPath
         
         # Check WIM file permissions
         $wimFileInfo = Get-Item $WimPath -ErrorAction Stop
-        Write-ColorOutput "WIM file: $($wimFileInfo.FullName)" -Color "Cyan" -Indent 2
-        Write-ColorOutput "WIM file size: $([math]::Round($wimFileInfo.Length / 1GB, 2)) GB" -Color "Cyan" -Indent 2
-        Write-ColorOutput "WIM file read-only: $($wimFileInfo.IsReadOnly)" -Color "Cyan" -Indent 2
+        Write-ColorOutput "WIM file: $($wimFileInfo.FullName)" -Color "Cyan" -Indent ($Indent + 2)
+        Write-ColorOutput "WIM file size: $([math]::Round($wimFileInfo.Length / 1GB, 2)) GB" -Color "Cyan" -Indent ($Indent + 2)
+        Write-ColorOutput "WIM file read-only: $($wimFileInfo.IsReadOnly)" -Color "Cyan" -Indent ($Indent + 2)
         
         # Remove read-only attribute from WIM file if present
         if ($wimFileInfo.IsReadOnly) {
-            Write-ColorOutput "Removing read-only attribute from WIM file..." -Color "Yellow" -Indent 2
+            Write-ColorOutput "Removing read-only attribute from WIM file..." -Color "Yellow" -Indent ($Indent + 2)
             Set-ItemProperty -Path $WimPath -Name IsReadOnly -Value $false
-            Write-ColorOutput "Read-only attribute removed" -Color "Green" -Indent 2
+            Write-ColorOutput "Read-only attribute removed" -Color "Green" -Indent ($Indent + 2)
         }
         
         # Check mount directory permissions
-        Write-ColorOutput "Mount directory: $mountDir" -Color "Cyan" -Indent 2
+        Write-ColorOutput "Mount directory: $mountDir" -Color "Cyan" -Indent ($Indent + 2)
         if (Test-Path $mountDir) {
             $mountDirInfo = Get-Item $mountDir
-            Write-ColorOutput "Mount directory exists: $($mountDirInfo.Exists)" -Color "Cyan" -Indent 2
+            Write-ColorOutput "Mount directory exists: $($mountDirInfo.Exists)" -Color "Cyan" -Indent ($Indent + 2)
         }
         
         # Mount the specific WIM index
-        Write-ColorOutput "Mounting $WimType.wim index $ImageIndex..." -Color "Yellow" -Indent 2
+        Write-ColorOutput "Mounting $WimType.wim index $ImageIndex..." -Color "Yellow" -Indent ($Indent + 2)
         # Mount the WIM file using direct execution
-        Invoke-CommandWithExitCode -Command $dismPath -Arguments @("/Mount-Wim", "/WimFile:$WimPath", "/Index:$ImageIndex", "/MountDir:$mountDir") -Description "Mount $WimType.wim index $ImageIndex" -SuppressOutput -InheritedIndent $InheritedIndent
+        Invoke-CommandWithExitCode -Command $dismPath -Arguments @("/Mount-Wim", "/WimFile:$WimPath", "/Index:$ImageIndex", "/MountDir:$mountDir") -Description "Mount $WimType.wim index $ImageIndex" -SuppressOutput -Indent $Indent
         
-        Write-ColorOutput "Successfully mounted $WimType.wim index $ImageIndex" -Color "Green" -Indent 2         
+        Write-ColorOutput "Successfully mounted $WimType.wim index $ImageIndex" -Color "Green" -Indent ($Indent + 2)         
         # Add drivers to the mounted image
-        Write-ColorOutput "Adding VirtIO drivers to $WimType.wim..." -Color "Yellow" -Indent 2
+        Write-ColorOutput "Adding VirtIO drivers to $WimType.wim..." -Color "Yellow" -Indent ($Indent + 2)
         
         # Add each driver component
         foreach ($driverPath in $DriverPaths) {
-            Write-ColorOutput "Adding drivers from: $driverPath" -Color "Cyan" -Indent 2
-            Invoke-CommandWithExitCode -Command $dismPath -Arguments @("/Image:$mountDir", "/Add-Driver", "/Driver:$driverPath", "/Recurse") -Description "Add drivers from $driverPath" -SuppressOutput -InheritedIndent $InheritedIndent
+            Write-ColorOutput "Adding drivers from: $driverPath" -Color "Cyan" -Indent ($Indent + 2)
+            Invoke-CommandWithExitCode -Command $dismPath -Arguments @("/Image:$mountDir", "/Add-Driver", "/Driver:$driverPath", "/Recurse") -Description "Add drivers from $driverPath" -SuppressOutput -Indent $Indent
         }
         
         # Unmount and commit changes
-        Write-ColorOutput "Unmounting $WimType.wim..." -Color "Yellow" -Indent 2
+        Write-ColorOutput "Unmounting $WimType.wim..." -Color "Yellow" -Indent ($Indent + 2)
         # Unmount and commit changes using direct execution
-        Invoke-CommandWithExitCode -Command $dismPath -Arguments @("/Unmount-Wim", "/MountDir:$mountDir", "/Commit") -Description "Unmount $WimType.wim" -SuppressOutput -InheritedIndent $InheritedIndent
+        Invoke-CommandWithExitCode -Command $dismPath -Arguments @("/Unmount-Wim", "/MountDir:$mountDir", "/Commit") -Description "Unmount $WimType.wim" -SuppressOutput -Indent $Indent
         
     } catch {
         throw "Error injecting drivers into $WimType.wim: $($_.Exception.Message)"
@@ -531,7 +531,7 @@ function Invoke-VirtioDriverInjection {
             try {
                 Remove-Item $mountDir -Recurse -Force -ErrorAction SilentlyContinue
             } catch {
-                Write-ColorOutput "Warning: Could not clean up mount directory: $mountDir" -Color "Yellow" -Indent 2
+                Write-ColorOutput "Warning: Could not clean up mount directory: $mountDir" -Color "Yellow" -Indent ($Indent + 2)
             }
         }
     }
