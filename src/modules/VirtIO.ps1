@@ -310,6 +310,7 @@ function Add-VirtioDrivers {
         Write-Host ""
         Write-ColorOutput "Analyzing WIM files..." -Color "Yellow" -Indent 1
         $WimInfos = Get-AllWimInfo -ExtractPath $ExtractPath
+        Write-ColorOutput "Processing all WIM images ($($WimInfos.Count) total)" -Color "Green" -Indent 1
         
         # Download VirtIO drivers
         $virtioIsoPath = Get-VirtioDrivers -Version $VirtioVersion -CacheDirectory $VirtioCacheDirectory

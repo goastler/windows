@@ -12,3 +12,4 @@
 - fix git history
 - virtio certs for <=w8.1
 - post install virtio
+- set bg in setup script

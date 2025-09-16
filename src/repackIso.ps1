@@ -1,6 +1,6 @@
 # #Requires -RunAsAdministrator
 
-# Windows ISO Repack Script - Modular Version
+# Windows ISO Repack Script
 # This script repacks Windows ISOs with autounattend.xml, OEM directory, and VirtIO drivers
 
 param(
@@ -121,7 +121,13 @@ param(
     [string]$VirtioCacheDirectory = (Join-Path $env:TEMP "virtio-cache"),
 
     [Parameter(Mandatory = $false)]
-    [switch]$OverwriteOutputIso
+    [switch]$OverwriteOutputIso,
+
+    [Parameter(Mandatory = $false)]
+    [string[]]$IncludeTargets,
+
+    [Parameter(Mandatory = $false)]
+    [string[]]$ExcludeTargets
 
 )
 
@@ -269,6 +275,14 @@ try {
     Write-ColorOutput "=== Adding Configuration Files ===" -Color "Cyan"
     Add-AutounattendXml -ExtractPath $WorkingDirectory -AutounattendXmlPath $AutounattendXml
     Add-OemDirectory -ExtractPath $WorkingDirectory -OemSourcePath $OemDirectory
+    
+    Write-Host ""
+    # Filter install.wim images if include/exclude targets are specified
+    if ($IncludeTargets -or $ExcludeTargets) {
+        Write-Host ""
+        Write-ColorOutput "=== Filtering Install Images ===" -Color "Cyan"
+        Filter-InstallWimImages -ExtractPath $WorkingDirectory -IncludeTargets $IncludeTargets -ExcludeTargets $ExcludeTargets
+    }
     
     Write-Host ""
     # Add VirtIO drivers to WIM files

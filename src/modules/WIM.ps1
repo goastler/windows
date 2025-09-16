@@ -240,3 +240,126 @@ function Get-AllWimInfo {
     return $wims
 }
 
+function Filter-InstallWimImages {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ExtractPath,
+        [Parameter(Mandatory = $false)]
+        [string[]]$IncludeTargets = $null,
+        [Parameter(Mandatory = $false)]
+        [string[]]$ExcludeTargets = $null
+    )
+    
+    $installWimPath = Join-Path $ExtractPath "sources\install.wim"
+    
+    if (-not (Test-Path $installWimPath)) {
+        Write-ColorOutput "No install.wim found at: $installWimPath" -Color "Yellow" -Indent 1
+        return
+    }
+    
+    Write-ColorOutput "Filtering install.wim images..." -Color "Yellow" -Indent 1
+    
+    # Get current WIM information
+    $dismPath = Get-DismPath
+    $wimInfo = Get-WimImageInfo -WimPath $installWimPath -DismPath $dismPath -InheritedIndent 1
+    
+    if (-not $wimInfo -or $wimInfo.Count -eq 0) {
+        Write-ColorOutput "No images found in install.wim" -Color "Yellow" -Indent 1
+        return
+    }
+    
+    # Determine which images to keep
+    $imagesToKeep = @()
+    $imagesToRemove = @()
+    
+    foreach ($image in $wimInfo) {
+        $imageName = $image.Name
+        $shouldKeep = $true
+        
+        # Check include targets
+        if ($IncludeTargets -and $IncludeTargets.Count -gt 0) {
+            $matchesInclude = $false
+            foreach ($includeTarget in $IncludeTargets) {
+                if ($imageName -like "*$includeTarget*") {
+                    $matchesInclude = $true
+                    break
+                }
+            }
+            if (-not $matchesInclude) {
+                $shouldKeep = $false
+            }
+        }
+        
+        # Check exclude targets
+        if ($ExcludeTargets -and $ExcludeTargets.Count -gt 0) {
+            foreach ($excludeTarget in $ExcludeTargets) {
+                if ($imageName -like "*$excludeTarget*") {
+                    $shouldKeep = $false
+                    break
+                }
+            }
+        }
+        
+        if ($shouldKeep) {
+            $imagesToKeep += $image
+            Write-ColorOutput "Keeping: $imageName" -Color "Green" -Indent 2
+        } else {
+            $imagesToRemove += $image
+            Write-ColorOutput "Removing: $imageName" -Color "Red" -Indent 2
+        }
+    }
+    
+    if ($imagesToRemove.Count -eq 0) {
+        Write-ColorOutput "No images to remove" -Color "Green" -Indent 1
+        return
+    }
+    
+    if ($imagesToKeep.Count -eq 0) {
+        throw "All install.wim images would be removed. Cannot create ISO with no install images."
+    }
+    
+    Write-ColorOutput "Removing $($imagesToRemove.Count) image(s) from install.wim..." -Color "Yellow" -Indent 1
+    
+    # Create a new install.wim with only the images we want to keep
+    $tempWimPath = Join-Path (Split-Path $installWimPath -Parent) "install_temp.wim"
+    
+    try {
+        
+        # Create new WIM with only the images we want to keep
+        $newIndex = 1
+        foreach ($imageToKeep in $imagesToKeep) {
+            Write-ColorOutput "Adding image $newIndex: $($imageToKeep.Name)" -Color "Cyan" -Indent 2
+            
+            if ($newIndex -eq 1) {
+                # First image - export to create new WIM
+                & $dismPath /Export-Image /SourceImageFile:$installWimPath /SourceIndex:$imageToKeep.Index /DestinationImageFile:$tempWimPath /DestinationName:$imageToKeep.Name
+            } else {
+                # Subsequent images - append to existing WIM
+                & $dismPath /Export-Image /SourceImageFile:$installWimPath /SourceIndex:$imageToKeep.Index /DestinationImageFile:$tempWimPath /DestinationName:$imageToKeep.Name /Compress:maximum
+            }
+            
+            if ($LASTEXITCODE -ne 0) {
+                throw "Failed to export image '$($imageToKeep.Name)' (index $($imageToKeep.Index)) to new WIM file"
+            }
+            
+            $newIndex++
+        }
+        
+        # Replace original with filtered WIM
+        Remove-Item $installWimPath -Force
+        Move-Item $tempWimPath $installWimPath
+        
+        Write-ColorOutput "Successfully filtered install.wim" -Color "Green" -Indent 1
+        Write-ColorOutput "Kept $($imagesToKeep.Count) image(s), removed $($imagesToRemove.Count) image(s)" -Color "Green" -Indent 2
+        
+    } catch {
+        
+        # Clean up temp file
+        if (Test-Path $tempWimPath) {
+            Remove-Item $tempWimPath -Force
+        }
+        
+        throw "Failed to filter install.wim: $($_.Exception.Message)"
+    }
+}
+
