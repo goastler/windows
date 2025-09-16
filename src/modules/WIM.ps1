@@ -88,9 +88,11 @@ function Get-WimImageDetails {
     foreach ($line in $imageDetails) {
         if ($line -match "^\s*(\w+)\s*:\s*(.*)$") {
             $matches = Assert-Defined -VariableName "matches" -Value $matches -ErrorMessage "Regex match failed unexpectedly"
-            $key = Assert-NotEmpty -VariableName "matches[1]" -Value $matches[1].Trim() -ErrorMessage "Regex match group 1 is empty"
-            $value = $matches[2].Trim()  # Allow empty values
-            $result[$key] = $value
+            $key = $matches[1].Trim()
+            if ($key) {  # Only process if key is not empty
+                $value = $matches[2].Trim()  # Allow empty values
+                $result[$key] = $value
+            }
         }
     }
     
@@ -196,15 +198,13 @@ function Get-WimImageInfo {
                 $detailedInfo = Assert-Defined -VariableName "detailedInfo" -Value $detailedInfo -ErrorMessage "Failed to get detailed image information"
                 $detailedImage = $detailedInfo.Clone()
                 
-                # Ensure Index is preserved
+                # Ensure Index is preserved (add it if it doesn't exist)
                 $basicImage.Index = Assert-PositiveNumber -VariableName "basicImage.Index" -Value $basicImage.Index -ErrorMessage "Basic image index must be a positive number"
-                $detailedImage.Index = $basicImage.Index
+                $detailedImage["Index"] = $basicImage.Index
                 
                 $detailedImages += $detailedImage
             } catch {
-                Write-ColorOutput "Warning: Failed to get detailed info for image index $($basicImage.Index): $($_.Exception.Message)" -Color "Yellow" -Indent 1 -InheritedIndent $InheritedIndent
-                # Fall back to basic image info if detailed info fails
-                $detailedImages += $basicImage
+                throw "Warning: Failed to get detailed info for image index $($basicImage.Index): $($_.Exception.Message)"
             }
         }
         
