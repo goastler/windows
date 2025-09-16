@@ -149,7 +149,6 @@ function Extract-VirtioDrivers {
     
     # Create virtio directory in the ISO extract path
     $virtioDir = Join-Path $ExtractPath "virtio"
-    $virtioDir = Assert-ValidPath -VariableName "virtioDir" -Path $virtioDir -ErrorMessage "Generated virtio directory path is invalid: $virtioDir"
     if (Test-Path $virtioDir) {
         Remove-Item $virtioDir -Recurse -Force
     }
