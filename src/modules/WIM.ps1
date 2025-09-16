@@ -185,7 +185,7 @@ function Get-WimImageInfo {
         }
         
         # Now get detailed information for each image
-        $detailedImages = @()
+        $detailedImages = [System.Collections.ArrayList]::new()
         foreach ($basicImage in $images) {
             Write-ColorOutput "Getting detailed info for image index $($basicImage.Index)..." -Color "Cyan" -Indent 1 -InheritedIndent $InheritedIndent
             
@@ -199,8 +199,9 @@ function Get-WimImageInfo {
                 # Ensure Index is preserved (add it if it doesn't exist)
                 $indexValue = $basicImage.Index
                 $indexValue = Assert-PositiveNumber -VariableName "basicImage.Index" -Value $indexValue -ErrorMessage "Basic image index must be a positive number"
+                $detailedImage.Index = $indexValue
                 
-                $detailedImages += $detailedImage
+                $null = $detailedImages.Add($detailedImage)
             } catch {
                 $indexForError = $basicImage.Index
                 throw "Warning: Failed to get detailed info for image index ${indexForError}: $($_.Exception.Message)"
