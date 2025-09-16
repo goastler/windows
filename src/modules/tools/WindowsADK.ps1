@@ -26,7 +26,6 @@ function Install-WindowsADK {
         $adkPaths = Get-AdkPaths
         
         foreach ($path in $adkPaths) {
-            $path = Assert-ValidPath -VariableName "path" -Path $path -ErrorMessage "ADK path is invalid: $path"
             if (Test-Path $path) {
                 $env:Path += ";$path"
                 Write-ColorOutput "Added to PATH: $path" -Color "Cyan" -Indent 1

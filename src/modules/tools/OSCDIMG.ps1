@@ -11,7 +11,6 @@ function Find-OscdimgPath {
     $adkPaths = Get-AdkExecutablePaths
     
     foreach ($path in $adkPaths) {
-        $path = Assert-ValidPath -VariableName "path" -Path $path -ErrorMessage "ADK path is invalid: $path"
         if (Test-Path $path) {
             Write-ColorOutput "Found oscdimg.exe at: $path" -Color "Green" -Indent 1
             return $path
