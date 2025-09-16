@@ -196,12 +196,7 @@ function Get-WimImageInfo {
                 $detailedInfo = Assert-Defined -VariableName "detailedInfo" -Value $detailedInfo -ErrorMessage "Failed to get detailed image information"
                 $detailedImage = $detailedInfo.Clone()
                 
-                # Ensure Index is preserved (add it if it doesn't exist)
-                $indexValue = $basicImage.Index
-                $indexValue = Assert-PositiveNumber -VariableName "basicImage.Index" -Value $indexValue -ErrorMessage "Basic image index must be a positive number"
-                
-                # Add the Index property to the hashtable
-                $detailedImage["Index"] = $indexValue
+                # Index is already included in the detailed info from DISM output
                 
                 $null = $detailedImages.Add($detailedImage)
             } catch {
@@ -210,10 +205,6 @@ function Get-WimImageInfo {
             }
         }
         
-        Write-Host "DEBUG: Get-WimImageInfo returning $($detailedImages.Count) images"
-        foreach ($img in $detailedImages) {
-            Write-Host "DEBUG: Image type: $($img.GetType().Name), Keys: $($img.Keys -join ', ')"
-        }
         return $detailedImages
         
     } catch {
@@ -278,22 +269,11 @@ function Get-AllWimInfo {
         Write-ColorOutput "Analyzing install.wim..." -Color "Yellow" -Indent 1 -InheritedIndent $InheritedIndent
         $installWimInfo = Get-WimImageInfo -WimPath $installWimPath -DismPath (Get-DismPath) -InheritedIndent ($InheritedIndent + 1)
         
-        Write-Host "DEBUG: installWimInfo type: $($installWimInfo.GetType().Name), count: $($installWimInfo.Count)"
-        if ($installWimInfo) {
-            Write-Host "DEBUG: installWimInfo is not null/empty"
-        } else {
-            Write-Host "DEBUG: installWimInfo is null or empty"
-        }
-        
         foreach ($image in $installWimInfo) {
             # Validate image properties before using them
             $image = Assert-Defined -VariableName "image" -Value $image -ErrorMessage "Install WIM image is null"
-            Write-Host "DEBUG: image = $($image)"
-            Write-Host "name"
             $imageName = Assert-NotEmpty -VariableName "image.Name" -Value $image.Name -ErrorMessage "Install WIM image name is not defined"
-            Write-Host "arch"
             $imageArch = Assert-NotEmpty -VariableName "image.Architecture" -Value $image.Architecture -ErrorMessage "Install WIM image architecture is not defined"
-            Write-Host "version"
             $imageVersion = Assert-NotEmpty -VariableName "image.Version" -Value $image.Version -ErrorMessage "Install WIM image version is not defined"
             
             # Start with all detailed DISM fields from the image
