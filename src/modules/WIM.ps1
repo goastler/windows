@@ -280,7 +280,7 @@ function Filter-InstallWimImages {
         if ($IncludeTargets -and $IncludeTargets.Count -gt 0) {
             $matchesInclude = $false
             foreach ($includeTarget in $IncludeTargets) {
-                if ($imageName -like "*$includeTarget*") {
+                if ($imageName -eq $includeTarget) {
                     $matchesInclude = $true
                     break
                 }
@@ -293,7 +293,7 @@ function Filter-InstallWimImages {
         # Check exclude targets
         if ($ExcludeTargets -and $ExcludeTargets.Count -gt 0) {
             foreach ($excludeTarget in $ExcludeTargets) {
-                if ($imageName -like "*$excludeTarget*") {
+                if ($imageName -eq $excludeTarget) {
                     $shouldKeep = $false
                     break
                 }
@@ -330,16 +330,37 @@ function Filter-InstallWimImages {
         foreach ($imageToKeep in $imagesToKeep) {
             Write-ColorOutput "Adding image $($newIndex): $($imageToKeep.Name)" -Color "Cyan" -Indent 2
             
-            if ($newIndex -eq 1) {
-                # First image - export to create new WIM
-                & $dismPath /Export-Image /SourceImageFile:$installWimPath /SourceIndex:$imageToKeep.Index /DestinationImageFile:$tempWimPath /DestinationName:$imageToKeep.Name
-            } else {
-                # Subsequent images - append to existing WIM
-                & $dismPath /Export-Image /SourceImageFile:$installWimPath /SourceIndex:$imageToKeep.Index /DestinationImageFile:$tempWimPath /DestinationName:$imageToKeep.Name /Compress:maximum
+            # Build DISM command with proper quoting for image names that might contain spaces
+            $sourceIndex = $imageToKeep.Index
+            $imageName = $imageToKeep.Name
+            $dismCommand = @(
+                $dismPath,
+                "/Export-Image",
+                "/SourceImageFile:`"$installWimPath`"",
+                "/SourceIndex:$sourceIndex",
+                "/DestinationImageFile:`"$tempWimPath`"",
+                "/DestinationName:`"$imageName`""
+            )
+            
+            if ($newIndex -gt 1) {
+                # Add compression for subsequent images
+                $dismCommand += "/Compress:maximum"
             }
             
+            Write-ColorOutput "DISM Command: $($dismCommand -join ' ')" -Color "Gray" -Indent 3
+            
+            # Execute DISM command
+            & $dismPath /Export-Image /SourceImageFile:"$installWimPath" /SourceIndex:$sourceIndex /DestinationImageFile:"$tempWimPath" /DestinationName:"$imageName" @(if ($newIndex -gt 1) { "/Compress:maximum" })
+            
             if ($LASTEXITCODE -ne 0) {
-                throw "Failed to export image '$($imageToKeep.Name)' (index $($imageToKeep.Index)) to new WIM file"
+                $errorDetails = "DISM exit code: $LASTEXITCODE"
+                if (Test-Path "C:\WINDOWS\Logs\DISM\dism.log") {
+                    $logContent = Get-Content "C:\WINDOWS\Logs\DISM\dism.log" -Tail 10 -ErrorAction SilentlyContinue
+                    if ($logContent) {
+                        $errorDetails += ". Last 10 lines of DISM log:`n$($logContent -join "`n")"
+                    }
+                }
+                throw "Failed to export image '$imageName' (index $sourceIndex) to new WIM file. $errorDetails"
             }
             
             $newIndex++
