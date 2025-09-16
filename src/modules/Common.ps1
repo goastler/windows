@@ -239,7 +239,12 @@ function Invoke-CommandWithExitCode {
         
         # Execute the command with or without output redirection
         if ($OutputFile) {
-            $OutputFile = Assert-ValidPath -VariableName "OutputFile" -Path $OutputFile -ErrorMessage "Output file path is invalid: $OutputFile"
+            # Validate output file path format but allow non-existent files (they will be created)
+            try {
+                $null = [System.IO.Path]::GetFullPath($OutputFile)
+            } catch {
+                throw "Output file path is not a valid path format: $OutputFile"
+            }
             & $Command @Arguments > $OutputFile 2>&1
         } elseif ($SuppressOutput) {
             & $Command @Arguments 2>&1 | Out-Null
