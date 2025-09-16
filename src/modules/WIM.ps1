@@ -155,13 +155,13 @@ function Get-WimImageInfo {
         # Clean up the temporary file
         Remove-Item "temp_wim_info.txt" -ErrorAction SilentlyContinue
         
-        $images = @()
+        $images = [System.Collections.ArrayList]::new()
         $currentImage = $null
         
         foreach ($line in $wimInfo) {
             if ($line -match "Index\s*:\s*(\d+)") {
                 if ($currentImage) {
-                    $images += $currentImage
+                    $null = $images.Add($currentImage)
                 }
                 $matches = Assert-Defined -VariableName "matches" -Value $matches -ErrorMessage "Index regex match failed unexpectedly"
                 $indexValue = Assert-NotEmpty -VariableName "matches[1]" -Value $matches[1] -ErrorMessage "Index regex match group 1 is empty"
@@ -181,7 +181,7 @@ function Get-WimImageInfo {
         }
         
         if ($currentImage) {
-            $images += $currentImage
+            $null = $images.Add($currentImage)
         }
         
         # Now get detailed information for each image
