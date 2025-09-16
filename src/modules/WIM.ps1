@@ -163,6 +163,7 @@ function Get-WimImageInfo {
                 if ($currentImage) {
                     Write-Host "DEBUG: Adding currentImage to ArrayList: $($currentImage.GetType().Name), Keys: $($currentImage.Keys -join ', ')"
                     $null = $images.Add($currentImage)
+                    Write-Host "DEBUG in for line loop: images = $($images)"
                 }
                 $matches = Assert-Defined -VariableName "matches" -Value $matches -ErrorMessage "Index regex match failed unexpectedly"
                 $indexValue = Assert-NotEmpty -VariableName "matches[1]" -Value $matches[1] -ErrorMessage "Index regex match group 1 is empty"
@@ -184,13 +185,14 @@ function Get-WimImageInfo {
         if ($currentImage) {
             Write-Host "DEBUG: Adding final currentImage to ArrayList: $($currentImage.GetType().Name), Keys: $($currentImage.Keys -join ', ')"
             $null = $images.Add($currentImage)
+            Write-Host "DEBUG in if currentImage loop: images = $($images)"
         }
         
         # Now get detailed information for each image
         $detailedImages = [System.Collections.ArrayList]::new()
         foreach ($basicImage in $images) {
             Write-ColorOutput "Getting detailed info for image index $($basicImage.Index)..." -Color "Cyan" -Indent 1 -InheritedIndent $InheritedIndent
-            
+            Write-Host "DEBUG in foreach basicImage loop: detailedImages = $($detailedImages)"
             try {
                 $detailedInfo = Get-WimImageDetails -WimPath $WimPath -ImageIndex $basicImage.Index -DismPath $DismPath -ShowDebugOutput $true -InheritedIndent $InheritedIndent
                 
