@@ -172,6 +172,7 @@ function Get-WimImageInfo {
                 $currentImage = @{
                     Index = [int]$indexValue
                 }
+                Write-ColorOutput "DEBUG: Created basic image with Index = $($currentImage.Index) (type: $($currentImage.Index.GetType().Name))" -Color "Yellow" -Indent 2 -InheritedIndent $InheritedIndent
             } elseif ($currentImage -and $line -match "^\s*(\w+(?:\s+\w+)*)\s*:\s*(.+)") {
                 $matches = Assert-Defined -VariableName "matches" -Value $matches -ErrorMessage "Field regex match failed unexpectedly"
                 $fieldName = Assert-NotEmpty -VariableName "matches[1]" -Value $matches[1].Trim() -ErrorMessage "Field name regex match group 1 is empty"
@@ -202,6 +203,7 @@ function Get-WimImageInfo {
                 
                 # Ensure Index is preserved (add it if it doesn't exist)
                 $indexValue = $basicImage.Index
+                Write-ColorOutput "DEBUG: basicImage.Index = '$indexValue' (type: $($indexValue.GetType().Name))" -Color "Yellow" -Indent 2 -InheritedIndent $InheritedIndent
                 $indexValue = Assert-PositiveNumber -VariableName "basicImage.Index" -Value $indexValue -ErrorMessage "Basic image index must be a positive number"
                 $detailedImage["Index"] = $indexValue
                 
