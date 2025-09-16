@@ -161,6 +161,7 @@ function Get-WimImageInfo {
         foreach ($line in $wimInfo) {
             if ($line -match "Index\s*:\s*(\d+)") {
                 if ($currentImage) {
+                    Write-Host "DEBUG: Adding currentImage to ArrayList: $($currentImage.GetType().Name), Keys: $($currentImage.Keys -join ', ')"
                     $null = $images.Add($currentImage)
                 }
                 $matches = Assert-Defined -VariableName "matches" -Value $matches -ErrorMessage "Index regex match failed unexpectedly"
@@ -181,6 +182,7 @@ function Get-WimImageInfo {
         }
         
         if ($currentImage) {
+            Write-Host "DEBUG: Adding final currentImage to ArrayList: $($currentImage.GetType().Name), Keys: $($currentImage.Keys -join ', ')"
             $null = $images.Add($currentImage)
         }
         
@@ -198,6 +200,7 @@ function Get-WimImageInfo {
                 
                 # Index is already included in the detailed info from DISM output
                 
+                Write-Host "DEBUG: Adding detailedImage to ArrayList: $($detailedImage.GetType().Name), Keys: $($detailedImage.Keys -join ', ')"
                 $null = $detailedImages.Add($detailedImage)
             } catch {
                 $indexForError = $basicImage.Index
@@ -205,8 +208,17 @@ function Get-WimImageInfo {
             }
         }
         
-        # Convert ArrayList to regular array to avoid mixed type issues
-        return @($detailedImages)
+        # Filter out any invalid entries (Int32 values, null, etc.) and convert to regular array
+        $validImages = @()
+        foreach ($img in $detailedImages) {
+            if ($img -is [hashtable] -and $img -ne $null) {
+                $validImages += $img
+            } else {
+                Write-Host "DEBUG: Filtering out invalid image entry in Get-WimImageInfo: $($img)"
+            }
+        }
+        
+        return $validImages
         
     } catch {
         throw "Failed to get WIM image information: $($_.Exception.Message)"
@@ -336,7 +348,6 @@ function Filter-InstallWimImages {
     Write-Host "DEBUG: wimInfo = $($wimInfo)"
     
     foreach ($image in $wimInfo) {
-        Write-Host "DEBUG: image = $($image)"
         # Validate image properties before using them
         $image = Assert-Defined -VariableName "image" -Value $image -ErrorMessage "WIM image is null"
         $imageName = Assert-NotEmpty -VariableName "image.Name" -Value $image.Name -ErrorMessage "WIM image name is not defined"
