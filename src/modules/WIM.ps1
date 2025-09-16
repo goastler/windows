@@ -205,7 +205,8 @@ function Get-WimImageInfo {
             }
         }
         
-        return $detailedImages
+        # Convert ArrayList to regular array to avoid mixed type issues
+        return @($detailedImages)
         
     } catch {
         throw "Failed to get WIM image information: $($_.Exception.Message)"
@@ -335,8 +336,6 @@ function Filter-InstallWimImages {
     $imagesToRemove = @()
     
     foreach ($image in $wimInfo) {
-        Write-Host "DEBUG: image = $($image)"
-        
         # Validate image properties before using them
         $image = Assert-Defined -VariableName "image" -Value $image -ErrorMessage "WIM image is null"
         $imageName = Assert-NotEmpty -VariableName "image.Name" -Value $image.Name -ErrorMessage "WIM image name is not defined"
