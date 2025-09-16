@@ -177,12 +177,23 @@ function Extract-VirtioDrivers {
 
 function Get-WindowsVersion {
     param(
-        [hashtable]$WimInfo
+        [hashtable]$WimInfo,
+        [array]$AllWimInfo = @()
     )
     
-    # For boot.wim files, return "pe" (Windows PE)
+    # For boot.wim files, determine version from the first install.wim image
     if ($WimInfo.Type -eq "boot") {
-        return "pe"
+        # Find the first install.wim image
+        $firstInstallImage = $AllWimInfo | Where-Object { $_.Type -eq "install" } | Select-Object -First 1
+        
+        if (-not $firstInstallImage) {
+            throw "Cannot determine Windows version for boot.wim: No install.wim images found to reference"
+        }
+        
+        # Get the Windows version from the first install image
+        $installVersion = Get-WindowsVersion -WimInfo $firstInstallImage -AllWimInfo $AllWimInfo
+        Write-ColorOutput "Boot.wim using Windows version from first install image: $installVersion" -Color "Cyan" -Indent 2
+        return $installVersion
     }
     
     # For install.wim files, infer Windows version from image name
@@ -206,15 +217,41 @@ function Get-WindowsVersion {
     }
 }
 
+function Get-VirtioDriverVersion {
+    param(
+        [string]$WindowsVersion
+    )
+    
+    # Map Windows version to VirtIO driver directory format
+    $versionMap = @{
+        "11" = "w11"
+        "10" = "w10"
+        "8.1" = "w8.1"
+        "8" = "w8"
+        "7" = "w7"
+        "vista" = "vista"
+        "xp" = "xp"
+        "pe" = "pe"
+    }
+    
+    if ($versionMap.ContainsKey($WindowsVersion)) {
+        return $versionMap[$WindowsVersion]
+    } else {
+        throw "Unknown Windows version for VirtIO driver mapping: '$WindowsVersion'"
+    }
+}
+
 function Add-VirtioDriversToWim {
     param(
         [hashtable]$WimInfo,
         [string]$VirtioDir,
-        [string]$VirtioVersion
+        [string]$VirtioVersion,
+        [array]$AllWimInfo = @()
     )
     
     $arch = $WimInfo.Architecture
-    $version = Get-WindowsVersion -WimInfo $WimInfo
+    $windowsVersion = Get-WindowsVersion -WimInfo $WimInfo -AllWimInfo $AllWimInfo
+    $version = Get-VirtioDriverVersion -WindowsVersion $windowsVersion
     $wimPath = $WimInfo.Path
     $wimType = $WimInfo.Type
     $imageIndex = $WimInfo.Index
@@ -222,28 +259,42 @@ function Add-VirtioDriversToWim {
     
     Write-ColorOutput "Processing $wimType image: $imageName" -Color "Yellow" -Indent 1     
     
-    # Check if appropriate drivers exist
-    $driverPath = Join-Path $VirtioDir $arch
-    if (-not (Test-Path $driverPath)) {
-        Write-ColorOutput "No VirtIO drivers found for architecture $arch" -Color "Yellow" -Indent 2
-        return
-    }
+    # Define the VirtIO driver components we want to inject
+    $driverComponents = @("viostor", "vioscsi", "NetKVM")
     
-    $windowsDriverPath = Join-Path $driverPath $version
-    if (-not (Test-Path $windowsDriverPath)) {
-        Write-ColorOutput "No VirtIO drivers found for Windows version $version" -Color "Yellow" -Indent 2
-        return
-    }
+    Write-ColorOutput "Adding VirtIO drivers (Arch: $arch, Windows: $windowsVersion -> VirtIO: $version, Components: $($driverComponents -join ', '))" -Color "Green" -Indent 2     
     
-    Write-ColorOutput "Adding VirtIO drivers (Arch: $arch, Version: $version)" -Color "Green" -Indent 2     
-    try {
-        if ($wimType -eq "boot") {
-            Inject-VirtioDriversIntoBootWim -WimPath $wimPath -VirtioDir $VirtioDir -Arch $arch -Version $version -ImageIndex $imageIndex
-        } else {
-            Inject-VirtioDriversIntoInstallWim -WimPath $wimPath -VirtioDir $VirtioDir -Arch $arch -Version $version -ImageIndex $imageIndex
+    # Install each driver component individually
+    foreach ($component in $driverComponents) {
+        $componentPath = Join-Path $VirtioDir $component
+        if (-not (Test-Path $componentPath)) {
+            throw "Component '$component' not found in VirtIO directory at: $componentPath"
         }
-    } catch {
-        throw "Failed to add VirtIO drivers to $wimType image: $($_.Exception.Message)"
+        
+        # For each component, find the appropriate version directory
+        $versionPath = Join-Path $componentPath $version
+        if (-not (Test-Path $versionPath)) {
+            throw "Version '$version' not found for component '$component' at: $versionPath"
+        }
+        
+        # For each version, find the appropriate architecture directory
+        $archPath = Join-Path $versionPath $arch
+        if (-not (Test-Path $archPath)) {
+            throw "Architecture '$arch' not found for component '$component' version '$version' at: $archPath"
+        }
+        
+        Write-ColorOutput "Installing $component drivers from: $archPath" -Color "Cyan" -Indent 2
+        
+        try {
+            if ($wimType -eq "boot") {
+                Inject-VirtioDriversIntoBootWim -WimPath $wimPath -DriverPaths @($archPath) -ImageIndex $imageIndex
+            } else {
+                Inject-VirtioDriversIntoInstallWim -WimPath $wimPath -DriverPaths @($archPath) -ImageIndex $imageIndex
+            }
+            Write-ColorOutput "Successfully installed $component drivers" -Color "Green" -Indent 2
+        } catch {
+            throw "Failed to install $component drivers: $($_.Exception.Message)"
+        }
     }
 }
 
@@ -272,7 +323,7 @@ function Add-VirtioDrivers {
         Write-ColorOutput "Available driver directories: $($driverDirs -join ', ')" -Color "Cyan" -Indent 1         
         # Process each WIM image individually
         foreach ($wimInfo in $WimInfos) {
-            Add-VirtioDriversToWim -WimInfo $wimInfo -VirtioDir $virtioDir -VirtioVersion $VirtioVersion
+            Add-VirtioDriversToWim -WimInfo $wimInfo -VirtioDir $virtioDir -VirtioVersion $VirtioVersion -AllWimInfo $WimInfos
         }
         
     } catch {
@@ -283,9 +334,7 @@ function Add-VirtioDrivers {
 function Inject-VirtioDriversIntoBootWim {
     param(
         [string]$WimPath,
-        [string]$VirtioDir,
-        [string]$Arch,
-        [string]$Version,
+        [array]$DriverPaths,
         [int]$ImageIndex
     )
     
@@ -304,22 +353,11 @@ function Inject-VirtioDriversIntoBootWim {
         }
         New-Item -ItemType Directory -Path $mountDir -Force | Out-Null
         
-        # Use the specified architecture and Windows version
-        $driverPath = Join-Path $VirtioDir $Arch
-        
-        if (-not (Test-Path $driverPath)) {
-            throw "VirtIO drivers not found for architecture: $Arch at: $driverPath"
-        }
-        
-        # Find the specified Windows version drivers
-        $windowsDriverPath = Join-Path $driverPath $Version
-        if (-not (Test-Path $windowsDriverPath)) {
-            throw "VirtIO drivers not found for Windows version: $Version at: $windowsDriverPath"
-        }
-        
-        Write-ColorOutput "Using drivers from: $windowsDriverPath" -Color "Green" -Indent 2
-        Write-ColorOutput "Architecture: $Arch" -Color "Cyan" -Indent 2
-        Write-ColorOutput "Version: $Version" -Color "Cyan" -Indent 2         
+        # Use the provided driver paths
+        Write-ColorOutput "Using drivers from $($DriverPaths.Count) component(s):" -Color "Green" -Indent 2
+        foreach ($driverPath in $DriverPaths) {
+            Write-ColorOutput "  - $driverPath" -Color "Cyan" -Indent 2
+        }         
         # Check for administrator privileges
         Write-ColorOutput "Checking administrator privileges..." -Color "Cyan" -Indent 2
         Assert-Administrator -ErrorMessage "Administrator privileges are required to mount and modify WIM files. Please run PowerShell as Administrator."
@@ -360,13 +398,17 @@ function Inject-VirtioDriversIntoBootWim {
         Write-ColorOutput "Successfully mounted boot.wim index $ImageIndex" -Color "Green" -Indent 2         
         # Add drivers to the mounted image
         Write-ColorOutput "Adding VirtIO drivers to boot.wim..." -Color "Yellow" -Indent 2
-        # Add drivers using direct execution
-        & $dismPath /Image:$mountDir /Add-Driver /Driver:$windowsDriverPath /Recurse
         
-        if ($LASTEXITCODE -eq 0) {
-            Write-ColorOutput "Successfully added VirtIO drivers to boot.wim" -Color "Green" -Indent 2
-        } else {
-            throw "Failed to add VirtIO drivers to boot.wim (exit code: $LASTEXITCODE)"
+        # Add each driver component
+        foreach ($driverPath in $DriverPaths) {
+            Write-ColorOutput "Adding drivers from: $driverPath" -Color "Cyan" -Indent 2
+            & $dismPath /Image:$mountDir /Add-Driver /Driver:$driverPath /Recurse
+            
+            if ($LASTEXITCODE -eq 0) {
+                Write-ColorOutput "Successfully added drivers from: $driverPath" -Color "Green" -Indent 2
+            } else {
+                throw "Failed to add drivers from $driverPath (exit code: $LASTEXITCODE)"
+            }
         }
         
         # Unmount and commit changes
@@ -397,9 +439,7 @@ function Inject-VirtioDriversIntoBootWim {
 function Inject-VirtioDriversIntoInstallWim {
     param(
         [string]$WimPath,
-        [string]$VirtioDir,
-        [string]$Arch,
-        [string]$Version,
+        [array]$DriverPaths,
         [int]$ImageIndex
     )
     
@@ -419,22 +459,11 @@ function Inject-VirtioDriversIntoInstallWim {
         }
         New-Item -ItemType Directory -Path $mountDir -Force | Out-Null
         
-        # Use the specified architecture and Windows version
-        $driverPath = Join-Path $VirtioDir $Arch
-        
-        if (-not (Test-Path $driverPath)) {
-            throw "VirtIO drivers not found for architecture: $Arch at: $driverPath"
-        }
-        
-        # Find the specified Windows version drivers
-        $windowsDriverPath = Join-Path $driverPath $Version
-        if (-not (Test-Path $windowsDriverPath)) {
-            throw "VirtIO drivers not found for Windows version: $Version at: $windowsDriverPath"
-        }
-        
-        Write-ColorOutput "Using drivers from: $windowsDriverPath" -Color "Green" -Indent 2
-        Write-ColorOutput "Architecture: $Arch" -Color "Cyan" -Indent 2
-        Write-ColorOutput "Version: $Version" -Color "Cyan" -Indent 2         
+        # Use the provided driver paths
+        Write-ColorOutput "Using drivers from $($DriverPaths.Count) component(s):" -Color "Green" -Indent 2
+        foreach ($driverPath in $DriverPaths) {
+            Write-ColorOutput "  - $driverPath" -Color "Cyan" -Indent 2
+        }         
         # Check for administrator privileges
         Write-ColorOutput "Checking administrator privileges..." -Color "Cyan" -Indent 2
         Assert-Administrator -ErrorMessage "Administrator privileges are required to mount and modify WIM files. Please run PowerShell as Administrator."
@@ -475,13 +504,17 @@ function Inject-VirtioDriversIntoInstallWim {
         Write-ColorOutput "Successfully mounted install.wim index $ImageIndex" -Color "Green" -Indent 2         
         # Add drivers to the mounted image
         Write-ColorOutput "Adding VirtIO drivers to install.wim..." -Color "Yellow" -Indent 2
-        # Add drivers using direct execution
-        & $dismPath /Image:$mountDir /Add-Driver /Driver:$windowsDriverPath /Recurse
         
-        if ($LASTEXITCODE -eq 0) {
-            Write-ColorOutput "Successfully added VirtIO drivers to install.wim" -Color "Green" -Indent 2
-        } else {
-            throw "Failed to add VirtIO drivers to install.wim (exit code: $LASTEXITCODE)"
+        # Add each driver component
+        foreach ($driverPath in $DriverPaths) {
+            Write-ColorOutput "Adding drivers from: $driverPath" -Color "Cyan" -Indent 2
+            & $dismPath /Image:$mountDir /Add-Driver /Driver:$driverPath /Recurse
+            
+            if ($LASTEXITCODE -eq 0) {
+                Write-ColorOutput "Successfully added drivers from: $driverPath" -Color "Green" -Indent 2
+            } else {
+                throw "Failed to add drivers from $driverPath (exit code: $LASTEXITCODE)"
+            }
         }
         
         # Unmount and commit changes

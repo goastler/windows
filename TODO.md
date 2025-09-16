@@ -10,3 +10,5 @@
 - make progress cmdlets use many stages for updates
 - move over to using psm1 modules
 - fix git history
+- virtio certs for <=w8.1
+- post install virtio
