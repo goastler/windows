@@ -1041,7 +1041,10 @@ $scripts = @(
   }
 } *&gt;&amp;1 &gt;&gt; "C:\Windows\Setup\Scripts\DefaultUser.log";
 		</File>
-		<File path="C:\Windows\Setup\Scripts\FirstLogon.ps1">
+		<File path="C:\Windows\Setup\Scripts\Cleanup.ps1">
+# Cleanup.ps1 - Windows Installation Cleanup Script
+# This script performs final cleanup tasks after Windows installation
+
 $scripts = @(
 	{
 		Set-ItemProperty -LiteralPath 'Registry::HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' -Name 'AutoLogonCount' -Type 'DWord' -Force -Value 0;
@@ -1058,7 +1061,7 @@ $scripts = @(
   [float] $complete = 0;
   [float] $increment = 100 / $scripts.Count;
   foreach( $script in $scripts ) {
-    Write-Progress -Activity 'Running scripts to finalize your Windows installation. Do not close this window.' -PercentComplete $complete;
+    Write-Progress -Activity 'Running cleanup scripts to finalize your Windows installation. Do not close this window.' -PercentComplete $complete;
     '*** Will now execute command &#xAB;{0}&#xBB;.' -f $(
       $str = $script.ToString().Trim() -replace '\s+', ' ';
       $max = 100;
@@ -1074,7 +1077,52 @@ $scripts = @(
     "`r`n" * 3;
     $complete += $increment;
   }
-} *&gt;&amp;1 &gt;&gt; "C:\Windows\Setup\Scripts\FirstLogon.log";
+} *&gt;&amp;1 &gt;&gt; "C:\Windows\Setup\Scripts\Cleanup.log";
+		</File>
+		<File path="C:\Windows\Setup\Scripts\FirstLogon.ps1">
+# FirstLogon.ps1 - Windows Setup Script
+# This script runs cleanup tasks and downloads setup.ps1 from GitHub
+
+# Set execution policy to allow script execution
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope LocalMachine -Force
+
+# Run cleanup script first
+Write-Host "Running cleanup tasks..."
+try {
+    Get-Content -LiteralPath 'C:\Windows\Setup\Scripts\Cleanup.ps1' -Raw | Invoke-Expression
+    Write-Host "Cleanup tasks completed successfully"
+} catch {
+    Write-Error "Failed to run cleanup tasks: $($_.Exception.Message)"
+}
+
+# Define paths for main setup script
+$scriptPath = "C:\Windows\Setup\Scripts\setup.ps1"
+$scriptDir = Split-Path -Parent $scriptPath
+
+# Create directory if it doesn't exist
+if (!(Test-Path $scriptDir)) {
+    New-Item -ItemType Directory -Path $scriptDir -Force
+}
+
+# Download setup.ps1 from GitHub repository
+Write-Host "Downloading setup.ps1 from GitHub repository..."
+try {
+    $url = "https://raw.githubusercontent.com/goastler/windows/refs/heads/main/src/setup.ps1"
+    Invoke-WebRequest -Uri $url -OutFile $scriptPath -UseBasicParsing
+    Write-Host "Successfully downloaded setup.ps1 to $scriptPath"
+} catch {
+    Write-Error "Failed to download setup.ps1: $($_.Exception.Message)"
+}
+
+# Run the downloaded setup.ps1 script in a new window
+Write-Host "Running setup.ps1 script in a new window..."
+try {
+    Start-Process -FilePath "powershell.exe" -ArgumentList "-ExecutionPolicy Bypass -File `"$scriptPath`"" -WindowStyle Normal
+} catch {
+    Write-Error "Failed to run setup.ps1: $($_.Exception.Message)"
+}
+
+Pause
 		</File>
 	</Extensions>
 </unattend>
